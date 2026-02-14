@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: gateway
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+  cloud:
+    gateway:
+      # 라우트는 하위 서비스 연결 시 아래 형식으로 추가
+      # routes:
+      #   - id: example-service
+      #     uri: http://example-service:8080
+      #     predicates:
+      #       - Path=/api/example/**
+      #     filters:
+      #       - StripPrefix=1
+      routes: []
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 10s
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway, metrics
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    io.lettuce.core: WARN
