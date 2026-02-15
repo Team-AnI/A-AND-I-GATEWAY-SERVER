@@ -4,11 +4,8 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 
 private const val UNKNOWN_SUBJECT = "unknown"
-private const val TOKEN_CACHE_KEY_PREFIX = "cache:token"
 
 data class TokenContextResolution(
     val payloadJson: String,
@@ -26,12 +23,15 @@ class TokenContextCacheService(
 ) : TokenContextResolver {
 
     override fun resolve(authentication: Authentication): Mono<TokenContextResolution> {
-        val key = cacheKey(authentication)
+        val subject = subjectOf(authentication)
+        val key = tokenKey(authentication, subject)
+        val subjectIndexKey = cacheRepository.subjectIndexKey(subject)
         return cacheRepository.get(key)
             .map { cached -> TokenContextResolution(payloadJson = cached, cacheHit = true) }
             .switchIfEmpty(Mono.defer {
                 val payloadJson = payloadFactory.build(authentication)
                 cacheRepository.put(key, payloadJson)
+                    .then(cacheRepository.addSubjectIndex(subjectIndexKey, key))
                     .thenReturn(TokenContextResolution(payloadJson = payloadJson, cacheHit = false))
             })
             .onErrorResume {
@@ -45,18 +45,17 @@ class TokenContextCacheService(
             }
     }
 
-    private fun cacheKey(authentication: Authentication): String {
+    private fun tokenKey(authentication: Authentication, subject: String): String {
         if (authentication is JwtAuthenticationToken) {
-            val subject = authentication.token.subject ?: UNKNOWN_SUBJECT
-            val tokenHash = sha256(authentication.token.tokenValue)
-            return "$TOKEN_CACHE_KEY_PREFIX:$subject:$tokenHash"
+            return cacheRepository.tokenKey(subject, authentication.token.tokenValue)
         }
-        return "$TOKEN_CACHE_KEY_PREFIX:${sha256(authentication.name)}"
+        return cacheRepository.principalKey(authentication.name)
     }
 
-    private fun sha256(value: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256")
-            .digest(value.toByteArray(StandardCharsets.UTF_8))
-        return bytes.joinToString("") { "%02x".format(it) }
+    private fun subjectOf(authentication: Authentication): String {
+        if (authentication is JwtAuthenticationToken) {
+            return authentication.token.subject ?: UNKNOWN_SUBJECT
+        }
+        return authentication.name
     }
 }

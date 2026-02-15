@@ -4,12 +4,17 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
+import org.springframework.http.MediaType
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
 import kotlin.test.assertNotEquals
 
-@SpringBootTest
+@SpringBootTest(
+    properties = [
+        "app.security.internal-event-token=test-internal-token"
+    ]
+)
 class SecurityConfigTests(
     @Autowired private val applicationContext: ApplicationContext
 ) {
@@ -49,5 +54,28 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isNotFound
+    }
+
+    @Test
+    fun `internal invalidation endpoint is forbidden without internal token`() {
+        webTestClient.post()
+            .uri("/internal/v1/cache/invalidation")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"eventType":"LOGOUT","subject":"user-1"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `internal invalidation endpoint accepts valid internal token`() {
+        webTestClient.post()
+            .uri("/internal/v1/cache/invalidation")
+            .header("X-Internal-Token", "test-internal-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"eventType":"LOGOUT","subject":"user-1"}""")
+            .exchange()
+            .expectStatus()
+            .isAccepted
     }
 }

@@ -29,19 +29,19 @@ spring:
           predicates:
             - Path=/v2/report/**
           filters:
-            - StripPrefix=${REPORT_STRIP_PREFIX:2}
+            - StripPrefix=2
         - id: user-service
           uri: ${USER_SERVICE_URI:http://localhost:8082}
           predicates:
             - Path=/v2/user/**
           filters:
-            - StripPrefix=${USER_STRIP_PREFIX:2}
+            - StripPrefix=2
         - id: admin-service
           uri: ${ADMIN_SERVICE_URI:http://localhost:8083}
           predicates:
             - Path=/v2/admin/**
           filters:
-            - StripPrefix=${ADMIN_STRIP_PREFIX:2}
+            - StripPrefix=2
       httpclient:
         connect-timeout: 3000
         response-timeout: 10s
@@ -50,6 +50,9 @@ server:
   port: ${SERVER_PORT:8080}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9090}
+    address: ${MANAGEMENT_SERVER_ADDRESS:127.0.0.1}
   endpoints:
     web:
       exposure:
@@ -64,5 +67,8 @@ logging:
     io.lettuce.core: WARN
 
 app:
+  security:
+    required-audience: ${AUTH_AUDIENCE:aandi-gateway}
+    internal-event-token: ${INTERNAL_EVENT_TOKEN}
   token-cache:
     ttl: ${TOKEN_CACHE_TTL:24h}
