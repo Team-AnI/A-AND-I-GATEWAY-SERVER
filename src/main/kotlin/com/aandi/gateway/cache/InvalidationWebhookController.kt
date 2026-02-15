@@ -1,6 +1,6 @@
 package com.aandi.gateway.cache
 
-import org.springframework.beans.factory.annotation.Value
+import com.aandi.gateway.security.SecurityProperties
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 
-private const val LOGOUT_EVENT = "LOGOUT"
-private const val ROLE_CHANGED_EVENT = "ROLE_CHANGED"
+enum class InvalidationEventType {
+    LOGOUT,
+    ROLE_CHANGED
+}
 
 data class InvalidationEventRequest(
-    val eventType: String,
+    val eventType: InvalidationEventType,
     val subject: String
 )
 
@@ -26,7 +28,7 @@ data class InvalidationEventResponse(
 @RequestMapping("/internal/v1/cache")
 class InvalidationWebhookController(
     private val invalidationService: TokenContextInvalidationService,
-    @Value("\${app.security.internal-event-token}") private val internalEventToken: String
+    private val securityProperties: SecurityProperties
 ) {
 
     @PostMapping("/invalidation")
@@ -34,7 +36,7 @@ class InvalidationWebhookController(
         @RequestHeader("X-Internal-Token", required = false) token: String?,
         @RequestBody request: InvalidationEventRequest
     ): Mono<ResponseEntity<InvalidationEventResponse>> {
-        if (token != internalEventToken) {
+        if (token != securityProperties.internalEventToken) {
             return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build())
         }
         return invalidateByEvent(request)
@@ -44,10 +46,10 @@ class InvalidationWebhookController(
     }
 
     private fun invalidateByEvent(request: InvalidationEventRequest): Mono<Long> {
-        if (request.eventType == LOGOUT_EVENT) {
+        if (request.eventType == InvalidationEventType.LOGOUT) {
             return invalidationService.invalidateOnLogout(request.subject)
         }
-        if (request.eventType == ROLE_CHANGED_EVENT) {
+        if (request.eventType == InvalidationEventType.ROLE_CHANGED) {
             return invalidationService.invalidateOnRoleChanged(request.subject)
         }
         return Mono.just(0)
