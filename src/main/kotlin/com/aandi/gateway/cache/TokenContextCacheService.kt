@@ -23,26 +23,45 @@ class TokenContextCacheService(
 ) : TokenContextResolver {
 
     override fun resolve(authentication: Authentication): Mono<TokenContextResolution> {
-        val subject = subjectOf(authentication)
-        val key = tokenKey(authentication, subject)
-        val subjectIndexKey = cacheRepository.subjectIndexKey(subject)
-        return cacheRepository.get(key)
-            .map { cached -> TokenContextResolution(payloadJson = cached, cacheHit = true) }
-            .switchIfEmpty(Mono.defer {
-                val payloadJson = payloadFactory.build(authentication)
-                cacheRepository.put(key, payloadJson)
-                    .then(cacheRepository.addSubjectIndex(subjectIndexKey, key))
-                    .thenReturn(TokenContextResolution(payloadJson = payloadJson, cacheHit = false))
-            })
+        val cacheContext = cacheContext(authentication)
+        return resolveFromCache(cacheContext)
+            .switchIfEmpty(Mono.defer { storeAndResolve(cacheContext, authentication) })
             .onErrorResume {
-                // Keep request path alive when Redis is unavailable.
-                Mono.just(
-                    TokenContextResolution(
-                        payloadJson = payloadFactory.build(authentication),
-                        cacheHit = false
-                    )
-                )
+                fallbackResolve(authentication)
             }
+    }
+
+    private fun resolveFromCache(context: CacheContext): Mono<TokenContextResolution> {
+        return cacheRepository.get(context.tokenKey)
+            .map { cached -> TokenContextResolution(payloadJson = cached, cacheHit = true) }
+    }
+
+    private fun storeAndResolve(
+        context: CacheContext,
+        authentication: Authentication
+    ): Mono<TokenContextResolution> {
+        val payloadJson = payloadFactory.build(authentication)
+        return cacheRepository.put(context.tokenKey, payloadJson)
+            .then(cacheRepository.addSubjectIndex(context.subjectIndexKey, context.tokenKey))
+            .thenReturn(TokenContextResolution(payloadJson = payloadJson, cacheHit = false))
+    }
+
+    private fun fallbackResolve(authentication: Authentication): Mono<TokenContextResolution> {
+        // Keep request path alive when Redis is unavailable.
+        return Mono.just(
+            TokenContextResolution(
+                payloadJson = payloadFactory.build(authentication),
+                cacheHit = false
+            )
+        )
+    }
+
+    private fun cacheContext(authentication: Authentication): CacheContext {
+        val subject = subjectOf(authentication)
+        return CacheContext(
+            tokenKey = tokenKey(authentication, subject),
+            subjectIndexKey = cacheRepository.subjectIndexKey(subject)
+        )
     }
 
     private fun tokenKey(authentication: Authentication, subject: String): String {
@@ -59,3 +78,8 @@ class TokenContextCacheService(
         return authentication.name
     }
 }
+
+data class CacheContext(
+    val tokenKey: String,
+    val subjectIndexKey: String
+)

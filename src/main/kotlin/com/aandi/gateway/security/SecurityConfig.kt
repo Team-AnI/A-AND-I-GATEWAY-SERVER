@@ -40,13 +40,13 @@ class SecurityConfig {
 
     @Bean
     fun jwtDecoder(
+        properties: SecurityProperties,
         @Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri}") issuerUri: String,
-        @Value("\${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") jwkSetUri: String,
-        @Value("\${app.security.required-audience}") requiredAudience: String
+        @Value("\${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") jwkSetUri: String
     ): ReactiveJwtDecoder {
         val decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build()
         val issuerValidator = JwtValidators.createDefaultWithIssuer(issuerUri)
-        val audienceValidator = RequiredAudienceValidator(requiredAudience)
+        val audienceValidator = RequiredAudienceValidator(properties.requiredAudience)
         decoder.setJwtValidator(DelegatingOAuth2TokenValidator(issuerValidator, audienceValidator))
         return decoder
     }

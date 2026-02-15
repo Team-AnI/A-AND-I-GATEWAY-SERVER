@@ -8,8 +8,21 @@ import reactor.core.publisher.Mono
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-private const val TOKEN_CACHE_KEY_PREFIX = "cache:token"
-private const val TOKEN_CACHE_INDEX_PREFIX = "cache:token-index"
+@JvmInline
+value class CacheKeyPrefix(private val value: String) {
+    fun with(vararg parts: String): String {
+        return (listOf(value) + parts.toList()).joinToString(":")
+    }
+}
+
+data class DeleteTargetKeys(
+    val values: List<String>
+) {
+    fun toFlux(): Flux<String> = Flux.fromIterable(values)
+}
+
+private val TOKEN_CACHE_KEY_PREFIX = CacheKeyPrefix("cache:token")
+private val TOKEN_CACHE_INDEX_PREFIX = CacheKeyPrefix("cache:token-index")
 
 @Component
 class TokenContextCacheRepository(
@@ -27,11 +40,11 @@ class TokenContextCacheRepository(
     }
 
     fun tokenKey(subject: String, tokenValue: String): String {
-        return "$TOKEN_CACHE_KEY_PREFIX:$subject:${sha256(tokenValue)}"
+        return TOKEN_CACHE_KEY_PREFIX.with(subject, sha256(tokenValue))
     }
 
     fun principalKey(principalName: String): String {
-        return "$TOKEN_CACHE_KEY_PREFIX:${sha256(principalName)}"
+        return TOKEN_CACHE_KEY_PREFIX.with(sha256(principalName))
     }
 
     fun addSubjectIndex(indexKey: String, tokenKey: String): Mono<Boolean> {
@@ -40,19 +53,24 @@ class TokenContextCacheRepository(
     }
 
     fun subjectIndexKey(subject: String): String {
-        return "$TOKEN_CACHE_INDEX_PREFIX:$subject"
+        return TOKEN_CACHE_INDEX_PREFIX.with(subject)
     }
 
     fun evictBySubjectIndex(indexKey: String): Mono<Long> {
         return redisTemplate.opsForSet().members(indexKey)
             .collectList()
-            .flatMap { keys ->
-                val deleteTargets = mutableListOf<String>()
-                deleteTargets.add(indexKey)
-                deleteTargets.addAll(keys)
-                return@flatMap redisTemplate.delete(Flux.fromIterable(deleteTargets))
-            }
+            .map { memberKeys -> deleteTargets(indexKey, memberKeys) }
+            .flatMap(::deleteAll)
             .onErrorReturn(0)
+    }
+
+    private fun deleteTargets(indexKey: String, memberKeys: List<String>): DeleteTargetKeys {
+        val values = listOf(indexKey) + memberKeys
+        return DeleteTargetKeys(values)
+    }
+
+    private fun deleteAll(targets: DeleteTargetKeys): Mono<Long> {
+        return redisTemplate.delete(targets.toFlux())
     }
 
     private fun sha256(value: String): String {
