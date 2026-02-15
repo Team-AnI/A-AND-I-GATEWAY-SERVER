@@ -12,6 +12,9 @@
 
 - 버전 prefix: `/v2`
 - 기능 순서: `/v2/{feature}/{resource}`
+- 기능 분류:
+  - `report`, `user`, `admin`: 외부 요청 라우팅 대상
+  - `cache`: Gateway 내부 캐시 기능 (외부 API 미노출)
 - 현재 상태:
   - Gateway는 기능 prefix 기준으로 하위 서비스 라우팅
   - `cache`는 Gateway 내부 처리 전용 (외부 API 미노출)
@@ -103,3 +106,8 @@
 ## 8) 미정의/추가 예정
 
 - 무효화 이벤트를 메시지 브로커(SQS/SNS/Kafka)로 전환할지 여부
+
+## 9) 호환성 정책
+
+- 구버전(`v1`) 경로는 신규 구현하지 않는다.
+- 신규 라우팅/엔드포인트는 `/v2/{feature}/{resource}` 규칙을 따른다.
