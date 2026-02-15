@@ -7,16 +7,18 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
-import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class TokenContextHeaderFilterTests {
 
     @Test
-    fun `authenticated request gets cache headers from resolver`() {
+    fun `authenticated request warms cache and strips context headers`() {
+        var resolverCalled = false
         val filter = TokenContextHeaderFilter(
             object : TokenContextResolver {
                 override fun resolve(authentication: org.springframework.security.core.Authentication): Mono<TokenContextResolution> {
+                    resolverCalled = true
                     return Mono.just(TokenContextResolution("""{"subject":"user-1"}""", true))
                 }
             }
@@ -41,8 +43,9 @@ class TokenContextHeaderFilterTests {
             .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth))
             .block()
 
-        assertEquals("""{"subject":"user-1"}""", contextHeader)
-        assertEquals("HIT", cacheHeader)
+        assertTrue(resolverCalled)
+        assertNull(contextHeader)
+        assertNull(cacheHeader)
     }
 
     @Test

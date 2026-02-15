@@ -23,15 +23,25 @@ spring:
 
   cloud:
     gateway:
-      # 라우트는 하위 서비스 연결 시 아래 형식으로 추가
-      # routes:
-      #   - id: example-service
-      #     uri: http://example-service:8080
-      #     predicates:
-      #       - Path=/api/example/**
-      #     filters:
-      #       - StripPrefix=1
-      routes: []
+      routes:
+        - id: report-service
+          uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/v2/report/**
+          filters:
+            - StripPrefix=${REPORT_STRIP_PREFIX:2}
+        - id: user-service
+          uri: ${USER_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/v2/user/**
+          filters:
+            - StripPrefix=${USER_STRIP_PREFIX:2}
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/v2/admin/**
+          filters:
+            - StripPrefix=${ADMIN_STRIP_PREFIX:2}
       httpclient:
         connect-timeout: 3000
         response-timeout: 10s

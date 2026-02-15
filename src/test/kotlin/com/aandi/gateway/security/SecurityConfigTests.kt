@@ -33,19 +33,19 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `application endpoint requires authentication`() {
+    fun `token context endpoint requires authentication`() {
         webTestClient.get()
-            .uri("/")
+            .uri("/v2/cache/token-context")
             .exchange()
             .expectStatus()
             .isUnauthorized
     }
 
     @Test
-    fun `application endpoint accepts authenticated jwt`() {
+    fun `token context endpoint accepts authenticated jwt`() {
         webTestClient.mutateWith(mockJwt())
             .get()
-            .uri("/")
+            .uri("/v2/cache/token-context")
             .exchange()
             .expectStatus()
             .isNotFound

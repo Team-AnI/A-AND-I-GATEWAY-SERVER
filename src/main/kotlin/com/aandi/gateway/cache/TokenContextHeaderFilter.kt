@@ -18,37 +18,23 @@ class TokenContextHeaderFilter(
     override fun getOrder(): Int = Ordered.LOWEST_PRECEDENCE - 200
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
+        val sanitizedExchange = sanitizeContextHeaders(exchange)
         return ReactiveSecurityContextHolder.getContext()
             .mapNotNull { it.authentication }
             .filter(Authentication::isAuthenticated)
             .flatMap { authentication ->
                 tokenContextResolver.resolve(authentication)
-                    .flatMap { result ->
-                        chain.filter(withContextHeaders(exchange, result))
-                    }
+                    .thenReturn(sanitizedExchange)
             }
-            .switchIfEmpty(chain.filter(withContextHeaders(exchange, null)))
+            .defaultIfEmpty(sanitizedExchange)
+            .flatMap { contextExchange -> chain.filter(contextExchange) }
     }
 
-    private fun withContextHeaders(
-        exchange: ServerWebExchange,
-        resolution: TokenContextResolution?
-    ): ServerWebExchange {
+    private fun sanitizeContextHeaders(exchange: ServerWebExchange): ServerWebExchange {
         val request = exchange.request.mutate().headers { headers ->
             headers.remove(HeaderNames.AUTH_CONTEXT)
             headers.remove(HeaderNames.AUTH_CONTEXT_CACHE)
-            if (resolution != null) {
-                headers.set(HeaderNames.AUTH_CONTEXT, resolution.payloadJson)
-                headers.set(HeaderNames.AUTH_CONTEXT_CACHE, toCacheStatus(resolution))
-            }
         }.build()
         return exchange.mutate().request(request).build()
-    }
-
-    private fun toCacheStatus(resolution: TokenContextResolution): String {
-        if (resolution.cacheHit) {
-            return "HIT"
-        }
-        return "MISS"
     }
 }

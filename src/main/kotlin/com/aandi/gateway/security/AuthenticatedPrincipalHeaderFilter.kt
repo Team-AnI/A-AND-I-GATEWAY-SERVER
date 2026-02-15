@@ -20,10 +20,9 @@ class AuthenticatedPrincipalHeaderFilter : WebFilter, Ordered {
         return ReactiveSecurityContextHolder.getContext()
             .mapNotNull { it.authentication }
             .filter(Authentication::isAuthenticated)
-            .flatMap { authentication ->
-                chain.filter(withSanitizedPrincipalHeaders(exchange, authentication))
-            }
-            .switchIfEmpty(chain.filter(withSanitizedPrincipalHeaders(exchange, null)))
+            .map { authentication -> withSanitizedPrincipalHeaders(exchange, authentication) }
+            .defaultIfEmpty(withSanitizedPrincipalHeaders(exchange, null))
+            .flatMap { sanitizedExchange -> chain.filter(sanitizedExchange) }
     }
 
     private fun withSanitizedPrincipalHeaders(
