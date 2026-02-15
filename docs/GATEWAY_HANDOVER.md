@@ -21,6 +21,8 @@
 ### 보안/인증
 
 - OAuth2 Resource Server(JWT) 기반 토큰 검증 적용
+- JWT `issuer` + `audience` 검증 적용
+- 내부 무효화 웹훅은 `X-Internal-Token`으로 별도 보호
 - 공개 엔드포인트:
   - `/actuator/health`
   - `/actuator/health/**`
@@ -39,7 +41,6 @@
 - `/v2/user/**` -> `USER_SERVICE_URI` (기본 `http://localhost:8082`)
 - `/v2/admin/**` -> `ADMIN_SERVICE_URI` (기본 `http://localhost:8083`)
 - 기본 Path 변환: 라우트별 `StripPrefix=2`
-- 운영에서 경로 규칙이 다르면 `REPORT_STRIP_PREFIX`, `USER_STRIP_PREFIX`, `ADMIN_STRIP_PREFIX`로 조정
 
 ### 적용 파일
 
@@ -56,21 +57,26 @@
 
 - `AUTH_ISSUER_URI`
 - `AUTH_JWK_SET_URI`
+- `AUTH_AUDIENCE`
+- `INTERNAL_EVENT_TOKEN`
 - `REDIS_HOST`
 - `REDIS_PORT`
 - `REDIS_PASSWORD`
 - `REPORT_SERVICE_URI`
 - `USER_SERVICE_URI`
 - `ADMIN_SERVICE_URI`
-- `REPORT_STRIP_PREFIX`
-- `USER_STRIP_PREFIX`
-- `ADMIN_STRIP_PREFIX`
 
 ### 로컬 검증
 
 ```bash
 ./gradlew test
-curl http://localhost:8080/actuator/health
+curl http://localhost:9090/actuator/health
+```
+
+`docker-compose` 실행 기준으로는 `9090`이 외부로 publish되지 않으므로 아래처럼 컨테이너 내부에서 확인한다.
+
+```bash
+docker compose exec gateway sh -c "wget -qO- http://127.0.0.1:9090/actuator/health"
 ```
 
 ## 4) Redis 캐시 전략 (API/DB 호출 최소화)
@@ -92,11 +98,12 @@ curl http://localhost:8080/actuator/health
 
 ### 권장 키 설계
 
-- 키 패턴: `cache:token:{subject-or-token-hash}`
+- 데이터 키: `cache:token:{subject}:{tokenHash}`
+- 인덱스 키: `cache:token-index:{subject}`
 - 값: JSON payload
 - 만료: `EXPIRE 86400` (24시간)
 
-토큰 원문 저장은 피하고, `token hash` 또는 `subject + scope` 조합을 권장한다.
+토큰 원문 저장은 피하고 `token hash`를 사용한다.
 
 ### 처리 플로우
 
@@ -104,20 +111,43 @@ curl http://localhost:8080/actuator/health
 2. 캐시 키 생성
 3. Redis 조회
 4. 캐시 hit면 바로 응답 처리
-5. 캐시 miss 또는 만료면 원본 조회 후 Redis 저장
+5. 캐시 miss 또는 만료면 원본 조회 후 Redis 저장 + subject 인덱스 등록
 6. 하위 서비스 라우팅/응답
+
+### 강제 무효화 트리거 (확정)
+
+- 로그아웃 이벤트 수신 시: subject 인덱스 기준 캐시 일괄 삭제
+- 권한 변경 이벤트 수신 시: subject 인덱스 기준 캐시 일괄 삭제
+- 구현 진입점: `TokenContextInvalidationService`
 
 ### 운영 시 주의사항
 
 - 사용자 권한 변경 즉시 반영이 필요하면 24시간 TTL은 길 수 있음
-- 강제 무효화가 필요하면 별도 invalidate 키/이벤트 전략 필요
+- 강제 무효화는 subject 인덱스 기반으로 처리
 - 캐시 데이터 스키마 버전 변경 시 키 prefix 버저닝 권장
+
+### 운영 보안 고정 (확정)
+
+- Actuator는 별도 포트/주소로 분리
+  - `MANAGEMENT_SERVER_PORT` 기본 `9090`
+  - `MANAGEMENT_SERVER_ADDRESS` 기본 `127.0.0.1`
+- 컨테이너 구성 (같은 EC2, Docker Compose 기준)
+  - Nginx: 외부 공개 포트 `80` (EC2 보안그룹에서 `0.0.0.0/0` 허용)
+  - Gateway `8080`: `expose`만 설정, Docker 내부 네트워크 전용 — 호스트에 미노출
+  - Redis `6379`: `expose`만 설정, Docker 내부 네트워크 전용 — 호스트에 미노출
+  - Actuator `9090`: `127.0.0.1` 바인딩, 외부/호스트 모두 차단
+- EC2 보안그룹 규칙
+  - `80` (HTTP): 외부 허용 (Nginx 진입점)
+  - `443` (HTTPS): 외부 허용 (SSL 적용 시)
+  - `8080`, `6379`, `9090`: 외부 차단 — 인바운드 규칙 추가하지 않음
+- Nginx `/internal/` 접근 제한
+  - VPC CIDR `172.31.0.0/16` 내부만 허용
+  - 외부 인터넷 deny
+- Nginx `/actuator/` 완전 차단 (return 403)
 
 ## 5) 미결정 항목 (운영 확정 필요)
 
-- `audience` 검증 적용 여부
-- Redis 캐시 키 기준: `subject`, `token hash`, `subject+scope` 중 최종 선택
-- 권한 변경/강제 로그아웃 시 캐시 무효화 방식
+- 무효화 이벤트 채널을 웹훅에서 메시지 브로커로 전환할지 여부
 - 하위 서비스가 신뢰할 내부 헤더 표준 확정
 
 ## 6) 컨테이너 레지스트리 연동 (GHCR 기준)
@@ -157,15 +187,14 @@ curl http://localhost:8080/actuator/health
 echo $GHCR_TOKEN | docker login ghcr.io -u <github-username> --password-stdin
 
 docker pull ghcr.io/team-ani/a-and-i-gateway-server:latest
-docker stop aandi-gateway || true
-docker rm aandi-gateway || true
-docker run -d --name aandi-gateway -p 8080:8080 \
-  -e AUTH_ISSUER_URI=... \
-  -e AUTH_JWK_SET_URI=... \
-  -e REDIS_HOST=... \
-  -e REDIS_PORT=6379 \
-  -e REDIS_PASSWORD=... \
-  ghcr.io/team-ani/a-and-i-gateway-server:latest
+```
+
+운영 배포는 반드시 `docker-compose`를 사용한다.
+`gateway` 컨테이너에 `-p 8080:8080` 옵션을 직접 주면 Nginx를 우회해 외부에서 직접 접근 가능해지므로 절대 사용하지 않는다.
+
+```bash
+# 운영 환경변수 파일 준비 후
+docker-compose -f docker-compose.yml up -d
 ```
 
 ## 7) 인수인계 체크리스트

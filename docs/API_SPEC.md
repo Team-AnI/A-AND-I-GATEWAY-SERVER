@@ -24,15 +24,16 @@
 4. Path 변환 규칙:
    - 기본 `StripPrefix=2`
    - `/v2/report/articles` -> `/articles`
-   - 필요 시 `REPORT_STRIP_PREFIX`, `USER_STRIP_PREFIX`, `ADMIN_STRIP_PREFIX`로 조정
 
 ## 2) 인증 정책
 
 - 기본 정책: 모든 요청은 Bearer Access Token 필요
+- JWT 검증: `issuer` + `audience` 모두 검증
 - 예외(무인증):
   - `GET /actuator/health`
   - `GET /actuator/health/**`
   - `GET /actuator/info`
+  - `POST /internal/v1/cache/invalidation` (내부 토큰 헤더 검증)
 - 인가 책임 분리:
   - Gateway는 토큰 인증/전달만 담당
   - `/v2/admin/**` 상세 권한(`ROLE_ADMIN` 등)은 admin 서비스에서 검증
@@ -56,13 +57,26 @@
 ## 5) 토큰 컨텍스트 캐시 계약
 
 - 저장소: Redis
-- 키 패턴: `cache:token:{subject}:{tokenHash}`
+- 키 전략(확정):
+  - 데이터 키: `cache:token:{subject}:{tokenHash}`
+  - 인덱스 키: `cache:token-index:{subject}`
 - TTL: 기본 24시간 (`TOKEN_CACHE_TTL`, default `24h`)
 - 동작:
   - 캐시 HIT: 내부 캐시 재사용
   - 캐시 MISS: 컨텍스트 생성 후 저장
+  - MISS 저장 시 subject 인덱스에 데이터 키를 함께 등록
   - Redis 장애: 캐시 우회(요청 실패로 확장하지 않음)
   - 외부 API로 조회/삭제를 제공하지 않음
+- 강제 무효화 트리거(확정):
+  - 로그아웃 이벤트 수신 시 해당 subject 인덱스 기준 일괄 삭제
+  - 권한 변경 이벤트 수신 시 해당 subject 인덱스 기준 일괄 삭제
+  - 내부 웹훅: `POST /internal/v1/cache/invalidation`
+    - 헤더: `X-Internal-Token`
+    - 바디: `{"eventType":"LOGOUT|ROLE_CHANGED","subject":"<user-subject>"}`
+    - 접근 제어: Nginx에서 사설 CIDR만 허용 + 외부 deny
+- TTL 운영 기준(확정):
+  - 기본값 24시간 유지
+  - 권한 변경 반영이 민감한 환경은 `TOKEN_CACHE_TTL` 단축 운영
 
 ## 6) 응답 코드 정책 (Gateway 관점)
 
@@ -74,6 +88,8 @@
 
 - `AUTH_ISSUER_URI`
 - `AUTH_JWK_SET_URI`
+- `AUTH_AUDIENCE` (default `aandi-gateway`)
+- `INTERNAL_EVENT_TOKEN`
 - `TOKEN_CACHE_TTL` (optional, default `24h`)
 - `REDIS_HOST`
 - `REDIS_PORT`
@@ -81,11 +97,9 @@
 - `REPORT_SERVICE_URI`
 - `USER_SERVICE_URI`
 - `ADMIN_SERVICE_URI`
-- `REPORT_STRIP_PREFIX` (default `2`)
-- `USER_STRIP_PREFIX` (default `2`)
-- `ADMIN_STRIP_PREFIX` (default `2`)
+- `MANAGEMENT_SERVER_PORT` (default `9090`)
+- `MANAGEMENT_SERVER_ADDRESS` (default `127.0.0.1`)
 
 ## 8) 미정의/추가 예정
 
-- audience 검증 규칙
-- 캐시 강제 무효화 이벤트/운영 정책
+- 무효화 이벤트를 메시지 브로커(SQS/SNS/Kafka)로 전환할지 여부

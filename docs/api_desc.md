@@ -19,13 +19,17 @@
 
 - 현재 외부 공개 `v2` API는 없음
 - 캐시 기능은 Gateway 내부 필터에서만 사용
+- 캐시 무효화는 외부 API 미제공, 내부 이벤트 트리거로만 처리
+- 내부 이벤트 웹훅:
+  - `POST /internal/v1/cache/invalidation`
+  - 헤더 `X-Internal-Token` 필수
+  - body: `eventType(LOGOUT|ROLE_CHANGED)`, `subject`
 - 라우팅 규칙:
   - `/v2/report/**` -> `REPORT_SERVICE_URI`
   - `/v2/user/**` -> `USER_SERVICE_URI`
   - `/v2/admin/**` -> `ADMIN_SERVICE_URI`
 - 기본 Path 변환:
-  - 각 라우트 `StripPrefix=2` 기본값 사용
-  - 필요 시 `*_STRIP_PREFIX` 환경변수로 서비스별 조정
+  - 각 라우트 `StripPrefix=2` 고정값 사용
 
 ## 호환성 정책
 
