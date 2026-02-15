@@ -33,6 +33,14 @@
   - `X-User-Id`
   - `X-Roles`
 
+### 라우팅 매핑
+
+- `/v2/report/**` -> `REPORT_SERVICE_URI` (기본 `http://localhost:8081`)
+- `/v2/user/**` -> `USER_SERVICE_URI` (기본 `http://localhost:8082`)
+- `/v2/admin/**` -> `ADMIN_SERVICE_URI` (기본 `http://localhost:8083`)
+- 기본 Path 변환: 라우트별 `StripPrefix=2`
+- 운영에서 경로 규칙이 다르면 `REPORT_STRIP_PREFIX`, `USER_STRIP_PREFIX`, `ADMIN_STRIP_PREFIX`로 조정
+
 ### 적용 파일
 
 - `build.gradle.kts`
@@ -51,6 +59,12 @@
 - `REDIS_HOST`
 - `REDIS_PORT`
 - `REDIS_PASSWORD`
+- `REPORT_SERVICE_URI`
+- `USER_SERVICE_URI`
+- `ADMIN_SERVICE_URI`
+- `REPORT_STRIP_PREFIX`
+- `USER_STRIP_PREFIX`
+- `ADMIN_STRIP_PREFIX`
 
 ### 로컬 검증
 
