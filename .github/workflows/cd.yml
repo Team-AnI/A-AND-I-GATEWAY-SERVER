@@ -65,11 +65,11 @@ jobs:
           script: |
             ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
-            aws ecr get-login-password --region "${{ env.AWS_REGION }}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-            docker pull "${IMAGE_URI}"
-            docker stop ${{ env.CONTAINER_NAME }} || true
-            docker rm ${{ env.CONTAINER_NAME }} || true
-            docker run -d \
+            aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+            sudo docker pull "${IMAGE_URI}"
+            sudo docker stop ${{ env.CONTAINER_NAME }} || true
+            sudo docker rm ${{ env.CONTAINER_NAME }} || true
+            sudo docker run -d \
               --name ${{ env.CONTAINER_NAME }} \
               --restart unless-stopped \
               -p 8080:8080 \
@@ -77,4 +77,4 @@ jobs:
               -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
               -e REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
               "${IMAGE_URI}"
-            docker image prune -af
+            sudo docker image prune -af
