@@ -32,7 +32,7 @@ jobs:
         run: ./gradlew test
 
       - name: Build JAR
-        run: ./gradlew build -x test
+        run: ./gradlew build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
