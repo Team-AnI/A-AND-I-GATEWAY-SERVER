@@ -13,7 +13,7 @@
 - 버전 prefix: `/v2`
 - 기능 순서: `/v2/{feature}/{resource}`
 - 기능 분류:
-  - `report`, `user`, `admin`: 외부 요청 라우팅 대상
+  - `report`, `user`, `admin`, `post`: 외부 요청 라우팅 대상
   - `cache`: Gateway 내부 캐시 기능 (외부 API 미노출)
 - 현재 상태:
   - Gateway는 기능 prefix 기준으로 하위 서비스 라우팅
@@ -24,9 +24,15 @@
 1. `/v2/report/**` -> `REPORT_SERVICE_URI` (default `http://localhost:8081`)
 2. `/v2/user/**` -> `USER_SERVICE_URI` (default `http://localhost:8082`)
 3. `/v2/admin/**` -> `ADMIN_SERVICE_URI` (default `http://localhost:8083`)
-4. Path 변환 규칙:
-   - 기본 `StripPrefix=2`
-   - `/v2/report/articles` -> `/articles`
+4. `/v2/post/**` -> `POST_SERVICE_URI` (default `http://localhost:8084`)
+5. `/v2/post/images/**` -> `POST_SERVICE_URI` (default `http://localhost:8084`)
+6. Path 변환 규칙:
+  - 기본 `StripPrefix=2`
+  - `/v2/report/articles` -> `/articles`
+  - post 라우트는 리라이트 적용:
+    - `/v2/post` -> `/api/v1/posts`
+    - `/v2/post/{postId}` -> `/api/v1/posts/{postId}`
+    - `/v2/post/images` -> `/api/v1/images`
 
 ## 2) 인증 정책
 
@@ -100,6 +106,7 @@
 - `REPORT_SERVICE_URI`
 - `USER_SERVICE_URI`
 - `ADMIN_SERVICE_URI`
+- `POST_SERVICE_URI`
 - `MANAGEMENT_SERVER_PORT` (default `9090`)
 - `MANAGEMENT_SERVER_ADDRESS` (default `127.0.0.1`)
 

@@ -14,6 +14,7 @@ jobs:
     env:
       ECR_REPOSITORY: aandi-gateway-server
       CONTAINER_NAME: aandi-gateway-server
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
       - name: Checkout
@@ -39,7 +40,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: github-actions-cd
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -64,16 +65,155 @@ jobs:
           script: |
             ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
-            aws ecr get-login-password --region "${{ vars.AWS_REGION }}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-            docker pull "${IMAGE_URI}"
-            docker stop ${{ env.CONTAINER_NAME }} || true
-            docker rm ${{ env.CONTAINER_NAME }} || true
-            docker run -d \
-              --name ${{ env.CONTAINER_NAME }} \
-              --restart unless-stopped \
-              -p 8080:8080 \
-              -e REDIS_HOST="${{ secrets.REDIS_HOST }}" \
-              -e REDIS_PORT="${{ secrets.REDIS_PORT }}" \
-              -e REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
-              "${IMAGE_URI}"
-            docker image prune -af
+            DOMAIN="api.aandiclub.com"
+            aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+            sudo mkdir -p /opt/aandi/gateway
+            sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
+            sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
+            server {
+              listen 80;
+              server_name ${DOMAIN};
+
+              location /.well-known/acme-challenge/ {
+                root /var/www/certbot;
+              }
+
+              location / {
+                return 200 'cert-bootstrap';
+              }
+            }
+            EOF_BOOTSTRAP
+
+            if [ ! -f "/opt/aandi/gateway/certbot/conf/live/${DOMAIN}/fullchain.pem" ]; then
+              sudo tee /opt/aandi/gateway/docker-compose.bootstrap.yml >/dev/null <<EOF_BOOTSTRAP_COMPOSE
+            services:
+              nginx:
+                image: nginx:1.27-alpine
+                container_name: aandi-gateway-nginx-bootstrap
+                restart: unless-stopped
+                ports:
+                  - "80:80"
+                volumes:
+                  - /opt/aandi/gateway/nginx/bootstrap.conf:/etc/nginx/conf.d/default.conf:ro
+                  - /opt/aandi/gateway/certbot/www:/var/www/certbot:ro
+            EOF_BOOTSTRAP_COMPOSE
+              cd /opt/aandi/gateway
+              sudo docker compose -f docker-compose.bootstrap.yml up -d
+              sudo docker run --rm \
+                -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
+                -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
+                certbot/certbot certonly --webroot \
+                -w /var/www/certbot \
+                -d "${DOMAIN}" \
+                --email "${{ secrets.LETSENCRYPT_EMAIL }}" \
+                --agree-tos \
+                --no-eff-email
+              sudo docker compose -f docker-compose.bootstrap.yml down
+            fi
+
+            sudo tee /opt/aandi/gateway/nginx/gateway.conf >/dev/null <<EOF_NGINX
+            server {
+              listen 80;
+              server_name ${DOMAIN};
+
+              location /.well-known/acme-challenge/ {
+                root /var/www/certbot;
+              }
+
+              location / {
+                return 301 https://$host$request_uri;
+              }
+            }
+
+            server {
+              listen 443 ssl http2;
+              server_name ${DOMAIN};
+
+              ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+              ssl_session_timeout 1d;
+              ssl_session_cache shared:SSL:10m;
+              ssl_protocols TLSv1.2 TLSv1.3;
+
+              location /internal/ {
+                allow 172.31.0.0/16;
+                deny all;
+                proxy_pass http://gateway:8080;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+              }
+
+              location /actuator/ {
+                deny all;
+                return 403;
+              }
+
+              location / {
+                proxy_pass http://gateway:8080;
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+              }
+            }
+            EOF_NGINX
+            sudo tee /opt/aandi/gateway/docker-compose.yml >/dev/null <<EOF
+            services:
+              nginx:
+                image: nginx:1.27-alpine
+                container_name: aandi-gateway-nginx
+                restart: unless-stopped
+                ports:
+                  - "80:80"
+                  - "443:443"
+                volumes:
+                  - /opt/aandi/gateway/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+                  - /opt/aandi/gateway/certbot/conf:/etc/letsencrypt:ro
+                  - /opt/aandi/gateway/certbot/www:/var/www/certbot:ro
+                depends_on:
+                  - gateway
+
+              gateway:
+                image: ${IMAGE_URI}
+                container_name: ${{ env.CONTAINER_NAME }}
+                restart: unless-stopped
+                environment:
+                  AUTH_ISSUER_URI: "${{ secrets.AUTH_ISSUER_URI }}"
+                  AUTH_JWK_SET_URI: "${{ secrets.AUTH_JWK_SET_URI }}"
+                  AUTH_AUDIENCE: "${{ secrets.AUTH_AUDIENCE }}"
+                  GATEWAY_AUTH_ENABLED: "false"
+                  INTERNAL_EVENT_TOKEN: "${{ secrets.INTERNAL_EVENT_TOKEN }}"
+                  POST_SERVICE_URI: "${{ secrets.POST_SERVICE_URI }}"
+                  REDIS_HOST: redis
+                  REDIS_PORT: "6379"
+                  REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"
+                depends_on:
+                  redis:
+                    condition: service_healthy
+
+              redis:
+                image: redis:7-alpine
+                container_name: aandi-gateway-redis
+                restart: unless-stopped
+                environment:
+                  REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"
+                command: >
+                  sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
+                  exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
+                  else
+                  exec redis-server --appendonly yes;
+                  fi'
+                healthcheck:
+                  test: ["CMD", "redis-cli", "ping"]
+                  interval: 5s
+                  timeout: 3s
+                  retries: 5
+            EOF
+            cd /opt/aandi/gateway
+            sudo docker compose pull nginx gateway redis
+            sudo docker compose up -d --remove-orphans nginx gateway redis
+            sudo docker run --rm \
+              -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
+              -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
+              certbot/certbot renew --webroot -w /var/www/certbot --quiet || true
+            sudo docker image prune -af

@@ -40,7 +40,11 @@
 - `/v2/report/**` -> `REPORT_SERVICE_URI` (기본 `http://localhost:8081`)
 - `/v2/user/**` -> `USER_SERVICE_URI` (기본 `http://localhost:8082`)
 - `/v2/admin/**` -> `ADMIN_SERVICE_URI` (기본 `http://localhost:8083`)
+- `/v2/post/**` -> `POST_SERVICE_URI` (기본 `http://localhost:8084`)
+- `/v2/post/images/**` -> `POST_SERVICE_URI` (기본 `http://localhost:8084`)
 - 기본 Path 변환: 라우트별 `StripPrefix=2`
+- post 라우트 Path 변환: `/v2/post/**` -> `/api/v1/posts/**`
+- post image 라우트 Path 변환: `/v2/post/images/**` -> `/api/v1/images/**`
 
 ### 적용 파일
 
@@ -65,6 +69,7 @@
 - `REPORT_SERVICE_URI`
 - `USER_SERVICE_URI`
 - `ADMIN_SERVICE_URI`
+- `POST_SERVICE_URI`
 
 ### 로컬 검증
 

@@ -24,24 +24,36 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: report-service
-          uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+        - id: post-service-swagger-ui-html
+          uri: ${POST_SERVICE_URI}
           predicates:
-            - Path=/v2/report/**
+            - Path=/v2/post/swagger-ui.html
           filters:
-            - StripPrefix=2
-        - id: user-service
-          uri: ${USER_SERVICE_URI:http://localhost:8082}
+            - SetPath=/swagger-ui.html
+        - id: post-service-swagger-ui
+          uri: ${POST_SERVICE_URI}
           predicates:
-            - Path=/v2/user/**
+            - Path=/v2/post/swagger-ui/**
           filters:
-            - StripPrefix=2
-        - id: admin-service
-          uri: ${ADMIN_SERVICE_URI:http://localhost:8083}
+            - RewritePath=/v2/post/swagger-ui/?(?<segment>.*), /swagger-ui/$\{segment}
+        - id: post-service-openapi
+          uri: ${POST_SERVICE_URI}
           predicates:
-            - Path=/v2/admin/**
+            - Path=/v2/post/v3/api-docs,/v2/post/v3/api-docs/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/v2/post/v3/api-docs/?(?<segment>.*), /v3/api-docs/$\{segment}
+        - id: post-service-images
+          uri: ${POST_SERVICE_URI}
+          predicates:
+            - Path=/v2/post/images/**
+          filters:
+            - RewritePath=/v2/post/images/?(?<segment>.*), /api/v1/images/$\{segment}
+        - id: post-service-posts
+          uri: ${POST_SERVICE_URI}
+          predicates:
+            - Path=/v2/post/**
+          filters:
+            - RewritePath=/v2/post/?(?<segment>.*), /api/v1/posts/$\{segment}
       httpclient:
         connect-timeout: 3000
         response-timeout: 10s
