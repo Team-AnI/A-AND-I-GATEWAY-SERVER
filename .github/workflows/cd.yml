@@ -69,6 +69,11 @@ jobs:
             aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
             sudo mkdir -p /opt/aandi/gateway
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
+            sudo docker rm -f \
+              ${{ env.CONTAINER_NAME }} \
+              aandi-gateway-redis \
+              aandi-gateway-nginx \
+              aandi-gateway-nginx-bootstrap || true
             sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
             server {
               listen 80;
@@ -178,9 +183,6 @@ jobs:
                 container_name: ${{ env.CONTAINER_NAME }}
                 restart: unless-stopped
                 environment:
-                  AUTH_ISSUER_URI: "${{ secrets.AUTH_ISSUER_URI }}"
-                  AUTH_JWK_SET_URI: "${{ secrets.AUTH_JWK_SET_URI }}"
-                  AUTH_AUDIENCE: "${{ secrets.AUTH_AUDIENCE }}"
                   GATEWAY_AUTH_ENABLED: "false"
                   INTERNAL_EVENT_TOKEN: "${{ secrets.INTERNAL_EVENT_TOKEN }}"
                   POST_SERVICE_URI: "${{ secrets.POST_SERVICE_URI }}"
