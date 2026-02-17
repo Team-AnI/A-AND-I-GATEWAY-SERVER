@@ -12,6 +12,7 @@ import kotlin.test.assertNotEquals
 
 @SpringBootTest(
     properties = [
+        "POST_SERVICE_URI=http://localhost:8084",
         "app.security.internal-event-token=test-internal-token"
     ]
 )
