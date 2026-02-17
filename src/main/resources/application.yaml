@@ -24,24 +24,42 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: post-service-openapi
+        - id: post-service-openapi-root
           uri: ${POST_SERVICE_URI}
           predicates:
-            - Path=/v2/post/v3/api-docs,/v2/post/v3/api-docs/**
+            - Path=/v2/post/v3/api-docs
           filters:
-            - RewritePath=/v2/post/v3/api-docs/?(?<segment>.*), /v3/api-docs/$\{segment}
-        - id: post-service-images
+            - SetPath=/v3/api-docs
+        - id: post-service-openapi-subpaths
+          uri: ${POST_SERVICE_URI}
+          predicates:
+            - Path=/v2/post/v3/api-docs/**
+          filters:
+            - RewritePath=/v2/post/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
+        - id: post-service-images-root
+          uri: ${POST_SERVICE_URI}
+          predicates:
+            - Path=/v2/post/images
+          filters:
+            - SetPath=/api/v1/images
+        - id: post-service-images-subpaths
           uri: ${POST_SERVICE_URI}
           predicates:
             - Path=/v2/post/images/**
           filters:
-            - RewritePath=/v2/post/images/?(?<segment>.*), /api/v1/images/$\{segment}
-        - id: post-service-posts
+            - RewritePath=/v2/post/images/(?<segment>.*), /api/v1/images/$\{segment}
+        - id: post-service-posts-root
+          uri: ${POST_SERVICE_URI}
+          predicates:
+            - Path=/v2/post
+          filters:
+            - SetPath=/api/v1/posts
+        - id: post-service-posts-subpaths
           uri: ${POST_SERVICE_URI}
           predicates:
             - Path=/v2/post/**
           filters:
-            - RewritePath=/v2/post/?(?<segment>.*), /api/v1/posts/$\{segment}
+            - RewritePath=/v2/post/(?<segment>.*), /api/v1/posts/$\{segment}
       httpclient:
         connect-timeout: 3000
         response-timeout: 10s
