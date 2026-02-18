@@ -46,7 +46,7 @@ class SecurityConfig {
                 it.pathMatchers("/api/ping/**").permitAll()
                 it.pathMatchers("/v3/api-docs/**").permitAll()
                 it.pathMatchers("/v2/*/v3/api-docs", "/v2/*/v3/api-docs/**").permitAll()
-                it.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**").permitAll()
+                it.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**", "/v2/swagger-ui/index.html", "/v2/swagger-ui/**").permitAll()
                 it.pathMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
 
                 // Auth service role-based endpoints

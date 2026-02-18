@@ -46,6 +46,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/swagger-ui/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/docs")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/docs/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/swagger-ui/index.html")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/swagger-ui/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/auth/v3/api-docs")),

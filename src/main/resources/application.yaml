@@ -212,7 +212,7 @@ security:
 
 springdoc:
   swagger-ui:
-    path: /v2/docs
+    path: /v2/swagger-ui/index.html
     urls:
       - name: auth-service
         url: /v2/auth/v3/api-docs
