@@ -1,12 +1,9 @@
 spring:
   application:
     name: gateway
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${AUTH_ISSUER_URI:http://localhost:9000}
-          jwk-set-uri: ${AUTH_JWK_SET_URI:http://localhost:9000/.well-known/jwks.json}
+
+  codec:
+    max-in-memory-size: ${MAX_REQUEST_BODY_SIZE:2MB}
 
   data:
     redis:
@@ -25,54 +22,200 @@ spring:
     gateway:
       server:
         webflux:
+          default-filters:
+            - RequestSize=${MAX_REQUEST_BODY_SIZE:2MB}
           routes:
+            - id: auth-service-v1-login
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/auth/login
+                - Method=POST
+            - id: auth-service-v1-refresh
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/auth/refresh
+                - Method=POST
+            - id: auth-service-v1-logout
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/auth/logout
+                - Method=POST
+            - id: auth-service-v1-me
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/me
+                - Method=GET
+            - id: auth-service-v1-admin-ping
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/ping
+                - Method=GET
+            - id: auth-service-v1-admin-users-get
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/users
+                - Method=GET
+            - id: auth-service-v1-admin-users-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/users
+                - Method=POST
+
+            - id: auth-service-login
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/login
+                - Method=POST
+              filters:
+                - SetPath=/v1/auth/login
+            - id: auth-service-refresh
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/refresh
+                - Method=POST
+              filters:
+                - SetPath=/v1/auth/refresh
+            - id: auth-service-logout
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/logout
+                - Method=POST
+              filters:
+                - SetPath=/v1/auth/logout
+            - id: auth-service-me
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me
+                - Method=GET
+              filters:
+                - SetPath=/v1/me
+            - id: auth-service-admin-ping
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/ping
+                - Method=GET
+              filters:
+                - SetPath=/v1/admin/ping
+            - id: auth-service-admin-users-get
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users
+                - Method=GET
+              filters:
+                - SetPath=/v1/admin/users
+            - id: auth-service-admin-users-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users
+                - Method=POST
+              filters:
+                - SetPath=/v1/admin/users
+
+            - id: post-service-v1-images
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/images
+                - Method=POST
+            - id: post-service-v1-posts-root-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts
+                - Method=GET
+            - id: post-service-v1-posts-root-post
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts
+                - Method=POST
+            - id: post-service-v1-posts-drafts
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/drafts
+                - Method=GET
+            - id: post-service-v1-posts-subpaths-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/**
+                - Method=GET
+            - id: post-service-v1-posts-subpaths-patch
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/**
+                - Method=PATCH
+            - id: post-service-v1-posts-subpaths-delete
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/**
+                - Method=DELETE
+
             - id: post-service-openapi-root
-              uri: ${POST_SERVICE_URI}
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/v3/api-docs
               filters:
                 - SetPath=/v3/api-docs
             - id: post-service-openapi-subpaths
-              uri: ${POST_SERVICE_URI}
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/v3/api-docs/**
               filters:
                 - RewritePath=/v2/post/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
+            - id: auth-service-openapi-root
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: auth-service-openapi-subpaths
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/v3/api-docs/**
+              filters:
+                - RewritePath=/v2/auth/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: post-service-images-root
-              uri: ${POST_SERVICE_URI}
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/images
               filters:
-                - SetPath=/api/v1/images
+                - SetPath=/v1/images
             - id: post-service-images-subpaths
-              uri: ${POST_SERVICE_URI}
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/images/**
               filters:
-                - RewritePath=/v2/post/images/(?<segment>.*), /api/v1/images/$\{segment}
+                - RewritePath=/v2/post/images/(?<segment>.*), /v1/images/$\{segment}
             - id: post-service-posts-root
-              uri: ${POST_SERVICE_URI}
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post
               filters:
-                - SetPath=/api/v1/posts
+                - SetPath=/v1/posts
             - id: post-service-posts-subpaths
-              uri: ${POST_SERVICE_URI}
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/**
               filters:
-                - RewritePath=/v2/post/(?<segment>.*), /api/v1/posts/$\{segment}
+                - RewritePath=/v2/post/(?<segment>.*), /v1/posts/$\{segment}
           httpclient:
             connect-timeout: 3000
             response-timeout: 10s
 
 server:
   port: ${SERVER_PORT:8080}
+  max-http-request-header-size: ${MAX_REQUEST_HEADER_SIZE:16KB}
+
+security:
+  jwt:
+    issuer: ${AUTH_ISSUER_URI:http://localhost:9000}
+    audience: ${AUTH_AUDIENCE:aandi-gateway}
+    secret: ${AUTH_JWT_SECRET:local-dev-jwt-secret-must-be-at-least-32-bytes}
+    clock-skew-seconds: ${AUTH_JWT_CLOCK_SKEW_SECONDS:30}
 
 springdoc:
   swagger-ui:
     path: /v2/docs
     urls:
+      - name: auth-service
+        url: /v2/auth/v3/api-docs
       - name: post-service
         url: /v2/post/v3/api-docs
 
@@ -95,7 +238,17 @@ logging:
 
 app:
   security:
-    required-audience: ${AUTH_AUDIENCE:aandi-gateway}
     internal-event-token: ${INTERNAL_EVENT_TOKEN}
+    policy:
+      enforce-https: ${ENFORCE_HTTPS:false}
+      enforce-method-path-allowlist: ${ENFORCE_METHOD_PATH_ALLOWLIST:true}
+      enforce-json-content-type: ${ENFORCE_JSON_CONTENT_TYPE:true}
+      prevalidate-refresh-token-type: ${PREVALIDATE_REFRESH_TOKEN_TYPE:true}
+      allowed-hosts: ${ALLOWED_HOSTS:}
+    rate-limit:
+      enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
+      login-per-minute: ${AUTH_LOGIN_RATE_LIMIT_PER_MINUTE:10}
+      refresh-per-minute: ${AUTH_REFRESH_RATE_LIMIT_PER_MINUTE:30}
+      logout-per-minute: ${AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE:30}
   token-cache:
     ttl: ${TOKEN_CACHE_TTL:24h}

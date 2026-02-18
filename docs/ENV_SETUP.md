@@ -19,6 +19,7 @@ REPORT_SERVICE_URI=http://report-service.internal:8080
 USER_SERVICE_URI=http://user-service.internal:8080
 ADMIN_SERVICE_URI=http://admin-service.internal:8080
 POST_SERVICE_URI=http://post-service.internal:8080
+AUTH_SERVICE_URI=http://auth-service.internal:8080
 
 REDIS_HOST=redis
 REDIS_PORT=6379

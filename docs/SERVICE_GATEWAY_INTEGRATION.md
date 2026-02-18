@@ -14,6 +14,7 @@
 - `/v2/report/**` -> report 서비스
 - `/v2/user/**` -> user 서비스
 - `/v2/admin/**` -> admin 서비스
+- `/v2/auth/**` -> auth 서비스
 - 기본 `StripPrefix=2`이므로 서비스는 `/...` 기준 경로를 구현한다.
 
 예시:
@@ -49,6 +50,6 @@
 
 ## 6) 운영 연동 체크리스트
 
-- [ ] Gateway `REPORT_SERVICE_URI/USER_SERVICE_URI/ADMIN_SERVICE_URI`가 실제 서비스 주소를 가리키는지 확인
+- [ ] Gateway `REPORT_SERVICE_URI/USER_SERVICE_URI/ADMIN_SERVICE_URI/AUTH_SERVICE_URI`가 실제 서비스 주소를 가리키는지 확인
 - [ ] Gateway와 서비스 간 보안그룹 통신 정책 확인
 - [ ] 장애 시 우회 경로(직접 서비스 접근)가 열려 있지 않은지 점검
