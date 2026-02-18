@@ -11,6 +11,7 @@ import org.springframework.web.server.WebFilterChain
 import org.springframework.web.util.pattern.PathPattern
 import org.springframework.web.util.pattern.PathPatternParser
 import reactor.core.publisher.Mono
+import java.net.InetAddress
 
 @Component
 class GatewayRequestPolicyFilter(
@@ -89,7 +90,9 @@ class GatewayRequestPolicyFilter(
 
         if (policy.allowedHosts.isNotEmpty()) {
             val host = request.headers.host?.hostString?.lowercase().orEmpty()
-            if (host.isBlank() || host !in policy.allowedHosts.map { it.lowercase() }.toSet()) {
+            val allowedHosts = policy.allowedHosts.map { it.lowercase() }.toSet()
+            val hostAllowed = host in allowedHosts || (policy.allowPrivateIpHost && isPrivateIpHost(host))
+            if (host.isBlank() || !hostAllowed) {
                 return reject(exchange, HttpStatus.FORBIDDEN)
             }
         }
@@ -126,6 +129,13 @@ class GatewayRequestPolicyFilter(
         val response = exchange.response
         response.statusCode = status
         return response.setComplete()
+    }
+
+    private fun isPrivateIpHost(host: String): Boolean {
+        return runCatching {
+            val address = InetAddress.getByName(host)
+            address.isSiteLocalAddress || address.isLoopbackAddress
+        }.getOrDefault(false)
     }
 
     private data class AllowRule(

@@ -26,7 +26,7 @@ spring:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
               '[/**]':
-                allowed-origins: ${CORS_ALLOWED_ORIGINS:https://api.aandiclub.com}
+                allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:https://*}
                 allowed-methods:
                   - GET
                   - POST
@@ -37,7 +37,7 @@ spring:
                 allowed-headers: "*"
                 exposed-headers:
                   - X-Auth-Context-Cache
-                allow-credentials: true
+                allow-credentials: false
                 max-age: 3600
           default-filters:
             - RequestSize=${MAX_REQUEST_BODY_SIZE:2MB}
@@ -260,6 +260,7 @@ app:
       enforce-https: ${ENFORCE_HTTPS:false}
       enforce-method-path-allowlist: ${ENFORCE_METHOD_PATH_ALLOWLIST:true}
       enforce-json-content-type: ${ENFORCE_JSON_CONTENT_TYPE:true}
+      allow-private-ip-host: ${ALLOW_PRIVATE_IP_HOST:true}
       prevalidate-refresh-token-type: ${PREVALIDATE_REFRESH_TOKEN_TYPE:true}
       allowed-hosts: ${ALLOWED_HOSTS:}
     rate-limit:

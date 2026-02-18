@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class SecurityPolicyProperties(
     val enforceHttps: Boolean = false,
     val allowedHosts: Set<String> = emptySet(),
+    val allowPrivateIpHost: Boolean = true,
     val enforceMethodPathAllowlist: Boolean = true,
     val enforceJsonContentType: Boolean = true,
     val prevalidateRefreshTokenType: Boolean = true
