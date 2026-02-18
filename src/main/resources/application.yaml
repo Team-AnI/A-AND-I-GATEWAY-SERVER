@@ -41,6 +41,7 @@ spring:
                 max-age: 3600
           default-filters:
             - RequestSize=${MAX_REQUEST_BODY_SIZE:2MB}
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
           routes:
             - id: auth-service-v1-login
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
