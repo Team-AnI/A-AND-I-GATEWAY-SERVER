@@ -15,6 +15,10 @@
 - `/v2/user/**` -> user 서비스
 - `/v2/admin/**` -> admin 서비스
 - `/v2/auth/**` -> auth 서비스
+- `/activate` -> auth 서비스 (계정 활성화)
+- `/v1/me` (PATCH) -> auth 서비스 (내 프로필 변경, 인증 필요)
+- `/v1/me/password` -> auth 서비스 (비밀번호 변경, 인증 필요)
+- `/v1/admin/users/{id}/reset-password` -> auth 서비스 (관리자 권한 필요)
 - 기본 `StripPrefix=2`이므로 서비스는 `/...` 기준 경로를 구현한다.
 
 예시:

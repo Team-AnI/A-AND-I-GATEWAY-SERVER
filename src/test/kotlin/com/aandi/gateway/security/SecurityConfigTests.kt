@@ -57,9 +57,46 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `activate endpoint is public`() {
+        webTestClient.post()
+            .uri("/activate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"token":"invite-token","password":"new-password-1234"}""")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+                assertNotEquals(404, it)
+            }
+    }
+
+    @Test
     fun `me endpoint requires authentication`() {
         webTestClient.get()
             .uri("/v1/me")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `me patch endpoint requires authentication`() {
+        webTestClient.patch()
+            .uri("/v1/me")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"username":"updated-user"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `me password endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/me/password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"currentPassword":"old-password-1234","newPassword":"new-password-1234"}""")
             .exchange()
             .expectStatus()
             .isUnauthorized
@@ -70,6 +107,18 @@ class SecurityConfigTests(
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .get()
             .uri("/v1/admin/ping")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `admin reset password endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v1/admin/users/11111111-1111-1111-1111-111111111111/reset-password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
             .exchange()
             .expectStatus()
             .isForbidden

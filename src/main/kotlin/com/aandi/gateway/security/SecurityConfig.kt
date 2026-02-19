@@ -43,7 +43,7 @@ class SecurityConfig {
                 it.pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Public endpoints
                 it.pathMatchers(HttpMethod.POST, "/v1/auth/**").permitAll()
-                it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh").permitAll()
+                it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/activate").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/internal/v1/cache/invalidation").permitAll()
                 it.pathMatchers("/api/ping/**").permitAll()
                 it.pathMatchers("/v3/api-docs/**").permitAll()
@@ -53,6 +53,7 @@ class SecurityConfig {
 
                 // Auth service role-based endpoints
                 it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.PATCH, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers("/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
 
                 // Blog policy

@@ -63,6 +63,16 @@ spring:
               predicates:
                 - Path=/v1/me
                 - Method=GET
+            - id: auth-service-v1-me-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/me
+                - Method=PATCH
+            - id: auth-service-v1-me-password
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/me/password
+                - Method=POST
             - id: auth-service-v1-admin-ping
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
@@ -77,6 +87,11 @@ spring:
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v1/admin/users
+                - Method=POST
+            - id: auth-service-v1-admin-users-reset-password
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/users/*/reset-password
                 - Method=POST
             - id: auth-service-v1-admin-users-delete
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
@@ -105,6 +120,11 @@ spring:
                 - Method=POST
               filters:
                 - SetPath=/v1/auth/logout
+            - id: auth-service-activate
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/activate
+                - Method=POST
             - id: auth-service-me
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:

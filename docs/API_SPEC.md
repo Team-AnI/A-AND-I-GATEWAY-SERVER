@@ -34,7 +34,11 @@
 10. `GET /v2/auth/admin/ping` -> `GET /v1/admin/ping` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
 11. `GET /v2/auth/admin/users` -> `GET /v1/admin/users` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
 12. `POST /v2/auth/admin/users` -> `POST /v1/admin/users` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-13. Path 변환 규칙:
+13. `POST /activate` -> `POST /activate` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+14. `PATCH /v1/me` -> `PATCH /v1/me` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+15. `POST /v1/me/password` -> `POST /v1/me/password` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+16. `POST /v1/admin/users/{id}/reset-password` -> `POST /v1/admin/users/{id}/reset-password` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+17. Path 변환 규칙:
   - 기본 `StripPrefix=2`
   - `/v2/report/articles` -> `/articles`
   - auth 라우트는 엔드포인트별 `SetPath` 적용
@@ -61,10 +65,14 @@
   - `GET /actuator/info`
   - `POST /v2/auth/login`
   - `POST /v2/auth/refresh`
+  - `POST /activate`
   - `POST /internal/v1/cache/invalidation` (내부 토큰 헤더 검증)
 - 인가 책임 분리:
   - Gateway는 토큰 인증/전달만 담당
   - `/v2/admin/**` 상세 권한(`ROLE_ADMIN` 등)은 admin 서비스에서 검증
+  - `PATCH /v1/me`: 인증 필요
+  - `POST /v1/me/password`: 인증 필요
+  - `POST /v1/admin/users/{id}/reset-password`: `ROLE_ADMIN` 필요
 
 ## 3) 요청 헤더 계약
 
