@@ -134,6 +134,13 @@ class GatewayRequestPolicyFilter(
     private fun reject(exchange: ServerWebExchange, status: HttpStatus): Mono<Void> {
         val response = exchange.response
         response.statusCode = status
+        val origin = exchange.request.headers.origin
+        if (!origin.isNullOrBlank()) {
+            response.headers.set("Access-Control-Allow-Origin", origin)
+            if (response.headers.getFirst("Vary") == null) {
+                response.headers.add("Vary", "Origin")
+            }
+        }
         return response.setComplete()
     }
 

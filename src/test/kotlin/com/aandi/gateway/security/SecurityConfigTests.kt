@@ -10,6 +10,7 @@ import org.springframework.security.test.web.reactive.server.SecurityMockServerC
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 @SpringBootTest(
     properties = [
@@ -78,6 +79,20 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isUnauthorized
+    }
+
+    @Test
+    fun `me endpoint unauthorized response includes cors header`() {
+        webTestClient.get()
+            .uri("/v1/me")
+            .header("Origin", "https://aandiclub.com")
+            .exchange()
+            .expectStatus()
+            .value { status ->
+                assertTrue(status == 401 || status == 403)
+            }
+            .expectHeader()
+            .valueEquals("Access-Control-Allow-Origin", "https://aandiclub.com")
     }
 
     @Test

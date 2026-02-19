@@ -3,6 +3,7 @@ package com.aandi.gateway.security
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -19,6 +20,10 @@ import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.reactive.CorsConfigurationSource
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource
+import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -27,6 +32,30 @@ import javax.crypto.spec.SecretKeySpec
 @Configuration
 @EnableWebFluxSecurity
 class SecurityConfig {
+
+    @Bean
+    fun corsConfigurationSource(
+        @Value("\${CORS_ALLOWED_ORIGIN_PATTERNS:https://*}") allowedOriginPatternsRaw: String
+    ): CorsConfigurationSource {
+        val allowedOriginPatterns = allowedOriginPatternsRaw
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .ifEmpty { listOf("https://*") }
+
+        val config = CorsConfiguration().apply {
+            this.allowedOriginPatterns = allowedOriginPatterns
+            this.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            this.allowedHeaders = listOf("*")
+            this.exposedHeaders = listOf("X-Auth-Context-Cache")
+            this.allowCredentials = false
+            this.maxAge = 3600
+        }
+
+        return UrlBasedCorsConfigurationSource().also { source ->
+            source.registerCorsConfiguration("/**", config)
+        }
+    }
 
     @Bean
     @ConditionalOnProperty(name = ["gateway.auth.enabled"], havingValue = "true", matchIfMissing = true)
@@ -71,6 +100,7 @@ class SecurityConfig {
                 exceptions.authenticationEntryPoint { exchange, _ ->
                     val response = exchange.response
                     response.statusCode = HttpStatus.UNAUTHORIZED
+                    applyCorsHeaders(exchange)
                     response.headers.contentType = MediaType.APPLICATION_JSON
                     val body = "{\"message\":\"Unauthorized\"}".toByteArray()
                     response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
@@ -78,6 +108,7 @@ class SecurityConfig {
                 exceptions.accessDeniedHandler { exchange, _ ->
                     val response = exchange.response
                     response.statusCode = HttpStatus.FORBIDDEN
+                    applyCorsHeaders(exchange)
                     response.headers.contentType = MediaType.APPLICATION_JSON
                     val body = "{\"message\":\"Forbidden\"}".toByteArray()
                     response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
@@ -134,6 +165,19 @@ class SecurityConfig {
             val role = UserRole.fromClaim(jwt.getClaimAsString("role"))
             val authorities = role?.grantedAuthorities() ?: listOf(SimpleGrantedAuthority("ROLE_USER"))
             Mono.just(JwtAuthenticationToken(jwt, authorities, jwt.subject))
+        }
+    }
+
+    private fun applyCorsHeaders(exchange: ServerWebExchange) {
+        val origin = exchange.request.headers.origin?.trim().orEmpty()
+        if (origin.isBlank()) {
+            return
+        }
+
+        val headers = exchange.response.headers
+        headers.set("Access-Control-Allow-Origin", origin)
+        if (headers.getFirst("Vary") == null) {
+            headers.add("Vary", "Origin")
         }
     }
 }
