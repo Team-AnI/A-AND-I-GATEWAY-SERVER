@@ -9,6 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.web.reactive.function.BodyInserters
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -112,6 +113,17 @@ class SecurityConfigTests(
             .uri("/v1/me")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"displayName":"new-user"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `me post multipart endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/me")
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData("nickname", "new-user"))
             .exchange()
             .expectStatus()
             .isUnauthorized
