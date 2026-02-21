@@ -33,6 +33,7 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.POST, parser.parse("/activate")),
         AllowRule(HttpMethod.POST, parser.parse("/v1/me/password")),
         AllowRule(HttpMethod.GET, parser.parse("/v1/me")),
+        AllowRule(HttpMethod.POST, parser.parse("/v1/me")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v1/me")),
         AllowRule(HttpMethod.GET, parser.parse("/v1/admin/ping")),
         AllowRule(HttpMethod.GET, parser.parse("/v1/admin/users")),

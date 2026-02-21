@@ -107,6 +107,17 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `me post endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/me")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"displayName":"new-user"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `me password endpoint requires authentication`() {
         webTestClient.post()
             .uri("/v1/me/password")

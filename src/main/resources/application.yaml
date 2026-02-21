@@ -63,6 +63,11 @@ spring:
               predicates:
                 - Path=/v1/me
                 - Method=GET
+            - id: auth-service-v1-me-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/me
+                - Method=POST
             - id: auth-service-v1-me-patch
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:

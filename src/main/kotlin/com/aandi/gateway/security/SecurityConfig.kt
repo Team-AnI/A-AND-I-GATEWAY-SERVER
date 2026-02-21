@@ -82,6 +82,7 @@ class SecurityConfig {
 
                 // Auth service role-based endpoints
                 it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.PATCH, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers("/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
 
