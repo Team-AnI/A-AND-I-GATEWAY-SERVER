@@ -85,6 +85,9 @@ class SecurityConfig {
                 it.pathMatchers(HttpMethod.POST, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.PATCH, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers("/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
+                it.pathMatchers("/v2/post/admin/courses", "/v2/post/admin/courses/**").hasRole("ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v1/courses", "/v1/courses/**", "/v2/post/courses", "/v2/post/courses/**")
+                    .hasAnyRole("USER", "ORGANIZER", "ADMIN")
 
                 // Blog policy
                 it.pathMatchers(HttpMethod.GET, "/v1/posts", "/v1/posts/*", "/v2/post", "/v2/post/*").permitAll()

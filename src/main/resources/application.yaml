@@ -214,6 +214,22 @@ spring:
               predicates:
                 - Path=/v1/posts/**
                 - Method=DELETE
+            - id: post-service-v1-admin-courses-root
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/admin/courses
+            - id: post-service-v1-admin-courses-subpaths
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/admin/courses/**
+            - id: post-service-v1-courses-root
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/courses
+            - id: post-service-v1-courses-subpaths
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/courses/**
 
             - id: post-service-openapi-root
               uri: ${POST_SERVICE_URI:http://localhost:8084}
@@ -269,6 +285,30 @@ spring:
                 - Path=/v2/post
               filters:
                 - SetPath=/v1/posts
+            - id: post-service-admin-courses-root
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/post/admin/courses
+              filters:
+                - SetPath=/v1/admin/courses
+            - id: post-service-admin-courses-subpaths
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/post/admin/courses/**
+              filters:
+                - RewritePath=/v2/post/admin/courses/(?<segment>.*), /v1/admin/courses/$\{segment}
+            - id: post-service-courses-root
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/post/courses
+              filters:
+                - SetPath=/v1/courses
+            - id: post-service-courses-subpaths
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/post/courses/**
+              filters:
+                - RewritePath=/v2/post/courses/(?<segment>.*), /v1/courses/$\{segment}
             - id: post-service-posts-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:

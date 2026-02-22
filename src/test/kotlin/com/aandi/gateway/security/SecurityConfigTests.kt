@@ -206,6 +206,27 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `course query endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/post/courses")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `course admin endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v2/post/admin/courses")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"title":"course","slug":"course-slug"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
     fun `internal invalidation endpoint is forbidden without internal token`() {
         webTestClient.post()
             .uri("/internal/v1/cache/invalidation")
