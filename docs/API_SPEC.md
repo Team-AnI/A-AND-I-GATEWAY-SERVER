@@ -14,6 +14,7 @@
 - 기능 순서: `/v2/{feature}/{resource}`
 - 기능 분류:
   - `report`, `user`, `admin`, `post`: 외부 요청 라우팅 대상
+  - `auth`: 인증 서비스 라우팅 대상
   - `cache`: Gateway 내부 캐시 기능 (외부 API 미노출)
 - 현재 상태:
   - Gateway는 기능 prefix 기준으로 하위 서비스 라우팅
@@ -26,13 +27,33 @@
 3. `/v2/admin/**` -> `ADMIN_SERVICE_URI` (default `http://localhost:8083`)
 4. `/v2/post/**` -> `POST_SERVICE_URI` (default `http://localhost:8084`)
 5. `/v2/post/images/**` -> `POST_SERVICE_URI` (default `http://localhost:8084`)
-6. Path 변환 규칙:
+6. `POST /v2/auth/login` -> `POST /v1/auth/login` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+7. `POST /v2/auth/refresh` -> `POST /v1/auth/refresh` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+8. `POST /v2/auth/logout` -> `POST /v1/auth/logout` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+9. `GET /v2/auth/me` -> `GET /v1/me` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+10. `GET /v2/auth/admin/ping` -> `GET /v1/admin/ping` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+11. `GET /v2/auth/admin/users` -> `GET /v1/admin/users` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+12. `POST /v2/auth/admin/users` -> `POST /v1/admin/users` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+13. `POST /activate` -> `POST /activate` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+14. `PATCH /v1/me` -> `PATCH /v1/me` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+15. `POST /v1/me/password` -> `POST /v1/me/password` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+16. `POST /v1/admin/users/{id}/reset-password` -> `POST /v1/admin/users/{id}/reset-password` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
+17. Path 변환 규칙:
   - 기본 `StripPrefix=2`
   - `/v2/report/articles` -> `/articles`
+  - auth 라우트는 엔드포인트별 `SetPath` 적용
   - post 라우트는 리라이트 적용:
-    - `/v2/post` -> `/api/v1/posts`
-    - `/v2/post/{postId}` -> `/api/v1/posts/{postId}`
-    - `/v2/post/images` -> `/api/v1/images`
+    - `/v2/post` -> `/v1/posts`
+    - `/v2/post/{postId}` -> `/v1/posts/{postId}`
+    - `/v2/post/images` -> `/v1/posts/images`
+
+## 1-3) 서비스별 Swagger 라우팅
+
+- 통합 Swagger UI:
+  - `/v2/docs`
+- Swagger UI `urls` 드롭다운에서 서비스별 OpenAPI를 선택한다.
+- 현재 등록:
+  - `post-service`: `/v2/post/v3/api-docs`
 
 ## 2) 인증 정책
 
@@ -42,10 +63,16 @@
   - `GET /actuator/health`
   - `GET /actuator/health/**`
   - `GET /actuator/info`
+  - `POST /v2/auth/login`
+  - `POST /v2/auth/refresh`
+  - `POST /activate`
   - `POST /internal/v1/cache/invalidation` (내부 토큰 헤더 검증)
 - 인가 책임 분리:
   - Gateway는 토큰 인증/전달만 담당
   - `/v2/admin/**` 상세 권한(`ROLE_ADMIN` 등)은 admin 서비스에서 검증
+  - `PATCH /v1/me`: 인증 필요
+  - `POST /v1/me/password`: 인증 필요
+  - `POST /v1/admin/users/{id}/reset-password`: `ROLE_ADMIN` 필요
 
 ## 3) 요청 헤더 계약
 
@@ -107,6 +134,7 @@
 - `USER_SERVICE_URI`
 - `ADMIN_SERVICE_URI`
 - `POST_SERVICE_URI`
+- `AUTH_SERVICE_URI`
 - `MANAGEMENT_SERVER_PORT` (default `9090`)
 - `MANAGEMENT_SERVER_ADDRESS` (default `127.0.0.1`)
 

@@ -43,8 +43,8 @@
 - `/v2/post/**` -> `POST_SERVICE_URI` (기본 `http://localhost:8084`)
 - `/v2/post/images/**` -> `POST_SERVICE_URI` (기본 `http://localhost:8084`)
 - 기본 Path 변환: 라우트별 `StripPrefix=2`
-- post 라우트 Path 변환: `/v2/post/**` -> `/api/v1/posts/**`
-- post image 라우트 Path 변환: `/v2/post/images/**` -> `/api/v1/images/**`
+- post 라우트 Path 변환: `/v2/post/**` -> `/v1/posts/**`
+- post image 라우트 Path 변환: `/v2/post/images/**` -> `/v1/posts/images/**`
 
 ### 적용 파일
 

@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
   build-push-deploy:
@@ -66,9 +67,44 @@ jobs:
             ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
             DOMAIN="api.aandiclub.com"
+            AUTH_ISSUER_URI="${{ vars.AUTH_ISSUER_URI }}"
+            AUTH_AUDIENCE="${{ vars.AUTH_AUDIENCE }}"
+            ALLOWED_HOSTS="${{ vars.ALLOWED_HOSTS }}"
+            ALLOW_PRIVATE_IP_HOST="${{ vars.ALLOW_PRIVATE_IP_HOST }}"
+            ENFORCE_HTTPS="${{ vars.ENFORCE_HTTPS }}"
+            CORS_ALLOWED_ORIGIN_PATTERNS="${{ vars.CORS_ALLOWED_ORIGIN_PATTERNS }}"
+            AUTH_SERVICE_URI="${{ secrets.AUTH_SERVICE_URI }}"
+            REPORT_SERVICE_URI="${{ secrets.REPORT_SERVICE_URI }}"
+            POST_SERVICE_URI="${{ secrets.POST_SERVICE_URI }}"
+            AUTH_JWT_SECRET="${{ secrets.AUTH_JWT_SECRET }}"
+
+            if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="${{ secrets.AUTH_ISSUER_URI }}"; fi
+            if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="${{ secrets.AUTH_AUDIENCE }}"; fi
+            if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}"; fi
+            if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="${{ secrets.ALLOW_PRIVATE_IP_HOST }}"; fi
+            if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="${{ secrets.ENFORCE_HTTPS }}"; fi
+            if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="${{ secrets.CORS_ALLOWED_ORIGIN_PATTERNS }}"; fi
+
+            if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="https://auth.aandiclub.com"; fi
+            if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="aandiclub-api"; fi
+            if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="$DOMAIN"; fi
+            if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="true"; fi
+            if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="true"; fi
+            if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="https://*"; fi
+
+            [ -n "$AUTH_SERVICE_URI" ] || { echo "Missing secret: AUTH_SERVICE_URI"; exit 1; }
+            [ -n "$REPORT_SERVICE_URI" ] || { echo "Missing secret: REPORT_SERVICE_URI"; exit 1; }
+            [ -n "$POST_SERVICE_URI" ] || { echo "Missing secret: POST_SERVICE_URI"; exit 1; }
+            [ -n "$AUTH_JWT_SECRET" ] || { echo "Missing secret: AUTH_JWT_SECRET"; exit 1; }
+
             aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
             sudo mkdir -p /opt/aandi/gateway
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
+            sudo docker rm -f \
+              ${{ env.CONTAINER_NAME }} \
+              aandi-gateway-redis \
+              aandi-gateway-nginx \
+              aandi-gateway-nginx-bootstrap || true
             sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
             server {
               listen 80;
@@ -121,12 +157,13 @@ jobs:
               }
 
               location / {
-                return 301 https://$host$request_uri;
+                return 301 https://\$host\$request_uri;
               }
             }
 
             server {
-              listen 443 ssl http2;
+              listen 443 ssl;
+              http2 on;
               server_name ${DOMAIN};
 
               ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
@@ -139,9 +176,9 @@ jobs:
                 allow 172.31.0.0/16;
                 deny all;
                 proxy_pass http://gateway:8080;
-                proxy_set_header Host $host;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
               }
 
               location /actuator/ {
@@ -151,9 +188,9 @@ jobs:
 
               location / {
                 proxy_pass http://gateway:8080;
-                proxy_set_header Host $host;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
               }
             }
             EOF_NGINX
@@ -178,12 +215,28 @@ jobs:
                 container_name: ${{ env.CONTAINER_NAME }}
                 restart: unless-stopped
                 environment:
-                  AUTH_ISSUER_URI: "${{ secrets.AUTH_ISSUER_URI }}"
-                  AUTH_JWK_SET_URI: "${{ secrets.AUTH_JWK_SET_URI }}"
-                  AUTH_AUDIENCE: "${{ secrets.AUTH_AUDIENCE }}"
-                  GATEWAY_AUTH_ENABLED: "false"
+                  GATEWAY_AUTH_ENABLED: "true"
+                  AUTH_ISSUER_URI: "${AUTH_ISSUER_URI}"
+                  AUTH_AUDIENCE: "${AUTH_AUDIENCE}"
+                  AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+                  AUTH_SERVICE_URI: "${AUTH_SERVICE_URI}"
+                  REPORT_SERVICE_URI: "${REPORT_SERVICE_URI}"
+                  POST_SERVICE_URI: "${POST_SERVICE_URI}"
+                  ENFORCE_HTTPS: "${ENFORCE_HTTPS}"
+                  ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
+                  ALLOW_PRIVATE_IP_HOST: "${ALLOW_PRIVATE_IP_HOST}"
+                  CORS_ALLOWED_ORIGIN_PATTERNS: "${CORS_ALLOWED_ORIGIN_PATTERNS}"
+                  AUTH_JWT_CLOCK_SKEW_SECONDS: "30"
+                  AUTH_RATE_LIMIT_ENABLED: "true"
+                  AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: "10"
+                  AUTH_REFRESH_RATE_LIMIT_PER_MINUTE: "30"
+                  AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE: "30"
+                  PREVALIDATE_REFRESH_TOKEN_TYPE: "true"
+                  ENFORCE_METHOD_PATH_ALLOWLIST: "true"
+                  ENFORCE_JSON_CONTENT_TYPE: "true"
+                  MAX_REQUEST_BODY_SIZE: "2MB"
+                  MAX_REQUEST_HEADER_SIZE: "16KB"
                   INTERNAL_EVENT_TOKEN: "${{ secrets.INTERNAL_EVENT_TOKEN }}"
-                  POST_SERVICE_URI: "${{ secrets.POST_SERVICE_URI }}"
                   REDIS_HOST: redis
                   REDIS_PORT: "6379"
                   REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"

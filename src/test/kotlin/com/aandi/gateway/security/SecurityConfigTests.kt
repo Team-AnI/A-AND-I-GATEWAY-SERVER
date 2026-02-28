@@ -4,15 +4,23 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.web.reactive.function.BodyInserters
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 @SpringBootTest(
     properties = [
-        "app.security.internal-event-token=test-internal-token"
+        "POST_SERVICE_URI=http://localhost:8084",
+        "AUTH_SERVICE_URI=http://localhost:9000",
+        "app.security.internal-event-token=test-internal-token",
+        "security.jwt.secret=test-secret-key-with-32-bytes-minimum!",
+        "app.security.policy.enforce-https=false"
     ]
 )
 class SecurityConfigTests(
@@ -38,22 +46,240 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `token context endpoint requires authentication`() {
+    fun `auth login endpoint is public`() {
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"username":"demo","password":"demo"}""")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `activate endpoint is public`() {
+        webTestClient.post()
+            .uri("/activate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"token":"invite-token","password":"new-password-1234"}""")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+                assertNotEquals(404, it)
+            }
+    }
+
+    @Test
+    fun `me endpoint requires authentication`() {
         webTestClient.get()
-            .uri("/v2/cache/token-context")
+            .uri("/v1/me")
             .exchange()
             .expectStatus()
             .isUnauthorized
     }
 
     @Test
-    fun `token context endpoint accepts authenticated jwt`() {
-        webTestClient.mutateWith(mockJwt())
-            .get()
-            .uri("/v2/cache/token-context")
+    fun `me endpoint unauthorized response includes cors header`() {
+        webTestClient.get()
+            .uri("/v1/me")
+            .header("Origin", "https://aandiclub.com")
             .exchange()
             .expectStatus()
-            .isNotFound
+            .value { status ->
+                assertTrue(status == 401 || status == 403)
+            }
+            .expectHeader()
+            .valueEquals("Access-Control-Allow-Origin", "https://aandiclub.com")
+    }
+
+    @Test
+    fun `me patch endpoint requires authentication`() {
+        webTestClient.patch()
+            .uri("/v1/me")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"username":"updated-user"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `me post endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/me")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"displayName":"new-user"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `me post multipart endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/me")
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData("nickname", "new-user"))
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `posts create multipart endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/posts")
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData("title", "t").with("content", "c"))
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `post images multipart endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/posts/images")
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData("file", "dummy"))
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `me password endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/me/password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"currentPassword":"old-password-1234","newPassword":"new-password-1234"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `admin endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v1/admin/ping")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `admin reset password endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v1/admin/users/11111111-1111-1111-1111-111111111111/reset-password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `admin role patch endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .patch()
+            .uri("/v1/admin/users/role")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"userId":"11111111-1111-1111-1111-111111111111","role":"ORGANIZER"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `admin users delete endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .method(HttpMethod.DELETE)
+            .uri("/v1/admin/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"userId":"11111111-1111-1111-1111-111111111111"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `posts list is public`() {
+        webTestClient.get()
+            .uri("/v1/posts")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `post create requires organizer or admin`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v1/posts")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"title":"t","content":"c"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `post delete allows organizer or admin`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ORGANIZER")))
+            .delete()
+            .uri("/v1/posts/123")
+            .exchange()
+            .expectStatus()
+            .value { assertNotEquals(403, it) }
+    }
+
+    @Test
+    fun `report endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/report")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v1 report endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/report")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `course query endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/post/courses")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `course admin endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v2/post/admin/courses")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"title":"course","slug":"course-slug"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
     }
 
     @Test
