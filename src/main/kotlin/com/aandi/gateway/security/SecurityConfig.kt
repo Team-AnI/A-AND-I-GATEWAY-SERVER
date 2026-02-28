@@ -75,6 +75,7 @@ class SecurityConfig {
                 it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/activate").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/internal/v1/cache/invalidation").permitAll()
                 it.pathMatchers("/api/ping/**").permitAll()
+                it.pathMatchers("/", "/index.html").permitAll()
                 it.pathMatchers("/v3/api-docs/**").permitAll()
                 it.pathMatchers("/v2/*/v3/api-docs", "/v2/*/v3/api-docs/**").permitAll()
                 it.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**", "/v2/swagger-ui/index.html", "/v2/swagger-ui/**").permitAll()
@@ -84,10 +85,11 @@ class SecurityConfig {
                 it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.POST, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.PATCH, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers("/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
+                it.pathMatchers("/v1/admin", "/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
                 it.pathMatchers("/v2/post/admin/courses", "/v2/post/admin/courses/**").hasRole("ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v1/courses", "/v1/courses/**", "/v2/post/courses", "/v2/post/courses/**")
                     .hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers("/v1/report", "/v1/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
 
                 // Blog policy
                 it.pathMatchers(HttpMethod.GET, "/v1/posts", "/v1/posts/*", "/v2/post", "/v2/post/*").permitAll()

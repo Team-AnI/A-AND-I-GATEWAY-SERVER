@@ -253,6 +253,15 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `v1 report endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/report")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `course query endpoint is allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v2/post/courses")

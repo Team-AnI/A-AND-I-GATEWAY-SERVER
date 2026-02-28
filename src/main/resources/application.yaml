@@ -197,6 +197,18 @@ spring:
                 - Path=/v2/report/**
               filters:
                 - RewritePath=/v2/report/(?<segment>.*), /api/report/$\{segment}
+            - id: report-service-v1-root
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v1/report
+              filters:
+                - SetPath=/api/report
+            - id: report-service-v1-subpaths
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v1/report/**
+              filters:
+                - RewritePath=/v1/report/(?<segment>.*), /api/report/$\{segment}
 
             - id: post-service-v1-posts-images
               uri: ${POST_SERVICE_URI:http://localhost:8084}
@@ -351,7 +363,7 @@ security:
 
 springdoc:
   swagger-ui:
-    path: /v2/swagger-ui/index.html
+    path: /
     urls:
       - name: report-service
         url: /v2/report/v3/api-docs
