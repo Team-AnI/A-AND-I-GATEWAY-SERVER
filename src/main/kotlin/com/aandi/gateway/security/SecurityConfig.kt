@@ -92,10 +92,11 @@ class SecurityConfig {
                 it.pathMatchers("/v1/report", "/v1/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
 
                 // Blog policy
+                it.pathMatchers(HttpMethod.GET, "/v1/posts/drafts", "/v1/posts/drafts/**", "/v2/post/drafts", "/v2/post/drafts/**")
+                    .hasAnyRole("ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v1/posts", "/v1/posts/*", "/v2/post", "/v2/post/*").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/v1/posts", "/v2/post").hasAnyRole("ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.PATCH, "/v1/posts/*", "/v2/post/*").hasAnyRole("ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.GET, "/v1/posts/drafts", "/v2/post/drafts").hasAnyRole("ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.DELETE, "/v1/posts/*", "/v2/post/*").hasAnyRole("ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.POST, "/v1/posts/images", "/v2/post/images").hasAnyRole("ORGANIZER", "ADMIN")
 
