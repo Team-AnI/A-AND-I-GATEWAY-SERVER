@@ -113,6 +113,14 @@ spring:
               predicates:
                 - Path=/v1/admin/users/**
                 - Method=DELETE
+            - id: auth-service-v1-users-root
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/users
+            - id: auth-service-v1-users-subpaths
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/users/**
 
             - id: auth-service-login
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
