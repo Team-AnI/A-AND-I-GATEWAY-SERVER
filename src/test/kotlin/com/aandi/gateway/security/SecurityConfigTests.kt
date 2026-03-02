@@ -271,6 +271,15 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `users endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/users/123")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `course admin endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
