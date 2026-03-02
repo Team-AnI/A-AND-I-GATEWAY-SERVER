@@ -23,8 +23,10 @@ class GatewayRequestPolicyFilter(
     private val jsonContentTypeExemptions: List<PathPattern> = listOf(
         parser.parse("/v1/me"),
         parser.parse("/v1/posts"),
+        parser.parse("/v1/posts/{postId}"),
         parser.parse("/v1/posts/images"),
         parser.parse("/v2/post"),
+        parser.parse("/v2/post/{postId}"),
         parser.parse("/v2/post/images"),
         parser.parse("/v2/post/images/**")
     )
