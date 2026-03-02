@@ -43,6 +43,7 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.POST, parser.parse("/v1/admin/users")),
         AllowRule(HttpMethod.POST, parser.parse("/v1/admin/invite-mail")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v1/admin/users/role")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v1/admin/users/**")),
         AllowRule(HttpMethod.POST, parser.parse("/v1/admin/users/{id}/reset-password")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v1/admin/users")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v1/admin/users/{id}")),
