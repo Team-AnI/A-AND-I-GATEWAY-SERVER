@@ -222,6 +222,25 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `drafts subpath endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/posts/drafts/me")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `drafts subpath endpoint is forbidden for user role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v1/posts/drafts/me")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
     fun `post create requires organizer or admin`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
