@@ -153,6 +153,17 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `post patch multipart endpoint requires authentication`() {
+        webTestClient.patch()
+            .uri("/v1/posts/123")
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData("title", "t").with("content", "c"))
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `me password endpoint requires authentication`() {
         webTestClient.post()
             .uri("/v1/me/password")
