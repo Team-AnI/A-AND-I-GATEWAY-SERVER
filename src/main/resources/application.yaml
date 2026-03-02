@@ -98,6 +98,11 @@ spring:
               predicates:
                 - Path=/v1/admin/users/role
                 - Method=PATCH
+            - id: auth-service-v1-admin-users-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/users/**
+                - Method=PATCH
             - id: auth-service-v1-admin-users-reset-password
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
