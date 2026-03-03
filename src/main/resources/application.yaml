@@ -209,7 +209,7 @@ spring:
               predicates:
                 - Path=/v2/report/**
               filters:
-                - StripPrefix=2
+                - RewritePath=/v2/report/(?<segment>.*), /api/report/$\{segment}
             - id: report-service-v1-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
