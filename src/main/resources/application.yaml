@@ -24,6 +24,12 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: report-docs
+          uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/v2/report/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
         - id: report-service
           uri: ${REPORT_SERVICE_URI:http://localhost:8081}
           predicates:
