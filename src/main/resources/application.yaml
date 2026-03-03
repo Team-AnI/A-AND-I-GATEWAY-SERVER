@@ -203,25 +203,25 @@ spring:
               predicates:
                 - Path=/v2/report
               filters:
-                - SetPath=/api/report
+                - SetPath=/v1/report
             - id: report-service-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/**
               filters:
-                - RewritePath=/v2/report/(?<segment>.*), /api/report/$\{segment}
+                - RewritePath=/v2/report/(?<segment>.*), /v1/report/$\{segment}
             - id: report-service-v1-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v1/report
               filters:
-                - SetPath=/api/report
+                - SetPath=/v1/report
             - id: report-service-v1-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v1/report/**
               filters:
-                - RewritePath=/v1/report/(?<segment>.*), /api/report/$\{segment}
+                - RewritePath=/v1/report/(?<segment>.*), /v1/report/$\{segment}
 
             - id: post-service-v1-posts-images
               uri: ${POST_SERVICE_URI:http://localhost:8084}
@@ -288,12 +288,14 @@ spring:
               filters:
                 - RewritePath=/v2/post/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: report-service-openapi-root
+              order: -1
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/v3/api-docs
               filters:
                 - SetPath=/v3/api-docs
             - id: report-service-openapi-subpaths
+              order: -1
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/v3/api-docs/**
