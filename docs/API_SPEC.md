@@ -1,148 +1,382 @@
 # Gateway API Specification
 
-기준일: 2026-02-15  
-대상 레포: [Team-AnI/A-AND-I-GATEWAY-SERVER](https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER)
+기준일: 2026-03-05  
+대상 레포: `A-AND-I-GATEWAY-SERVER`  
+소스 오브 트루스:
+- `src/main/resources/application.yaml`
+- `src/main/kotlin/com/aandi/gateway/security/SecurityConfig.kt`
+- `src/main/kotlin/com/aandi/gateway/security/GatewayRequestPolicyFilter.kt`
+- `src/main/kotlin/com/aandi/gateway/security/AuthRequestValidationFilter.kt`
+- `src/main/kotlin/com/aandi/gateway/security/AuthRateLimitFilter.kt`
+- `src/main/kotlin/com/aandi/gateway/cache/InvalidationWebhookController.kt`
 
-## 1) 범위
+## 1. 문서 범위
 
-- 본 문서는 Gateway의 현재 공개 계약을 정의한다.
-- 하위 도메인 서비스 API 스펙은 각 서비스 레포에서 관리한다.
+- 본 문서는 **Gateway가 실제로 외부에 허용하는 모든 API 경로**와 Gateway 레벨의 Request/Response 계약을 정의한다.
+- 도메인 비즈니스 payload(예: post/course/report 상세 DTO)는 하위 서비스 계약을 따른다.
+- Gateway에서 body 스키마를 직접 검증하는 API는 본 문서에 명시한다.
 
-## 1-1) API 버전/경로 규칙
+## 2. 공통 Request 계약
 
-- 버전 prefix: `/v2`
-- 기능 순서: `/v2/{feature}/{resource}`
-- 기능 분류:
-  - `report`, `user`, `admin`, `post`: 외부 요청 라우팅 대상
-  - `auth`: 인증 서비스 라우팅 대상
-  - `cache`: Gateway 내부 캐시 기능 (외부 API 미노출)
-- 현재 상태:
-  - Gateway는 기능 prefix 기준으로 하위 서비스 라우팅
-  - `cache`는 Gateway 내부 처리 전용 (외부 API 미노출)
+### 2.1 기본
 
-## 1-2) 라우팅 매핑 (현재)
+- Base Path: `/` (v1 + legacy v2 경로 공존)
+- Content-Type:
+  - `POST|PUT|PATCH`는 기본적으로 `application/json` 또는 `+json` 필요
+  - 예외(멀티파트 허용): `/v1/me`, `/v1/posts`, `/v1/posts/images`, `/v2/post`, `/v2/post/images/**`
 
-1. `/v2/report/**` -> `REPORT_SERVICE_URI` (default `http://localhost:8081`)
-2. `/v2/user/**` -> `USER_SERVICE_URI` (default `http://localhost:8082`)
-3. `/v2/admin/**` -> `ADMIN_SERVICE_URI` (default `http://localhost:8083`)
-4. `/v2/post/**` -> `POST_SERVICE_URI` (default `http://localhost:8084`)
-5. `/v2/post/images/**` -> `POST_SERVICE_URI` (default `http://localhost:8084`)
-6. `POST /v2/auth/login` -> `POST /v1/auth/login` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-7. `POST /v2/auth/refresh` -> `POST /v1/auth/refresh` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-8. `POST /v2/auth/logout` -> `POST /v1/auth/logout` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-9. `GET /v2/auth/me` -> `GET /v1/me` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-10. `GET /v2/auth/admin/ping` -> `GET /v1/admin/ping` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-11. `GET /v2/auth/admin/users` -> `GET /v1/admin/users` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-12. `POST /v2/auth/admin/users` -> `POST /v1/admin/users` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-13. `POST /activate` -> `POST /activate` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-14. `PATCH /v1/me` -> `PATCH /v1/me` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-15. `POST /v1/me/password` -> `POST /v1/me/password` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-16. `POST /v1/admin/users/{id}/reset-password` -> `POST /v1/admin/users/{id}/reset-password` (`AUTH_SERVICE_URI`, default `http://localhost:9000`)
-17. Path 변환 규칙:
-  - 기본 `StripPrefix=2`
-  - `/v2/report/articles` -> `/articles`
-  - auth 라우트는 엔드포인트별 `SetPath` 적용
-  - post 라우트는 리라이트 적용:
-    - `/v2/post` -> `/v1/posts`
-    - `/v2/post/{postId}` -> `/v1/posts/{postId}`
-    - `/v2/post/images` -> `/v1/posts/images`
+### 2.2 인증 헤더
 
-## 1-3) 서비스별 Swagger 라우팅
+- 인증 필요 API는 `Authorization: Bearer <access-token>` 필요
+- JWT 검증:
+  - `iss` = `security.jwt.issuer`
+  - `aud` = `security.jwt.audience`
+  - `token_type` = `ACCESS`
+  - `sub` UUID 형식
+  - `role` in `USER | ORGANIZER | ADMIN`
+  - `jti` 존재
 
-- 통합 Swagger UI:
-  - `/v2/docs`
-- Swagger UI `urls` 드롭다운에서 서비스별 OpenAPI를 선택한다.
-- 현재 등록:
-  - `post-service`: `/v2/post/v3/api-docs`
+### 2.3 헤더 정리/주입
 
-## 2) 인증 정책
+- 클라이언트가 보낸 아래 헤더는 제거됨:
+  - `X-User-Id`
+  - `X-Roles`
+  - `X-Auth-Context`
+  - `X-Auth-Context-Cache`
+- 인증 성공 시 Gateway가 하위 서비스로 주입:
+  - `X-User-Id: <jwt.sub>`
+  - `X-Roles: <authorities csv>`
 
-- 기본 정책: 모든 요청은 Bearer Access Token 필요
-- JWT 검증: `issuer` + `audience` 모두 검증
-- 예외(무인증):
-  - `GET /actuator/health`
-  - `GET /actuator/health/**`
-  - `GET /actuator/info`
+## 3. 공통 Response 계약 (Gateway 생성 응답)
+
+| 상황 | HTTP | Body |
+|---|---|---|
+| 인증 실패 (Spring Security) | 401 | `{"message":"Unauthorized"}` |
+| 인가 실패 (Spring Security) | 403 | `{"message":"Forbidden"}` |
+| 허용되지 않은 method/path (allowlist) | 404 | empty |
+| JSON Content-Type 정책 위반 | 415 | empty |
+| auth rate limit 초과 | 429 | empty |
+| auth 요청 body 검증 실패 | 400/401 | empty |
+| 내부 무효화 토큰 불일치 | 403 | empty |
+
+참고:
+- 하위 서비스로 전달된 요청의 성공/실패 body는 Gateway가 변환하지 않고 passthrough 한다.
+
+## 4. Gateway가 직접 검증하는 Request Body
+
+### 4.1 로그인
+
+- 대상:
+  - `POST /v1/auth/login`
   - `POST /v2/auth/login`
+- 필수 필드:
+  - `username: string (blank 불가)`
+  - `password: string (blank 불가)`
+- 실패 응답:
+  - 누락/blank -> `400`
+
+### 4.2 토큰 갱신/로그아웃
+
+- 대상:
+  - `POST /v1/auth/refresh`
   - `POST /v2/auth/refresh`
-  - `POST /activate`
-  - `POST /internal/v1/cache/invalidation` (내부 토큰 헤더 검증)
-- 인가 책임 분리:
-  - Gateway는 토큰 인증/전달만 담당
-  - `/v2/admin/**` 상세 권한(`ROLE_ADMIN` 등)은 admin 서비스에서 검증
-  - `PATCH /v1/me`: 인증 필요
-  - `POST /v1/me/password`: 인증 필요
-  - `POST /v1/admin/users/{id}/reset-password`: `ROLE_ADMIN` 필요
+  - `POST /v1/auth/logout`
+  - `POST /v2/auth/logout`
+- 필수 필드:
+  - `refreshToken: string (blank 불가)`
+- 추가 검증(`prevalidateRefreshTokenType=true`):
+  - refresh JWT 서명 검증 + `token_type == REFRESH`
+- 실패 응답:
+  - 누락/blank -> `400`
+  - 타입/검증 실패 -> `401`
 
-## 3) 요청 헤더 계약
+### 4.3 내부 캐시 무효화
 
-클라이언트가 보내는 아래 헤더는 신뢰하지 않으며 Gateway에서 제거된다.
+- 대상:
+  - `POST /internal/v1/cache/invalidation`
+- 필수 헤더:
+  - `X-Internal-Token`
+- Request Body:
+```json
+{
+  "eventType": "LOGOUT",
+  "subject": "user-subject"
+}
+```
+- `eventType` enum:
+  - `LOGOUT`
+  - `ROLE_CHANGED`
+- Success Response (`202 Accepted`):
+```json
+{
+  "invalidatedKeys": 3
+}
+```
+- 실패:
+  - 내부 토큰 불일치 -> `403`
 
-- `X-User-Id`
-- `X-Roles`
-- `X-Auth-Context`
-- `X-Auth-Context-Cache`
+## 5. 인증/권한 정책
 
-## 4) Gateway -> Downstream 전달 헤더
+### 5.1 Public
 
-인증 성공 요청에 대해 Gateway가 하위 서비스에 주입:
+- `OPTIONS /**`
+- `POST /v1/auth/**`
+- `POST /v2/auth/login`
+- `POST /v2/auth/refresh`
+- `POST /activate`
+- `POST /internal/v1/cache/invalidation` (내부 토큰은 별도 검증)
+- `GET /api/ping/**`
+- `GET /`, `GET /index.html`
+- `GET /v3/api-docs/**`
+- `GET /v2/*/v3/api-docs`, `GET /v2/*/v3/api-docs/**`
+- `GET /swagger-ui.html`, `GET /swagger-ui/**`
+- `GET /v2/docs`, `GET /v2/docs/**`
+- `GET /v2/swagger-ui/index.html`, `GET /v2/swagger-ui/**`
+- `GET /actuator/health`, `GET /actuator/health/**`, `GET /actuator/info`
+- Blog 조회:
+  - `GET /v1/posts`
+  - `GET /v1/posts/*`
+  - `GET /v2/post`
+  - `GET /v2/post/*`
 
-- `X-User-Id`: 인증 주체 식별자
-- `X-Roles`: 권한 목록(csv)
+### 5.2 USER|ORGANIZER|ADMIN
 
-## 5) 토큰 컨텍스트 캐시 계약
+- `GET /v1/me`, `POST /v1/me`, `PATCH /v1/me`
+- `GET /v2/auth/me`
+- `GET /v1/courses`, `GET /v1/courses/**`
+- `GET /v2/post/courses`, `GET /v2/post/courses/**`
+- `GET /v1/report`, `GET|POST|PUT|DELETE /v1/report/**`
 
-- 저장소: Redis
-- 키 전략(확정):
-  - 데이터 키: `cache:token:{subject}:{tokenHash}`
-  - 인덱스 키: `cache:token-index:{subject}`
-- TTL: 기본 24시간 (`TOKEN_CACHE_TTL`, default `24h`)
-- 동작:
-  - 캐시 HIT: 내부 캐시 재사용
-  - 캐시 MISS: 컨텍스트 생성 후 저장
-  - MISS 저장 시 subject 인덱스에 데이터 키를 함께 등록
-  - Redis 장애: 캐시 우회(요청 실패로 확장하지 않음)
-  - 외부 API로 조회/삭제를 제공하지 않음
-- 강제 무효화 트리거(확정):
-  - 로그아웃 이벤트 수신 시 해당 subject 인덱스 기준 일괄 삭제
-  - 권한 변경 이벤트 수신 시 해당 subject 인덱스 기준 일괄 삭제
-  - 내부 웹훅: `POST /internal/v1/cache/invalidation`
-    - 헤더: `X-Internal-Token`
-    - 바디: `{"eventType":"LOGOUT|ROLE_CHANGED","subject":"<user-subject>"}`
-    - 접근 제어: Nginx에서 사설 CIDR만 허용 + 외부 deny
-- TTL 운영 기준(확정):
-  - 기본값 24시간 유지
-  - 권한 변경 반영이 민감한 환경은 `TOKEN_CACHE_TTL` 단축 운영
+### 5.3 ADMIN
 
-## 6) 응답 코드 정책 (Gateway 관점)
+- `/v1/admin/**`
+- `/v2/auth/admin/**`
+- `/v2/post/admin/courses`, `/v2/post/admin/courses/**`
 
-- `401 Unauthorized`: 토큰 누락/유효하지 않음
-- `403 Forbidden`: 인증은 되었으나 접근 불가(정책 확장 시)
-- `404 Not Found`: 유효 요청이지만 매칭 라우트 없음
+### 5.4 ORGANIZER|ADMIN
 
-## 7) 환경변수
+- `POST /v1/posts`, `POST /v2/post`
+- `PATCH /v1/posts/*`, `PATCH /v2/post/*`
+- `DELETE /v1/posts/*`, `DELETE /v2/post/*`
+- `GET /v1/posts/drafts`, `GET /v2/post/drafts`
+- `POST /v1/posts/images`, `POST /v2/post/images`
 
+## 6. 라우팅 매핑 (요약)
+
+### 6.1 Auth 서비스
+
+- v1 경로: `/v1/auth/*`, `/v1/me*`, `/v1/admin/users*`, `/v1/admin/invite-mail`, `/v1/admin/ping`
+- v2 alias:
+  - `/v2/auth/login -> /v1/auth/login`
+  - `/v2/auth/refresh -> /v1/auth/refresh`
+  - `/v2/auth/logout -> /v1/auth/logout`
+  - `/v2/auth/me -> /v1/me`
+  - `/v2/auth/admin/** -> /v1/admin/**`
+  - `/activate -> /activate`
+
+### 6.2 Report 서비스
+
+- `/v1/report*`
+- `/v2/report*` (`/api/report` 경유)
+- Courses/Admin Courses:
+  - `/v1/admin/courses*`
+  - `/v1/courses*`
+  - `/v2/post/admin/courses* -> /v1/admin/courses*`
+  - `/v2/post/courses* -> /v1/courses*`
+
+### 6.3 Post(Blog) 서비스
+
+- `/v1/posts*`
+- `/v2/post* -> /v1/posts*`
+- `/v2/post/images* -> /v1/posts/images*`
+
+## 7. 전체 API 카탈로그 (코드 기준)
+
+요청/응답 표기 규칙:
+- Request:
+  - `GW 검증` = Gateway가 body/헤더를 직접 검증
+  - `Pass-through` = body 검증 없이 하위 서비스로 전달
+- Response:
+  - `Pass-through` = 하위 서비스 응답 원문 전달
+  - `GW 생성` = Gateway가 직접 생성
+
+### 7.1 Public/Infra
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/` | 없음 | Pass-through (swagger-ui index) |
+| GET | `/index.html` | 없음 | Pass-through |
+| GET | `/api/ping/**` | 없음 | Pass-through |
+| GET | `/v3/api-docs/**` | 없음 | Pass-through |
+| GET | `/swagger-ui.html` | 없음 | Pass-through |
+| GET | `/swagger-ui/**` | 없음 | Pass-through |
+| GET | `/v2/docs` | 없음 | Pass-through |
+| GET | `/v2/docs/**` | 없음 | Pass-through |
+| GET | `/v2/swagger-ui/index.html` | 없음 | Pass-through |
+| GET | `/v2/swagger-ui/**` | 없음 | Pass-through |
+| GET | `/v2/post/v3/api-docs` | 없음 | Pass-through |
+| GET | `/v2/post/v3/api-docs/**` | 없음 | Pass-through |
+| GET | `/v2/report/v3/api-docs` | 없음 | Pass-through |
+| GET | `/v2/report/v3/api-docs/**` | 없음 | Pass-through |
+| GET | `/v2/auth/v3/api-docs` | 없음 | Pass-through |
+| GET | `/v2/auth/v3/api-docs/**` | 없음 | Pass-through |
+| GET | `/actuator/health` | 없음 | Pass-through |
+| GET | `/actuator/health/**` | 없음 | Pass-through |
+| GET | `/actuator/info` | 없음 | Pass-through |
+| POST | `/internal/v1/cache/invalidation` | GW 검증 (`X-Internal-Token`, `eventType`, `subject`) | `202 {"invalidatedKeys":number}` or `403` |
+
+### 7.2 Auth/User/Admin (v1)
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| POST | `/v1/auth/login` | GW 검증 (`username`, `password`) | Pass-through (`400` GW 가능) |
+| POST | `/v1/auth/refresh` | GW 검증 (`refreshToken`) | Pass-through (`400/401` GW 가능) |
+| POST | `/v1/auth/logout` | GW 검증 (`refreshToken`) | Pass-through (`400/401` GW 가능) |
+| POST | `/activate` | Pass-through | Pass-through |
+| GET | `/v1/me` | Pass-through (Bearer 필요) | Pass-through |
+| POST | `/v1/me` | Pass-through (Bearer 필요) | Pass-through |
+| PATCH | `/v1/me` | Pass-through (Bearer 필요) | Pass-through |
+| POST | `/v1/me/password` | Pass-through (Bearer 필요) | Pass-through |
+| GET | `/v1/admin/ping` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v1/admin/users` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/users` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/invite-mail` | Pass-through (ADMIN) | Pass-through |
+| PATCH | `/v1/admin/users/role` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/users/{id}/reset-password` | Pass-through (ADMIN) | Pass-through |
+| DELETE | `/v1/admin/users` | Pass-through (ADMIN) | Pass-through |
+| DELETE | `/v1/admin/users/{id}` | Pass-through (ADMIN) | Pass-through |
+
+### 7.3 Auth/Admin Alias (v2)
+
+| Method | Path | Rewrite | Request | Response |
+|---|---|---|---|---|
+| POST | `/v2/auth/login` | `/v1/auth/login` | GW 검증 (`username`, `password`) | Pass-through (`400` GW 가능) |
+| POST | `/v2/auth/refresh` | `/v1/auth/refresh` | GW 검증 (`refreshToken`) | Pass-through (`400/401` GW 가능) |
+| POST | `/v2/auth/logout` | `/v1/auth/logout` | GW 검증 (`refreshToken`) | Pass-through (`400/401` GW 가능) |
+| GET | `/v2/auth/me` | `/v1/me` | Pass-through (Bearer) | Pass-through |
+| GET | `/v2/auth/admin/ping` | `/v1/admin/ping` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v2/auth/admin/users` | `/v1/admin/users` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/auth/admin/users` | `/v1/admin/users` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/auth/admin/invite-mail` | `/v1/admin/invite-mail` | Pass-through (ADMIN) | Pass-through |
+| PATCH | `/v2/auth/admin/users/role` | `/v1/admin/users/role` | Pass-through (ADMIN) | Pass-through |
+| DELETE | `/v2/auth/admin/users` | `/v1/admin/users` | Pass-through (ADMIN) | Pass-through |
+| DELETE | `/v2/auth/admin/users/{id}` | `/v1/admin/users/{id}` | Pass-through (ADMIN) | Pass-through |
+
+### 7.4 Report (v1 + v2)
+
+| Method | Path | Rewrite | Request | Response |
+|---|---|---|---|---|
+| GET | `/v1/report` | `/api/report` | Pass-through (Bearer) | Pass-through |
+| POST | `/v1/report` | `/api/report` | Pass-through (Bearer) | Pass-through |
+| GET | `/v1/report/allReport` | `/api/report/allReport` | Pass-through (Bearer) | Pass-through |
+| GET | `/v1/report/{id}` | `/api/report/{id}` | Pass-through (Bearer) | Pass-through |
+| PUT | `/v1/report/{id}` | `/api/report/{id}` | Pass-through (Bearer) | Pass-through |
+| DELETE | `/v1/report/{id}` | `/api/report/{id}` | Pass-through (Bearer) | Pass-through |
+| GET | `/v2/report` | `/api/report` | Pass-through (Bearer) | Pass-through |
+| POST | `/v2/report` | `/api/report` | Pass-through (Bearer) | Pass-through |
+| GET | `/v2/report/allReport` | `/allReport` (stripPrefix) | Pass-through | Pass-through |
+| GET | `/v2/report/{id}` | `/{id}` (stripPrefix) | Pass-through | Pass-through |
+| PUT | `/v2/report/{id}` | `/{id}` (stripPrefix) | Pass-through | Pass-through |
+| DELETE | `/v2/report/{id}` | `/{id}` (stripPrefix) | Pass-through | Pass-through |
+
+### 7.5 Courses/Admin Courses (v1)
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| POST | `/v1/admin/courses` | Pass-through (ADMIN) | Pass-through |
+| DELETE | `/v1/admin/courses/{courseSlug}` | Pass-through (ADMIN) | Pass-through |
+| PATCH | `/v1/admin/courses/{courseSlug}` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/courses/{courseSlug}/weeks` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v1/admin/courses/{courseSlug}/enrollments` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/courses/{courseSlug}/enrollments` | Pass-through (ADMIN) | Pass-through |
+| PATCH | `/v1/admin/courses/{courseSlug}/enrollments/{userId}` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/courses/{courseSlug}/assignments` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/courses/{courseSlug}/assignments/{assignmentId}/publish` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v1/admin/courses/{courseSlug}/assignments/{assignmentId}/deliveries` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v1/admin/courses/{courseSlug}/assignments/{assignmentId}/deliveries` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v1/courses` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v1/courses/{courseSlug}` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v1/courses/{courseSlug}/weeks` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v1/courses/{courseSlug}/weeks/{weekNo}/assignments` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v1/courses/{courseSlug}/assignments` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v1/courses/{courseSlug}/assignments/{assignmentId}` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v1/courses/assignments/{assignmentId}/course` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+
+### 7.6 Courses/Admin Courses Alias (v2/post prefix)
+
+| Method | Path | Rewrite | Request | Response |
+|---|---|---|---|---|
+| POST | `/v2/post/admin/courses` | `/v1/admin/courses` | Pass-through (ADMIN) | Pass-through |
+| DELETE | `/v2/post/admin/courses/{courseSlug}` | `/v1/admin/courses/{courseSlug}` | Pass-through (ADMIN) | Pass-through |
+| PATCH | `/v2/post/admin/courses/{courseSlug}` | `/v1/admin/courses/{courseSlug}` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/post/admin/courses/{courseSlug}/weeks` | `/v1/admin/courses/{courseSlug}/weeks` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v2/post/admin/courses/{courseSlug}/enrollments` | `/v1/admin/courses/{courseSlug}/enrollments` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/post/admin/courses/{courseSlug}/enrollments` | `/v1/admin/courses/{courseSlug}/enrollments` | Pass-through (ADMIN) | Pass-through |
+| PATCH | `/v2/post/admin/courses/{courseSlug}/enrollments/{userId}` | `/v1/admin/courses/{courseSlug}/enrollments/{userId}` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/post/admin/courses/{courseSlug}/assignments` | `/v1/admin/courses/{courseSlug}/assignments` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/post/admin/courses/{courseSlug}/assignments/{assignmentId}/publish` | `/v1/admin/courses/{courseSlug}/assignments/{assignmentId}/publish` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v2/post/admin/courses/{courseSlug}/assignments/{assignmentId}/deliveries` | `/v1/admin/courses/{courseSlug}/assignments/{assignmentId}/deliveries` | Pass-through (ADMIN) | Pass-through |
+| POST | `/v2/post/admin/courses/{courseSlug}/assignments/{assignmentId}/deliveries` | `/v1/admin/courses/{courseSlug}/assignments/{assignmentId}/deliveries` | Pass-through (ADMIN) | Pass-through |
+| GET | `/v2/post/courses` | `/v1/courses` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v2/post/courses/{courseSlug}` | `/v1/courses/{courseSlug}` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v2/post/courses/{courseSlug}/weeks` | `/v1/courses/{courseSlug}/weeks` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v2/post/courses/{courseSlug}/weeks/{weekNo}/assignments` | `/v1/courses/{courseSlug}/weeks/{weekNo}/assignments` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v2/post/courses/{courseSlug}/assignments` | `/v1/courses/{courseSlug}/assignments` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v2/post/courses/{courseSlug}/assignments/{assignmentId}` | `/v1/courses/{courseSlug}/assignments/{assignmentId}` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+| GET | `/v2/post/courses/assignments/{assignmentId}/course` | `/v1/courses/assignments/{assignmentId}/course` | Pass-through (USER/ORGANIZER/ADMIN) | Pass-through |
+
+### 7.7 Blog/Post
+
+| Method | Path | Rewrite | Request | Response |
+|---|---|---|---|---|
+| GET | `/v1/posts` | - | Pass-through (Public) | Pass-through |
+| GET | `/v1/posts/drafts` | - | Pass-through (ORGANIZER/ADMIN) | Pass-through |
+| POST | `/v1/posts` | - | Pass-through (ORGANIZER/ADMIN, multipart 허용) | Pass-through |
+| GET | `/v1/posts/{postId}` | - | Pass-through (Public) | Pass-through |
+| PATCH | `/v1/posts/{postId}` | - | Pass-through (ORGANIZER/ADMIN) | Pass-through |
+| DELETE | `/v1/posts/{postId}` | - | Pass-through (ORGANIZER/ADMIN) | Pass-through |
+| POST | `/v1/posts/images` | - | Pass-through (ORGANIZER/ADMIN, multipart 허용) | Pass-through |
+| GET | `/v2/post` | `/v1/posts` | Pass-through (Public) | Pass-through |
+| GET | `/v2/post/drafts` | `/v1/posts/drafts` | Pass-through (ORGANIZER/ADMIN) | Pass-through |
+| POST | `/v2/post` | `/v1/posts` | Pass-through (ORGANIZER/ADMIN, multipart 허용) | Pass-through |
+| GET | `/v2/post/{postId}` | `/v1/posts/{postId}` | Pass-through (Public) | Pass-through |
+| PATCH | `/v2/post/{postId}` | `/v1/posts/{postId}` | Pass-through (ORGANIZER/ADMIN) | Pass-through |
+| DELETE | `/v2/post/{postId}` | `/v1/posts/{postId}` | Pass-through (ORGANIZER/ADMIN) | Pass-through |
+| POST | `/v2/post/images` | `/v1/posts/images` | Pass-through (ORGANIZER/ADMIN, multipart 허용) | Pass-through |
+
+## 8. 코드 기준 비노출 경로 (주의)
+
+아래는 하위 서비스 OpenAPI에 존재할 수 있으나, 현재 Gateway allowlist/route 기준으로는 **외부 비노출** 상태다.
+
+- `POST /v1/posts/{postId}/collaborators`
+- `GET /v1/posts/me`
+- `GET /v1/posts/drafts/me`
+
+필요 시 `GatewayRequestPolicyFilter` allowlist + `application.yaml` route를 함께 추가해야 한다.
+
+## 9. 환경변수
+
+- `AUTH_SERVICE_URI`
+- `REPORT_SERVICE_URI`
+- `POST_SERVICE_URI`
 - `AUTH_ISSUER_URI`
-- `AUTH_JWK_SET_URI`
-- `AUTH_AUDIENCE` (default `aandi-gateway`)
+- `AUTH_AUDIENCE`
+- `AUTH_JWT_SECRET`
+- `AUTH_JWT_CLOCK_SKEW_SECONDS`
 - `INTERNAL_EVENT_TOKEN`
-- `TOKEN_CACHE_TTL` (optional, default `24h`)
+- `CORS_ALLOWED_ORIGIN_PATTERNS`
+- `ENFORCE_HTTPS`
+- `ALLOWED_HOSTS`
+- `ALLOW_PRIVATE_IP_HOST`
+- `ENFORCE_METHOD_PATH_ALLOWLIST`
+- `ENFORCE_JSON_CONTENT_TYPE`
+- `PREVALIDATE_REFRESH_TOKEN_TYPE`
+- `AUTH_RATE_LIMIT_ENABLED`
+- `AUTH_LOGIN_RATE_LIMIT_PER_MINUTE`
+- `AUTH_REFRESH_RATE_LIMIT_PER_MINUTE`
+- `AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE`
+- `MAX_REQUEST_BODY_SIZE`
+- `MAX_REQUEST_HEADER_SIZE`
 - `REDIS_HOST`
 - `REDIS_PORT`
 - `REDIS_PASSWORD`
-- `REPORT_SERVICE_URI`
-- `USER_SERVICE_URI`
-- `ADMIN_SERVICE_URI`
-- `POST_SERVICE_URI`
-- `AUTH_SERVICE_URI`
-- `MANAGEMENT_SERVER_PORT` (default `9090`)
-- `MANAGEMENT_SERVER_ADDRESS` (default `127.0.0.1`)
-
-## 8) 미정의/추가 예정
-
-- 무효화 이벤트를 메시지 브로커(SQS/SNS/Kafka)로 전환할지 여부
-
-## 9) 호환성 정책
-
-- 구버전(`v1`) 경로는 신규 구현하지 않는다.
-- 신규 라우팅/엔드포인트는 `/v2/{feature}/{resource}` 규칙을 따른다.
