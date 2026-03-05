@@ -255,6 +255,13 @@ spring:
               predicates:
                 - Path=/v1/posts/drafts
                 - Method=GET
+            - id: post-service-v1-posts-drafts-me
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/drafts/me
+                - Method=GET
+              filters:
+                - SetPath=/v1/posts/drafts
             - id: post-service-v1-posts-subpaths-get
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
@@ -373,6 +380,13 @@ spring:
                 - Path=/v2/post/courses/**
               filters:
                 - RewritePath=/v2/post/courses/(?<segment>.*), /v1/courses/$\{segment}
+            - id: post-service-drafts-me
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/post/drafts/me
+                - Method=GET
+              filters:
+                - SetPath=/v1/posts/drafts
             - id: post-service-posts-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
