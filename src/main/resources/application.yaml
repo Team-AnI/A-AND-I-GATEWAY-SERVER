@@ -250,18 +250,20 @@ spring:
               predicates:
                 - Path=/v1/posts
                 - Method=POST
-            - id: post-service-v1-posts-drafts
-              uri: ${POST_SERVICE_URI:http://localhost:8084}
-              predicates:
-                - Path=/v1/posts/drafts
-                - Method=GET
             - id: post-service-v1-posts-drafts-me
+              order: -1
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v1/posts/drafts/me
                 - Method=GET
               filters:
                 - SetPath=/v1/posts/drafts
+            - id: post-service-v1-posts-drafts
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/drafts
+                - Method=GET
             - id: post-service-v1-posts-subpaths-get
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
