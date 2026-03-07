@@ -3,6 +3,8 @@ package com.aandi.gateway.security
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.cloud.gateway.route.RouteDefinition
+import org.springframework.cloud.gateway.route.RouteDefinitionLocator
 import org.springframework.context.ApplicationContext
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
@@ -11,7 +13,9 @@ import org.springframework.security.test.web.reactive.server.SecurityMockServerC
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.web.reactive.function.BodyInserters
+import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(
@@ -24,7 +28,8 @@ import kotlin.test.assertTrue
     ]
 )
 class SecurityConfigTests(
-    @Autowired private val applicationContext: ApplicationContext
+    @Autowired private val applicationContext: ApplicationContext,
+    @Autowired private val routeDefinitionLocator: RouteDefinitionLocator
 ) {
     private val webTestClient: WebTestClient by lazy {
         WebTestClient.bindToApplicationContext(applicationContext)
@@ -276,6 +281,54 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `drafts root endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/posts/drafts")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `drafts root endpoint is forbidden for user role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v1/posts/drafts")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `drafts me route does not rewrite to drafts root`() {
+        val draftsMeRoute = routeById("post-service-v1-posts-drafts-me")
+        val hasSetPath = draftsMeRoute.filters.any { it.name == "SetPath" }
+
+        assertTrue(!hasSetPath, "drafts/me route must not rewrite to drafts root")
+    }
+
+    @Test
+    fun `drafts root route remains separate`() {
+        val draftsRoute = routeById("post-service-v1-posts-drafts")
+        val pathPredicate = draftsRoute.predicates.firstOrNull { it.name == "Path" }
+        val methodPredicate = draftsRoute.predicates.firstOrNull { it.name == "Method" }
+
+        assertNotNull(pathPredicate, "drafts root route should have path predicate")
+        assertNotNull(methodPredicate, "drafts root route should have method predicate")
+        assertTrue(pathPredicate.args.values.contains("/v1/posts/drafts"))
+        assertTrue(methodPredicate.args.values.contains("GET"))
+    }
+
+    @Test
+    fun `legacy drafts me route maps to drafts me backend path`() {
+        val legacyDraftsMeRoute = routeById("post-service-drafts-me")
+        val setPathFilter = legacyDraftsMeRoute.filters.firstOrNull { it.name == "SetPath" }
+
+        assertNotNull(setPathFilter, "legacy drafts/me route should set backend path")
+        assertEquals("/v1/posts/drafts/me", setPathFilter.args.values.firstOrNull())
+    }
+
+    @Test
     fun `post create requires organizer or admin`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
@@ -393,5 +446,11 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isAccepted
+    }
+
+    private fun routeById(routeId: String): RouteDefinition {
+        val definitions = routeDefinitionLocator.routeDefinitions.collectList().block().orEmpty()
+        return definitions.firstOrNull { it.id == routeId }
+            ?: error("Missing route definition: $routeId")
     }
 }

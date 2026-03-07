@@ -256,8 +256,6 @@ spring:
               predicates:
                 - Path=/v1/posts/drafts/me
                 - Method=GET
-              filters:
-                - SetPath=/v1/posts/drafts
             - id: post-service-v1-posts-drafts
               order: -1
               uri: ${POST_SERVICE_URI:http://localhost:8084}
@@ -388,7 +386,7 @@ spring:
                 - Path=/v2/post/drafts/me
                 - Method=GET
               filters:
-                - SetPath=/v1/posts/drafts
+                - SetPath=/v1/posts/drafts/me
             - id: post-service-posts-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
