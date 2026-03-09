@@ -304,6 +304,24 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `v1 course admin assignments endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/admin/courses/back-basic/assignments")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v1 course admin assignment detail endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/admin/courses/back-basic/assignments/assignment-1")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `v1 assignment to course query endpoint is allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v1/courses/assignments/11111111-1111-1111-1111-111111111111/course")
