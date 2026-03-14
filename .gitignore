@@ -39,3 +39,5 @@ out/
 ### Kotlin ###
 .kotlin
 .omc/
+.codex-prompt.txt
+.omx/
