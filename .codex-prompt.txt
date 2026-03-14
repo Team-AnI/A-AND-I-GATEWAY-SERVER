@@ -1,0 +1,12 @@
+Please review the Spring Cloud Gateway routes configuration in application.yaml.
+
+The routes have been refactored from 95 route definitions to 30, consolidating duplicates and improving organization.
+
+Focus on:
+1. Route priority and ordering - are there any path conflicts?
+2. Correctness of RewritePath patterns
+3. Whether all original endpoints are still covered
+4. Any potential routing issues or edge cases
+5. Best practices for Spring Cloud Gateway route configuration
+
+Provide a thorough code review with specific feedback on any issues or improvements needed.

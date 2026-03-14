@@ -52,6 +52,21 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `swagger config includes online judge api docs entry`() {
+        webTestClient.get()
+            .uri("/v3/api-docs/swagger-config")
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectBody(String::class.java)
+            .value { body ->
+                val swaggerConfig = body.orEmpty()
+                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs"))
+                assertTrue(swaggerConfig.contains("online-judge-service"))
+            }
+    }
+
+    @Test
     fun `auth login endpoint is public`() {
         webTestClient.post()
             .uri("/v1/auth/login")
@@ -480,6 +495,23 @@ class SecurityConfigTests(
 
         assertNotNull(setPathFilter, "online judge openapi route should set backend path")
         assertEquals("/v3/api-docs", setPathFilter.args.values.firstOrNull())
+    }
+
+    @Test
+    fun `online judge openapi subpath route rewrites from prefixed path`() {
+        val openApiSubpathRoute = routeById("online-judge-service-openapi-subpaths")
+        val rewriteFilter = openApiSubpathRoute.filters.firstOrNull { it.name == "RewritePath" }
+        val rewriteArgs = rewriteFilter?.args?.values.orEmpty()
+
+        assertNotNull(rewriteFilter, "online judge openapi subpath route should rewrite path")
+        assertTrue(
+            rewriteArgs.any { it.contains("/v2/online-judge/v3/api-docs/(?<segment>.*)") },
+            "rewrite args must include prefixed source path, actual=$rewriteArgs"
+        )
+        assertTrue(
+            rewriteArgs.any { it.contains("/v3/api-docs/") },
+            "rewrite args must target /v3/api-docs/*, actual=$rewriteArgs"
+        )
     }
 
     @Test
