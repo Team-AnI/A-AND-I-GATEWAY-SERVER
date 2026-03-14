@@ -12,11 +12,14 @@ import org.springframework.web.util.pattern.PathPattern
 import org.springframework.web.util.pattern.PathPatternParser
 import reactor.core.publisher.Mono
 import java.net.InetAddress
+import org.slf4j.LoggerFactory
 
 @Component
 class GatewayRequestPolicyFilter(
     private val policy: SecurityPolicyProperties
 ) : WebFilter, Ordered {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     private val parser = PathPatternParser.defaultInstance
 
@@ -179,6 +182,14 @@ class GatewayRequestPolicyFilter(
         }
 
         if (policy.enforceHttps && !isHttps(exchange)) {
+            log.warn(
+                "Rejecting request due to HTTPS policy: method={}, path={}, host={}, forwardedProto={}, remoteAddress={}",
+                request.method,
+                path.value(),
+                request.headers.host?.hostString,
+                request.headers.getFirst("X-Forwarded-Proto"),
+                request.remoteAddress?.address?.hostAddress
+            )
             return reject(exchange, HttpStatus.FORBIDDEN)
         }
 
@@ -187,6 +198,15 @@ class GatewayRequestPolicyFilter(
             val allowedHosts = policy.allowedHosts.map { it.lowercase() }.toSet()
             val hostAllowed = host in allowedHosts || (policy.allowPrivateIpHost && isPrivateIpHost(host))
             if (host.isBlank() || !hostAllowed) {
+                log.warn(
+                    "Rejecting request due to host policy: method={}, path={}, host={}, allowedHosts={}, allowPrivateIpHost={}, remoteAddress={}",
+                    request.method,
+                    path.value(),
+                    request.headers.host?.hostString,
+                    allowedHosts,
+                    policy.allowPrivateIpHost,
+                    request.remoteAddress?.address?.hostAddress
+                )
                 return reject(exchange, HttpStatus.FORBIDDEN)
             }
         }
