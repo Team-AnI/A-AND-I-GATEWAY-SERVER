@@ -222,6 +222,17 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `admin users sync endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/admin/users/sync")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `legacy admin invite mail endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
@@ -295,6 +306,15 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `course outline endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/courses/back-basic/outline")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `v1 course admin enrollments endpoint is allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v1/admin/courses/back-basic/enrollments")
@@ -340,6 +360,26 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `course submission create endpoint is allowlisted and requires authentication`() {
+        webTestClient.post()
+            .uri("/v1/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/submissions")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"content":"submission"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `course submission stream endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/submissions/22222222-2222-2222-2222-222222222222/stream")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `course admin endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
@@ -349,6 +389,26 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+    }
+
+    @Test
+    fun `removed admin publish route is no longer allowlisted`() {
+        webTestClient.post()
+            .uri("/v1/admin/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/publish")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+    }
+
+    @Test
+    fun `removed legacy deliveries route is no longer allowlisted`() {
+        webTestClient.get()
+            .uri("/v2/post/admin/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/deliveries")
+            .exchange()
+            .expectStatus()
+            .isNotFound
     }
 
     @Test
