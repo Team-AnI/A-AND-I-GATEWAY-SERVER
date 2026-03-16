@@ -76,6 +76,7 @@ jobs:
             AUTH_SERVICE_URI="${{ secrets.AUTH_SERVICE_URI }}"
             REPORT_SERVICE_URI="${{ secrets.REPORT_SERVICE_URI }}"
             POST_SERVICE_URI="${{ secrets.POST_SERVICE_URI }}"
+            ONLINE_JUDGE_SERVICE_URI="${{ secrets.ONLINE_JUDGE_SERVICE_URI }}"
             AUTH_JWT_SECRET="${{ secrets.AUTH_JWT_SECRET }}"
 
             if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="${{ secrets.AUTH_ISSUER_URI }}"; fi
@@ -95,6 +96,7 @@ jobs:
             [ -n "$AUTH_SERVICE_URI" ] || { echo "Missing secret: AUTH_SERVICE_URI"; exit 1; }
             [ -n "$REPORT_SERVICE_URI" ] || { echo "Missing secret: REPORT_SERVICE_URI"; exit 1; }
             [ -n "$POST_SERVICE_URI" ] || { echo "Missing secret: POST_SERVICE_URI"; exit 1; }
+            [ -n "$ONLINE_JUDGE_SERVICE_URI" ] || { echo "Missing secret: ONLINE_JUDGE_SERVICE_URI"; exit 1; }
             [ -n "$AUTH_JWT_SECRET" ] || { echo "Missing secret: AUTH_JWT_SECRET"; exit 1; }
 
             aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
@@ -186,6 +188,20 @@ jobs:
                 return 403;
               }
 
+              location ~ ^/v1/submissions/[^/]+/stream$ {
+                proxy_pass http://gateway:8080;
+                proxy_http_version 1.1;
+                proxy_set_header Connection "";
+                proxy_set_header Host \$host;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+                proxy_buffering off;
+                proxy_cache off;
+                proxy_read_timeout 3600s;
+                proxy_send_timeout 3600s;
+                add_header X-Accel-Buffering no;
+              }
+
               location / {
                 proxy_pass http://gateway:8080;
                 proxy_set_header Host \$host;
@@ -222,6 +238,7 @@ jobs:
                   AUTH_SERVICE_URI: "${AUTH_SERVICE_URI}"
                   REPORT_SERVICE_URI: "${REPORT_SERVICE_URI}"
                   POST_SERVICE_URI: "${POST_SERVICE_URI}"
+                  ONLINE_JUDGE_SERVICE_URI: "${ONLINE_JUDGE_SERVICE_URI}"
                   ENFORCE_HTTPS: "${ENFORCE_HTTPS}"
                   ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
                   ALLOW_PRIVATE_IP_HOST: "${ALLOW_PRIVATE_IP_HOST}"

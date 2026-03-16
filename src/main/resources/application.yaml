@@ -93,6 +93,11 @@ spring:
               predicates:
                 - Path=/v1/admin/users
                 - Method=POST
+            - id: auth-service-v1-admin-users-sync-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/users/sync
+                - Method=POST
             - id: auth-service-v1-admin-invite-mail-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
@@ -102,6 +107,11 @@ spring:
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v1/admin/users/role
+                - Method=PATCH
+            - id: auth-service-v1-admin-users-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/admin/users/**
                 - Method=PATCH
             - id: auth-service-v1-admin-users-reset-password
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
@@ -113,6 +123,14 @@ spring:
               predicates:
                 - Path=/v1/admin/users/**
                 - Method=DELETE
+            - id: auth-service-v1-users-root
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/users
+            - id: auth-service-v1-users-subpaths
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v1/users/**
 
             - id: auth-service-login
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
@@ -168,6 +186,13 @@ spring:
                 - Method=POST
               filters:
                 - SetPath=/v1/admin/users
+            - id: auth-service-admin-users-sync-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users/sync
+                - Method=POST
+              filters:
+                - SetPath=/v1/admin/users/sync
             - id: auth-service-admin-invite-mail-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
@@ -202,25 +227,25 @@ spring:
               predicates:
                 - Path=/v2/report
               filters:
-                - SetPath=/api/report
+                - SetPath=/v1/report
             - id: report-service-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/**
               filters:
-                - StripPrefix=2
+                - RewritePath=/v2/report/(?<segment>.*), /v1/report/$\{segment}
             - id: report-service-v1-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v1/report
               filters:
-                - SetPath=/api/report
+                - SetPath=/v1/report
             - id: report-service-v1-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v1/report/**
               filters:
-                - RewritePath=/v1/report/(?<segment>.*), /api/report/$\{segment}
+                - RewritePath=/v1/report/(?<segment>.*), /v1/report/$\{segment}
 
             - id: post-service-v1-posts-images
               uri: ${POST_SERVICE_URI:http://localhost:8084}
@@ -237,7 +262,14 @@ spring:
               predicates:
                 - Path=/v1/posts
                 - Method=POST
+            - id: post-service-v1-posts-drafts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v1/posts/drafts/me
+                - Method=GET
             - id: post-service-v1-posts-drafts
+              order: -1
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v1/posts/drafts
@@ -280,6 +312,24 @@ spring:
               predicates:
                 - Path=/v1/courses/**
 
+            - id: online-judge-service-v1-submissions-root-post
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v1/submissions
+                - Method=POST
+            - id: online-judge-service-v1-submissions-stream-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v1/submissions/{submissionId}/stream
+                - Method=GET
+              metadata:
+                response-timeout: 3600000
+            - id: online-judge-service-v1-submissions-by-id-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v1/submissions/{submissionId}
+                - Method=GET
+
             - id: post-service-openapi-root
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
@@ -293,12 +343,14 @@ spring:
               filters:
                 - RewritePath=/v2/post/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: report-service-openapi-root
+              order: -1
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/v3/api-docs
               filters:
                 - SetPath=/v3/api-docs
             - id: report-service-openapi-subpaths
+              order: -1
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/v3/api-docs/**
@@ -316,6 +368,18 @@ spring:
                 - Path=/v2/auth/v3/api-docs/**
               filters:
                 - RewritePath=/v2/auth/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
+            - id: online-judge-service-openapi-root
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: online-judge-service-openapi-subpaths
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/v3/api-docs/**
+              filters:
+                - RewritePath=/v2/online-judge/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: post-service-images-root
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
@@ -358,6 +422,13 @@ spring:
                 - Path=/v2/post/courses/**
               filters:
                 - RewritePath=/v2/post/courses/(?<segment>.*), /v1/courses/$\{segment}
+            - id: post-service-drafts-me
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/post/drafts/me
+                - Method=GET
+              filters:
+                - SetPath=/v1/posts/drafts/me
             - id: post-service-posts-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
@@ -389,6 +460,8 @@ springdoc:
         url: /v2/auth/v3/api-docs
       - name: post-service
         url: /v2/post/v3/api-docs
+      - name: online-judge-service
+        url: /v2/online-judge/v3/api-docs
 
 management:
   server:
