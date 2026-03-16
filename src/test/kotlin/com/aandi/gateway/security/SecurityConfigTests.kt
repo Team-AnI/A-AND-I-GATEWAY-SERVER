@@ -488,6 +488,24 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `problem submission me endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/problems/problem-1/submissions/me")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `admin submissions endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v1/admin/submissions")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `online judge submission create endpoint is allowlisted and requires authentication`() {
         webTestClient.post()
             .uri("/v1/submissions")
@@ -526,6 +544,18 @@ class SecurityConfigTests(
         assertNotNull(methodPredicate, "submission create route should have method predicate")
         assertTrue(pathPredicate.args.values.contains("/v1/submissions"))
         assertTrue(methodPredicate.args.values.contains("POST"))
+    }
+
+    @Test
+    fun `online judge admin submissions route has expected method and path predicates`() {
+        val adminSubmissionsRoute = routeById("online-judge-service-v1-admin-submissions-get")
+        val pathPredicate = adminSubmissionsRoute.predicates.firstOrNull { it.name == "Path" }
+        val methodPredicate = adminSubmissionsRoute.predicates.firstOrNull { it.name == "Method" }
+
+        assertNotNull(pathPredicate, "admin submissions route should have path predicate")
+        assertNotNull(methodPredicate, "admin submissions route should have method predicate")
+        assertTrue(pathPredicate.args.values.contains("/v1/admin/submissions"))
+        assertTrue(methodPredicate.args.values.contains("GET"))
     }
 
     @Test
