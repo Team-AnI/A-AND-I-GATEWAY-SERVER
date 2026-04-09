@@ -1,8 +1,9 @@
 package com.aandi.gateway.security
 
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.springframework.core.Ordered
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
@@ -16,7 +17,8 @@ import org.slf4j.LoggerFactory
 
 @Component
 class GatewayRequestPolicyFilter(
-    private val policy: SecurityPolicyProperties
+    private val policy: SecurityPolicyProperties,
+    private val responseWriter: GatewayResponseWriter
 ) : WebFilter, Ordered {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -226,7 +228,7 @@ class GatewayRequestPolicyFilter(
                 request.headers.getFirst("X-Forwarded-Proto"),
                 request.remoteAddress?.address?.hostAddress
             )
-            return reject(exchange, HttpStatus.FORBIDDEN)
+            return reject(exchange, GatewayErrorCode.HTTPS_REQUIRED)
         }
 
         if (policy.allowedHosts.isNotEmpty()) {
@@ -243,16 +245,16 @@ class GatewayRequestPolicyFilter(
                     policy.allowPrivateIpHost,
                     request.remoteAddress?.address?.hostAddress
                 )
-                return reject(exchange, HttpStatus.FORBIDDEN)
+                return reject(exchange, GatewayErrorCode.HOST_NOT_ALLOWED)
             }
         }
 
         if (policy.enforceMethodPathAllowlist && allowRules.none { it.matches(request.method, path) }) {
-            return reject(exchange, HttpStatus.NOT_FOUND)
+            return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
         }
 
         if (policy.enforceJsonContentType && requiresJsonContentType(request.method) && !isJsonRequest(request, path)) {
-            return reject(exchange, HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+            return reject(exchange, GatewayErrorCode.JSON_CONTENT_TYPE_REQUIRED)
         }
 
         return chain.filter(exchange)
@@ -275,17 +277,8 @@ class GatewayRequestPolicyFilter(
         return contentType != null && (contentType.isCompatibleWith(MediaType.APPLICATION_JSON) || contentType.subtype.endsWith("+json"))
     }
 
-    private fun reject(exchange: ServerWebExchange, status: HttpStatus): Mono<Void> {
-        val response = exchange.response
-        response.statusCode = status
-        val origin = exchange.request.headers.origin
-        if (!origin.isNullOrBlank()) {
-            response.headers.set("Access-Control-Allow-Origin", origin)
-            if (response.headers.getFirst("Vary") == null) {
-                response.headers.add("Vary", "Origin")
-            }
-        }
-        return response.setComplete()
+    private fun reject(exchange: ServerWebExchange, errorCode: GatewayErrorCode): Mono<Void> {
+        return responseWriter.writeError(exchange, errorCode)
     }
 
     private fun isPrivateIpHost(host: String): Boolean {

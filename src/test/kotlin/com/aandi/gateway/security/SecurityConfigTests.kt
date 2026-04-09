@@ -106,6 +106,15 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.success").isEqualTo("SUCCESS")
+            .jsonPath("$.data").isEmpty()
+            .jsonPath("$.error.code").isEqualTo(11001)
+            .jsonPath("$.error.value").isEqualTo("AUTHENTICATION_FAILED")
+            .jsonPath("$.error.alert").isEqualTo("로그인 후 이용해주세요.")
+            .jsonPath("$.timestamp").exists()
     }
 
     @Test
@@ -207,6 +216,14 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.success").isEqualTo("SUCCESS")
+            .jsonPath("$.data").isEmpty()
+            .jsonPath("$.error.code").isEqualTo(12001)
+            .jsonPath("$.error.value").isEqualTo("ACCESS_DENIED")
+            .jsonPath("$.timestamp").exists()
     }
 
     @Test
@@ -713,6 +730,11 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isNotFound
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(15001)
+            .jsonPath("$.error.value").isEqualTo("ENDPOINT_NOT_ALLOWLISTED")
     }
 
     @Test
@@ -733,6 +755,11 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(11003)
+            .jsonPath("$.error.value").isEqualTo("INTERNAL_TOKEN_INVALID")
     }
 
     @Test
@@ -745,6 +772,104 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isAccepted
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.success").isEqualTo("SUCCESS")
+            .jsonPath("$.error").isEmpty()
+            .jsonPath("$.data.invalidatedKeys").isEqualTo(0)
+            .jsonPath("$.timestamp").exists()
+    }
+
+    @Test
+    fun `login request without required fields returns standard validation error`() {
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13001)
+            .jsonPath("$.error.value").isEqualTo("LOGIN_REQUEST_BODY_INVALID")
+            .jsonPath("$.error.alert").isEqualTo("아이디와 비밀번호를 확인해 주세요.")
+    }
+
+    @Test
+    fun `refresh request without token returns standard validation error`() {
+        webTestClient.post()
+            .uri("/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13002)
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_REQUIRED")
+            .jsonPath("$.error.alert").isEqualTo("로그인이 만료되었습니다.")
+    }
+
+    @Test
+    fun `refresh request with invalid token returns standard authentication error`() {
+        webTestClient.post()
+            .uri("/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"refreshToken":"invalid-token"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(11002)
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_INVALID")
+            .jsonPath("$.error.alert").isEqualTo("로그인이 만료되었습니다.")
+    }
+
+    @Test
+    fun `login request with invalid content type returns standard content type error`() {
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.TEXT_PLAIN)
+            .bodyValue("username=demo")
+            .exchange()
+            .expectStatus()
+            .isEqualTo(415)
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13003)
+            .jsonPath("$.error.value").isEqualTo("JSON_CONTENT_TYPE_REQUIRED")
+    }
+
+    @Test
+    fun `login rate limit returns standard error envelope`() {
+        repeat(10) {
+            webTestClient.post()
+                .uri("/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""{"username":"demo","password":"demo"}""")
+                .exchange()
+        }
+
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"username":"demo","password":"demo"}""")
+            .exchange()
+            .expectStatus()
+            .isEqualTo(429)
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(10003)
+            .jsonPath("$.error.value").isEqualTo("LOGIN_RATE_LIMIT_EXCEEDED")
     }
 
     private fun routeById(routeId: String): RouteDefinition {

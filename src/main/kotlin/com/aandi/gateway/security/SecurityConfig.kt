@@ -1,5 +1,7 @@
 package com.aandi.gateway.security
 
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,7 +33,9 @@ import javax.crypto.spec.SecretKeySpec
 
 @Configuration
 @EnableWebFluxSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val responseWriter: GatewayResponseWriter
+) {
 
     @Bean
     fun corsConfigurationSource(
@@ -109,20 +113,10 @@ class SecurityConfig {
             }
             .exceptionHandling { exceptions ->
                 exceptions.authenticationEntryPoint { exchange, _ ->
-                    val response = exchange.response
-                    response.statusCode = HttpStatus.UNAUTHORIZED
-                    applyCorsHeaders(exchange)
-                    response.headers.contentType = MediaType.APPLICATION_JSON
-                    val body = "{\"message\":\"Unauthorized\"}".toByteArray()
-                    response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
+                    responseWriter.writeError(exchange, GatewayErrorCode.AUTHENTICATION_FAILED)
                 }
                 exceptions.accessDeniedHandler { exchange, _ ->
-                    val response = exchange.response
-                    response.statusCode = HttpStatus.FORBIDDEN
-                    applyCorsHeaders(exchange)
-                    response.headers.contentType = MediaType.APPLICATION_JSON
-                    val body = "{\"message\":\"Forbidden\"}".toByteArray()
-                    response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
+                    responseWriter.writeError(exchange, GatewayErrorCode.ACCESS_DENIED)
                 }
             }
             .oauth2ResourceServer { oauth2 ->
@@ -176,19 +170,6 @@ class SecurityConfig {
             val role = UserRole.fromClaim(jwt.getClaimAsString("role"))
             val authorities = role?.grantedAuthorities() ?: listOf(SimpleGrantedAuthority("ROLE_USER"))
             Mono.just(JwtAuthenticationToken(jwt, authorities, jwt.subject))
-        }
-    }
-
-    private fun applyCorsHeaders(exchange: ServerWebExchange) {
-        val origin = exchange.request.headers.origin?.trim().orEmpty()
-        if (origin.isBlank()) {
-            return
-        }
-
-        val headers = exchange.response.headers
-        headers.set("Access-Control-Allow-Origin", origin)
-        if (headers.getFirst("Vary") == null) {
-            headers.add("Vary", "Origin")
         }
     }
 }

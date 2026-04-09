@@ -1,86 +1,15 @@
-# A-AND-I-REPORT-GATEWAY-SERVER
+# Gateway Error Contract Mapping
 
-## API Response Contract
+이 문서는 현재 `aandi-gateway-server`에서 실제로 발생하는 에러 상황을 표준 에러 통신 규약으로 매핑한 정의다.
 
-이 게이트웨이에서 발생하는 **모든 응답과 에러는 반드시 아래 공통 응답 형식**을 따라야 합니다.
+## Rules
 
-### Success Response
+- 이 게이트웨이에서 발생하는 모든 에러 응답은 반드시 공통 응답 형식을 따라야 한다.
+- `message`와 `alert`는 한국어로 작성한다.
+- `value`는 영문 대문자 스네이크 케이스를 유지한다.
+- 아래 표의 각 항목은 실제 게이트웨이 에러 상황에 대한 공식 매핑이다.
 
-```json
-{
-  "success": "SUCCESS",
-  "data": {
-    "...": "..."
-  },
-  "error": null,
-  "timestamp": "2026-03-25T21:23:36.958558466+09:00"
-}
-```
-
-### Failure Response
-
-```json
-{
-  "success": "SUCCESS",
-  "data": null,
-  "error": {
-    "code": 13001,
-    "message": "로그인 요청 본문 검증에 실패했습니다. `username` 또는 `password` 값이 없거나 비어 있습니다.",
-    "value": "LOGIN_REQUEST_BODY_INVALID",
-    "alert": "아이디와 비밀번호를 확인해 주세요."
-  },
-  "timestamp": "2026-03-25T21:23:36.958558466+09:00"
-}
-```
-
-### Error Field Definition
-
-- `code` (`Integer`): 에러 응답 코드
-- `message` (`String`): 어떤 필드 또는 어떤 값에서 문제가 발생했는지 나타내는 개발자용 메시지
-- `value` (`String`): `code`에 대응하는 에러 값
-- `alert` (`String`): 클라이언트가 토스트 또는 다이얼로그로 사용자에게 보여줄 메시지
-
-## Error Code Policy
-
-게이트웨이에서 발생할 수 있는 모든 에러는 아래 에러 코드 체계를 따라야 합니다.
-
-### 5.1 에러 코드 형식
-
-| 항목 | 내용 |
-|---|---|
-| 형식 | 5자리 정수 |
-| 구조 | `[서비스 1자리][분류 1자리][상세 3자리]` |
-| 예시 | `21301` |
-
-### 5.2 서비스 구분 코드
-
-| 코드 | 서비스 |
-|---|---|
-| 1 | Gateway |
-| 2 | Auth |
-| 3 | User |
-| 4 | Report |
-| 5 | Judge |
-| 6 | Blog |
-| 9 | Common |
-
-### 5.3 분류 코드
-
-| 코드 | 의미 |
-|---|---|
-| 0 | 일반 |
-| 1 | 인증 |
-| 2 | 인가 |
-| 3 | 검증 |
-| 4 | 비즈니스 |
-| 5 | 리소스 없음 |
-| 6 | 중복 / 충돌 |
-| 7 | 외부 시스템 |
-| 8 | 시스템 내부 오류 |
-
-## Gateway Error Contract Mapping
-
-아래 표는 **현재 게이트웨이 코드에서 실제로 발생하는 에러 상황**을, 반드시 따라야 하는 **표준 에러 통신 규약**으로 매핑한 정의입니다.
+## Mapping Table
 
 | Code | 에러 상황 | HTTP | Value | Message | Alert |
 |---:|---|---:|---|---|---|
@@ -97,3 +26,22 @@
 | 13002 | refresh/logout 요청에서 `refreshToken` 누락/공백 | 400 | REFRESH_TOKEN_REQUIRED | 토큰 재발급 또는 로그아웃 요청에 `refreshToken` 값이 없거나 비어 있습니다. | 로그인이 만료되었습니다. |
 | 13003 | JSON Content-Type 강제 위반 | 415 | JSON_CONTENT_TYPE_REQUIRED | 요청 `Content-Type`은 `application/json` 또는 호환되는 `+json` 형식이어야 합니다. | 요청 형식이 올바르지 않아요. 다시 시도해 주세요. |
 | 15001 | 허용되지 않은 method/path | 404 | ENDPOINT_NOT_ALLOWLISTED | 요청 메서드와 경로가 게이트웨이 허용 목록에 없습니다. | 요청한 기능을 찾을 수 없어요. |
+
+## Source Mapping
+
+- `SecurityConfig.kt`
+  - 인증 실패
+  - 인가 실패
+- `GatewayRequestPolicyFilter.kt`
+  - HTTPS 정책 위반
+  - Host 정책 위반
+  - 허용되지 않은 method/path
+  - JSON Content-Type 강제 위반
+- `AuthRequestValidationFilter.kt`
+  - 로그인 요청 body 검증 실패
+  - refreshToken 누락
+  - refresh token 사전 검증 실패
+- `AuthRateLimitFilter.kt`
+  - login / refresh / logout rate limit 초과
+- `InvalidationWebhookController.kt`
+  - 내부 webhook 토큰 불일치
