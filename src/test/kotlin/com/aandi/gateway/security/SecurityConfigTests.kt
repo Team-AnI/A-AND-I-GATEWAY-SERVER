@@ -52,7 +52,7 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `swagger config includes online judge api docs entry`() {
+    fun `swagger config includes per service versioned api docs entries`() {
         webTestClient.get()
             .uri("/v3/api-docs/swagger-config")
             .exchange()
@@ -61,8 +61,12 @@ class SecurityConfigTests(
             .expectBody(String::class.java)
             .value { body ->
                 val swaggerConfig = body.orEmpty()
-                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs"))
-                assertTrue(swaggerConfig.contains("online-judge-service"))
+                assertTrue(swaggerConfig.contains("/v2/auth/v3/api-docs/v1"))
+                assertTrue(swaggerConfig.contains("/v2/auth/v3/api-docs/v2"))
+                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs/v1"))
+                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs/v2"))
+                assertTrue(swaggerConfig.contains("auth-service-v1"))
+                assertTrue(swaggerConfig.contains("auth-service-v2"))
             }
     }
 

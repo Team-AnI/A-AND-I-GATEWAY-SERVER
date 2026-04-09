@@ -491,14 +491,22 @@ springdoc:
   swagger-ui:
     path: /
     urls:
-      - name: report-service
-        url: /v2/report/v3/api-docs
-      - name: auth-service
-        url: /v2/auth/v3/api-docs
-      - name: post-service
-        url: /v2/post/v3/api-docs
-      - name: online-judge-service
-        url: /v2/online-judge/v3/api-docs
+      - name: report-service-v1
+        url: /v2/report/v3/api-docs/v1
+      - name: report-service-v2
+        url: /v2/report/v3/api-docs/v2
+      - name: auth-service-v1
+        url: /v2/auth/v3/api-docs/v1
+      - name: auth-service-v2
+        url: /v2/auth/v3/api-docs/v2
+      - name: post-service-v1
+        url: /v2/post/v3/api-docs/v1
+      - name: post-service-v2
+        url: /v2/post/v3/api-docs/v2
+      - name: online-judge-service-v1
+        url: /v2/online-judge/v3/api-docs/v1
+      - name: online-judge-service-v2
+        url: /v2/online-judge/v3/api-docs/v2
 
 management:
   server:
