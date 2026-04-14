@@ -137,22 +137,16 @@ spring:
               predicates:
                 - Path=/v2/auth/login
                 - Method=POST
-              filters:
-                - SetPath=/v1/auth/login
             - id: auth-service-refresh
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/refresh
                 - Method=POST
-              filters:
-                - SetPath=/v1/auth/refresh
             - id: auth-service-logout
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/logout
                 - Method=POST
-              filters:
-                - SetPath=/v1/auth/logout
             - id: auth-service-activate
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
@@ -163,77 +157,55 @@ spring:
               predicates:
                 - Path=/v2/auth/me
                 - Method=GET
-              filters:
-                - SetPath=/v1/me
             - id: auth-service-admin-ping
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/ping
                 - Method=GET
-              filters:
-                - SetPath=/v1/admin/ping
             - id: auth-service-admin-users-get
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users
                 - Method=GET
-              filters:
-                - SetPath=/v1/admin/users
             - id: auth-service-admin-users-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users
                 - Method=POST
-              filters:
-                - SetPath=/v1/admin/users
             - id: auth-service-admin-users-sync-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users/sync
                 - Method=POST
-              filters:
-                - SetPath=/v1/admin/users/sync
             - id: auth-service-admin-invite-mail-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/invite-mail
                 - Method=POST
-              filters:
-                - SetPath=/v1/admin/invite-mail
             - id: auth-service-admin-users-role-patch
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users/role
                 - Method=PATCH
-              filters:
-                - SetPath=/v1/admin/users/role
             - id: auth-service-admin-users-delete-root
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users
                 - Method=DELETE
-              filters:
-                - SetPath=/v1/admin/users
             - id: auth-service-admin-users-delete
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users/**
                 - Method=DELETE
-              filters:
-                - RewritePath=/v2/auth/admin/users/(?<segment>.*), /v1/admin/users/$\{segment}
 
             - id: report-service-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report
-              filters:
-                - SetPath=/v1/report
             - id: report-service-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/**
-              filters:
-                - RewritePath=/v2/report/(?<segment>.*), /v1/report/$\{segment}
             - id: report-service-v1-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
@@ -421,57 +393,39 @@ spring:
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/images
-              filters:
-                - SetPath=/v1/posts/images
             - id: post-service-images-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/images/**
-              filters:
-                - RewritePath=/v2/post/images/(?<segment>.*), /v1/posts/images/$\{segment}
             - id: post-service-posts-root
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post
-              filters:
-                - SetPath=/v1/posts
             - id: report-service-admin-courses-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/admin/courses
-              filters:
-                - SetPath=/v1/admin/courses
             - id: report-service-admin-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/admin/courses/**
-              filters:
-                - RewritePath=/v2/post/admin/courses/(?<segment>.*), /v1/admin/courses/$\{segment}
             - id: report-service-courses-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/courses
-              filters:
-                - SetPath=/v1/courses
             - id: report-service-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/courses/**
-              filters:
-                - RewritePath=/v2/post/courses/(?<segment>.*), /v1/courses/$\{segment}
             - id: post-service-drafts-me
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/drafts/me
                 - Method=GET
-              filters:
-                - SetPath=/v1/posts/drafts/me
             - id: post-service-posts-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/**
-              filters:
-                - RewritePath=/v2/post/(?<segment>.*), /v1/posts/$\{segment}
           httpclient:
             connect-timeout: 3000
             response-timeout: 10s

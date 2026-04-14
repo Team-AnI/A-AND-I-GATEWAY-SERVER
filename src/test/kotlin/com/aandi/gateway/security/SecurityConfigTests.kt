@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.BodyInserters
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(
@@ -286,7 +287,7 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `legacy admin invite mail endpoint is forbidden for non admin role`() {
+    fun `v2 admin invite mail endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
             .uri("/v2/auth/admin/invite-mail")
@@ -368,12 +369,13 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `legacy drafts me route maps to drafts me backend path`() {
-        val legacyDraftsMeRoute = routeById("post-service-drafts-me")
-        val setPathFilter = legacyDraftsMeRoute.filters.firstOrNull { it.name == "SetPath" }
+    fun `v2 drafts me route preserves v2 backend path`() {
+        val v2DraftsMeRoute = routeById("post-service-drafts-me")
+        val setPathFilter = v2DraftsMeRoute.filters.firstOrNull { it.name == "SetPath" }
+        val rewriteFilter = v2DraftsMeRoute.filters.firstOrNull { it.name == "RewritePath" }
 
-        assertNotNull(setPathFilter, "legacy drafts/me route should set backend path")
-        assertEquals("/v1/posts/drafts/me", setPathFilter.args.values.firstOrNull())
+        assertNull(setPathFilter, "v2 drafts/me route must not rewrite to a v1 backend path")
+        assertNull(rewriteFilter, "v2 drafts/me route must not rewrite to a v1 backend path")
     }
 
     @Test
@@ -471,7 +473,7 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `legacy post assignment to course query endpoint remains allowlisted and requires authentication`() {
+    fun `v2 post assignment to course query endpoint remains allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v2/post/courses/assignments/11111111-1111-1111-1111-111111111111/course")
             .exchange()
@@ -738,7 +740,7 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `removed legacy deliveries route is no longer allowlisted`() {
+    fun `removed v2 deliveries route is no longer allowlisted`() {
         webTestClient.get()
             .uri("/v2/post/admin/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/deliveries")
             .exchange()

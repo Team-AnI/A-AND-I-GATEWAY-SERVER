@@ -126,7 +126,7 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health/**")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/info")),
         AllowRule(HttpMethod.POST, parser.parse("/internal/v1/cache/invalidation")),
-        // Legacy v2 routing
+        // v2 routing
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/login")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/refresh")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/logout")),
