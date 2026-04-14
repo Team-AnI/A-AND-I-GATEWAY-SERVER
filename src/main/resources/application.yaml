@@ -157,6 +157,21 @@ spring:
               predicates:
                 - Path=/v2/auth/me
                 - Method=GET
+            - id: auth-service-me-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me
+                - Method=POST
+            - id: auth-service-me-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me
+                - Method=PATCH
+            - id: auth-service-me-password-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me/password
+                - Method=POST
             - id: auth-service-admin-ping
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
@@ -187,6 +202,16 @@ spring:
               predicates:
                 - Path=/v2/auth/admin/users/role
                 - Method=PATCH
+            - id: auth-service-admin-users-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users/**
+                - Method=PATCH
+            - id: auth-service-admin-users-reset-password
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users/*/reset-password
+                - Method=POST
             - id: auth-service-admin-users-delete-root
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
@@ -197,6 +222,14 @@ spring:
               predicates:
                 - Path=/v2/auth/admin/users/**
                 - Method=DELETE
+            - id: auth-service-users-root
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/users
+            - id: auth-service-users-subpaths
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/users/**
 
             - id: report-service-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
@@ -337,6 +370,39 @@ spring:
               uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
               predicates:
                 - Path=/v1/submissions/{submissionId}
+                - Method=GET
+
+            - id: online-judge-service-v2-submissions-root-post
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/submissions
+                - Method=POST
+            - id: online-judge-service-v2-problem-submissions-me-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/problems/{problemId}/submissions/me
+                - Method=GET
+            - id: online-judge-service-v2-admin-submissions-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/admin/submissions
+                - Method=GET
+            - id: online-judge-service-v2-admin-testcases-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/admin/testcases
+                - Method=GET
+            - id: online-judge-service-v2-submissions-stream-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/submissions/{submissionId}/stream
+                - Method=GET
+              metadata:
+                response-timeout: 3600000
+            - id: online-judge-service-v2-submissions-by-id-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/submissions/{submissionId}
                 - Method=GET
 
             - id: post-service-openapi-root

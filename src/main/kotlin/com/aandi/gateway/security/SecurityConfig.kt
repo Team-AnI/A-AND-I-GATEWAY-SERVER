@@ -76,7 +76,7 @@ class SecurityConfig(
                 it.pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Public endpoints
                 it.pathMatchers(HttpMethod.POST, "/v1/auth/**").permitAll()
-                it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/activate").permitAll()
+                it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/v2/auth/logout", "/activate").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/internal/v1/cache/invalidation").permitAll()
                 it.pathMatchers("/api/ping/**").permitAll()
                 it.pathMatchers("/", "/index.html").permitAll()
@@ -87,8 +87,9 @@ class SecurityConfig(
 
                 // Auth service role-based endpoints
                 it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.POST, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.PATCH, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.PATCH, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/me/password", "/v2/auth/me/password").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v1/admin/courses").hasRole("ADMIN")
                 it.pathMatchers("/v1/admin", "/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
                 it.pathMatchers("/v2/post/admin/courses", "/v2/post/admin/courses/**").hasRole("ADMIN")
@@ -97,7 +98,7 @@ class SecurityConfig(
                     .hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v2/courses", "/v2/courses/**", "/v2/assignments/*/course")
                     .hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers("/v1/report", "/v1/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers("/v1/report", "/v1/report/**", "/v2/report", "/v2/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
 
                 // Blog policy
                 it.pathMatchers(HttpMethod.GET, "/v1/posts/drafts", "/v1/posts/drafts/**", "/v2/post/drafts", "/v2/post/drafts/**")
@@ -106,7 +107,7 @@ class SecurityConfig(
                 it.pathMatchers(HttpMethod.POST, "/v1/posts", "/v2/post").hasAnyRole("ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.PATCH, "/v1/posts/*", "/v2/post/*").hasAnyRole("ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.DELETE, "/v1/posts/*", "/v2/post/*").hasAnyRole("ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.POST, "/v1/posts/images", "/v2/post/images").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/posts/images", "/v2/post/images", "/v2/post/images/**").hasAnyRole("ORGANIZER", "ADMIN")
 
                 // Any other route requires authentication
                 it.anyExchange().authenticated()

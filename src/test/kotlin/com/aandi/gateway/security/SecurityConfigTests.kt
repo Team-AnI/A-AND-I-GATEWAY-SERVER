@@ -299,6 +299,41 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `v2 auth logout endpoint is allowlisted and validates refresh token`() {
+        webTestClient.post()
+            .uri("/v2/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"refreshToken":"token"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_INVALID")
+    }
+
+    @Test
+    fun `v2 me password endpoint is allowlisted and requires authentication`() {
+        webTestClient.post()
+            .uri("/v2/auth/me/password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"currentPassword":"old","newPassword":"new-password"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 users endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/auth/users/123")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
     fun `posts list is public`() {
         webTestClient.get()
             .uri("/v1/posts")
@@ -404,6 +439,15 @@ class SecurityConfigTests(
     fun `report endpoint is allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v2/report")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `report subpath endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/report/some-resource")
             .exchange()
             .expectStatus()
             .isUnauthorized
@@ -577,6 +621,27 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `v2 online judge submission create endpoint is allowlisted and requires authentication`() {
+        webTestClient.post()
+            .uri("/v2/online-judge/submissions")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"problemId":"demo","language":"java","source":"class Main{}"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 online judge admin testcases endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/online-judge/admin/testcases")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
     fun `online judge submission route has expected method and path predicates`() {
         val submissionRoute = routeById("online-judge-service-v1-submissions-root-post")
         val pathPredicate = submissionRoute.predicates.firstOrNull { it.name == "Path" }
@@ -585,6 +650,18 @@ class SecurityConfigTests(
         assertNotNull(pathPredicate, "submission create route should have path predicate")
         assertNotNull(methodPredicate, "submission create route should have method predicate")
         assertTrue(pathPredicate.args.values.contains("/v1/submissions"))
+        assertTrue(methodPredicate.args.values.contains("POST"))
+    }
+
+    @Test
+    fun `v2 online judge submission route has expected method and path predicates`() {
+        val submissionRoute = routeById("online-judge-service-v2-submissions-root-post")
+        val pathPredicate = submissionRoute.predicates.firstOrNull { it.name == "Path" }
+        val methodPredicate = submissionRoute.predicates.firstOrNull { it.name == "Method" }
+
+        assertNotNull(pathPredicate, "v2 submission create route should have path predicate")
+        assertNotNull(methodPredicate, "v2 submission create route should have method predicate")
+        assertTrue(pathPredicate.args.values.contains("/v2/online-judge/submissions"))
         assertTrue(methodPredicate.args.values.contains("POST"))
     }
 
