@@ -72,6 +72,25 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `swagger initializer injects authenticate bearer interceptor`() {
+        webTestClient.get()
+            .uri("/swagger-ui/swagger-initializer.js")
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectHeader()
+            .contentTypeCompatibleWith(MediaType.parseMediaType("application/javascript"))
+            .expectBody(String::class.java)
+            .value { body ->
+                val script = body.orEmpty()
+                assertTrue(script.contains("requestInterceptor"))
+                assertTrue(script.contains("Authenticate"))
+                assertTrue(script.contains("Bearer "))
+                assertTrue(script.contains("/v3/api-docs/swagger-config"))
+            }
+    }
+
+    @Test
     fun `auth login endpoint is public`() {
         webTestClient.post()
             .uri("/v1/auth/login")
