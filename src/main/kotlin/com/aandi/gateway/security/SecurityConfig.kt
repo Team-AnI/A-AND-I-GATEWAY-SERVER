@@ -34,7 +34,8 @@ import javax.crypto.spec.SecretKeySpec
 @Configuration
 @EnableWebFluxSecurity
 class SecurityConfig(
-    private val responseWriter: GatewayResponseWriter
+    private val responseWriter: GatewayResponseWriter,
+    private val bearerTokenAuthenticationConverter: GatewayBearerTokenAuthenticationConverter
 ) {
 
     @Bean
@@ -128,6 +129,7 @@ class SecurityConfig(
                 }
             }
             .oauth2ResourceServer { oauth2 ->
+                oauth2.bearerTokenConverter(bearerTokenAuthenticationConverter)
                 oauth2.jwt { jwt ->
                     jwt.jwtDecoder(jwtDecoder)
                     jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())
