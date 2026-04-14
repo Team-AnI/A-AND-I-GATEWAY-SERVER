@@ -290,7 +290,7 @@ class SecurityConfigTests(
     fun `v2 admin invite mail endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
-            .uri("/v2/auth/admin/invite-mail")
+            .uri("/v2/admin/invite-mail")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"email":"new_member@aandi.club","role":"USER"}""")
             .exchange()
@@ -315,8 +315,8 @@ class SecurityConfigTests(
 
     @Test
     fun `v2 me password endpoint is allowlisted and requires authentication`() {
-        webTestClient.post()
-            .uri("/v2/auth/me/password")
+        webTestClient.patch()
+            .uri("/v2/me/password")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"currentPassword":"old","newPassword":"new-password"}""")
             .exchange()
@@ -327,7 +327,7 @@ class SecurityConfigTests(
     @Test
     fun `v2 users endpoint is allowlisted and requires authentication`() {
         webTestClient.get()
-            .uri("/v2/auth/users/123")
+            .uri("/v2/users/lookup?code=A00123")
             .exchange()
             .expectStatus()
             .isUnauthorized
@@ -451,6 +451,18 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isUnauthorized
+    }
+
+    @Test
+    fun `v2 posts list is public`() {
+        webTestClient.get()
+            .uri("/v2/posts")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
     }
 
     @Test
@@ -623,7 +635,7 @@ class SecurityConfigTests(
     @Test
     fun `v2 online judge submission create endpoint is allowlisted and requires authentication`() {
         webTestClient.post()
-            .uri("/v2/online-judge/submissions")
+            .uri("/v2/submissions")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"problemId":"demo","language":"java","source":"class Main{}"}""")
             .exchange()
@@ -635,7 +647,7 @@ class SecurityConfigTests(
     fun `v2 online judge admin testcases endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .get()
-            .uri("/v2/online-judge/admin/testcases")
+            .uri("/v2/admin/testcases")
             .exchange()
             .expectStatus()
             .isForbidden
@@ -655,13 +667,13 @@ class SecurityConfigTests(
 
     @Test
     fun `v2 online judge submission route has expected method and path predicates`() {
-        val submissionRoute = routeById("online-judge-service-v2-submissions-root-post")
+        val submissionRoute = routeById("online-judge-service-v2-native-submissions-root-post")
         val pathPredicate = submissionRoute.predicates.firstOrNull { it.name == "Path" }
         val methodPredicate = submissionRoute.predicates.firstOrNull { it.name == "Method" }
 
         assertNotNull(pathPredicate, "v2 submission create route should have path predicate")
         assertNotNull(methodPredicate, "v2 submission create route should have method predicate")
-        assertTrue(pathPredicate.args.values.contains("/v2/online-judge/submissions"))
+        assertTrue(pathPredicate.args.values.contains("/v2/submissions"))
         assertTrue(methodPredicate.args.values.contains("POST"))
     }
 
