@@ -11,7 +11,8 @@ data class ApiLogContext(
     var requestBody: String = "",
     var responseBody: String = "",
     var failureMessage: String? = null,
-    var responseTimestamp: String? = null
+    var responseTimestamp: String? = null,
+    var responseError: ApiLogError? = null
 ) {
     fun markFailure(message: String?) {
         if (!message.isNullOrBlank()) {
@@ -44,6 +45,11 @@ data class ApiLogContext(
 
         fun get(exchange: ServerWebExchange): ApiLogContext {
             return exchange.getAttribute<ApiLogContext>(ATTRIBUTE_NAME) ?: initialize(exchange)
+        }
+
+        fun attach(exchange: ServerWebExchange, context: ApiLogContext): ServerWebExchange {
+            exchange.attributes[ATTRIBUTE_NAME] = context
+            return exchange
         }
 
         private const val REQUEST_ID_HEADER = "X-Request-Id"
