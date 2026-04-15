@@ -88,7 +88,10 @@ class SecurityConfig {
                 it.pathMatchers(HttpMethod.GET, "/v1/admin/courses").hasRole("ADMIN")
                 it.pathMatchers("/v1/admin", "/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
                 it.pathMatchers("/v2/post/admin/courses", "/v2/post/admin/courses/**").hasRole("ADMIN")
+                it.pathMatchers("/v2/admin/courses", "/v2/admin/courses/**").hasRole("ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v1/courses", "/v1/courses/**", "/v2/post/courses", "/v2/post/courses/**")
+                    .hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v2/courses", "/v2/courses/**", "/v2/assignments/*/course")
                     .hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers("/v1/report", "/v1/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
 
