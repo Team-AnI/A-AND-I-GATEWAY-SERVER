@@ -312,6 +312,28 @@ spring:
               predicates:
                 - Path=/v1/courses/**
 
+            - id: report-service-v2-admin-courses-root
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/admin/courses
+            - id: report-service-v2-admin-courses-subpaths
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/admin/courses/**
+            - id: report-service-v2-courses-root
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/courses
+            - id: report-service-v2-courses-subpaths
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/courses/**
+            - id: report-service-v2-assignment-course
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/assignments/*/course
+                - Method=GET
+
             - id: online-judge-service-v1-submissions-root-post
               uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
               predicates:
