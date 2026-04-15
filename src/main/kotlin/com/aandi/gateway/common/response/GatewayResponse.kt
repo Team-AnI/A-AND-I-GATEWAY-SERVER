@@ -139,5 +139,12 @@ enum class GatewayErrorCode(
         value = "ENDPOINT_NOT_ALLOWLISTED",
         message = "요청 메서드와 경로가 게이트웨이 허용 목록에 없습니다.",
         alert = "요청한 기능을 찾을 수 없어요."
+    ),
+    INTERNAL_SERVER_ERROR(
+        code = 18801,
+        httpStatus = HttpStatus.INTERNAL_SERVER_ERROR,
+        value = "INTERNAL_SERVER_ERROR",
+        message = "게이트웨이 내부 처리 중 예기치 못한 오류가 발생했습니다.",
+        alert = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
     )
 }

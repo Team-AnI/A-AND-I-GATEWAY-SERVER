@@ -1,5 +1,6 @@
 package com.aandi.gateway.common.response
 
+import com.aandi.gateway.logging.ApiLogContext
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
@@ -15,6 +16,8 @@ class GatewayResponseWriter(
         errorCode: GatewayErrorCode,
         includeCorsHeaders: Boolean = true
     ): Mono<Void> {
+        ApiLogContext.get(exchange).markFailure("${errorCode.value}: ${errorCode.message}")
+
         val response = exchange.response
         response.statusCode = errorCode.httpStatus
         if (includeCorsHeaders) {

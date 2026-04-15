@@ -1,3 +1,12 @@
+aandi:
+  logging:
+    env: ${APP_ENV:${spring.profiles.active:default}}
+    service:
+      name: gateway
+      domain-code: 1
+      version: ${APP_VERSION:0.0.1-SNAPSHOT}
+      instance-id: ${HOSTNAME:local}
+
 spring:
   application:
     name: gateway
