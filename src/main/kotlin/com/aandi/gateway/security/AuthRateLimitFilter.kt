@@ -98,6 +98,7 @@ class AuthRateLimitFilter(
             }
             PathType.REFRESH, PathType.LOGOUT -> {
                 val refreshToken = extractJsonField(body, "refreshToken")
+                    .ifBlank { exchange.request.cookies.getFirst("refresh_token")?.value ?: "" }
                 val tokenHash = sha256(refreshToken.ifBlank { "unknown-refresh" })
                 "refresh:$ip:$tokenHash"
             }
