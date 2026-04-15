@@ -282,7 +282,7 @@ class ApiLogFactory(
 
     private fun jsonNodeToValue(node: JsonNode): Any? {
         return when {
-            node.isObject -> node.fields().asSequence().associate { (key, value) -> key to jsonNodeToValue(value) }
+            node.isObject -> node.properties().associate { entry -> entry.key to jsonNodeToValue(entry.value) }
             node.isArray -> node.map { jsonNodeToValue(it) }
             node.isTextual -> node.asText()
             node.isNumber -> node.numberValue()
