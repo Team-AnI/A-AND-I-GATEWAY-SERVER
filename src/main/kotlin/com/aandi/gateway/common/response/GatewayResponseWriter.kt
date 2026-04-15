@@ -20,6 +20,12 @@ class GatewayResponseWriter(
     ): Mono<Void> {
         val context = ApiLogContext.get(exchange)
         context.markFailure("${errorCode.value}: ${errorCode.message}")
+        context.responseError = com.aandi.gateway.logging.ApiLogError(
+            code = errorCode.code,
+            message = errorCode.message,
+            value = errorCode.value,
+            alert = errorCode.alert
+        )
 
         val response = exchange.response
         response.statusCode = errorCode.httpStatus

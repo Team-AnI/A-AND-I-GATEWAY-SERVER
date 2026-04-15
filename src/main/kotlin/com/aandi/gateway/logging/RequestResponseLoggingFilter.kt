@@ -32,7 +32,10 @@ class RequestResponseLoggingFilter(
         return cacheRequestBody(exchange, context)
             .flatMap { requestExchange ->
                 val decoratedResponse = LoggingResponseDecorator(requestExchange, context)
-                val decoratedExchange = requestExchange.mutate().response(decoratedResponse).build()
+                val decoratedExchange = ApiLogContext.attach(
+                    requestExchange.mutate().response(decoratedResponse).build(),
+                    context
+                )
                 chain.filter(decoratedExchange)
                     .then(resolveAuthentication(decoratedExchange))
                     .doOnNext { authentication ->
@@ -59,7 +62,10 @@ class RequestResponseLoggingFilter(
                     DataBufferUtils.release(buffer)
                 }
                 context.requestBody = bytes.toString(StandardCharsets.UTF_8)
-                exchange.mutate().request(cachedRequest(exchange, bytes)).build()
+                ApiLogContext.attach(
+                    exchange.mutate().request(cachedRequest(exchange, bytes)).build(),
+                    context
+                )
             }
             .defaultIfEmpty(exchange)
     }

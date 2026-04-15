@@ -152,13 +152,13 @@ class ApiLogFactory(
             return ApiLogResponse(
                 success = statusCode < 400,
                 data = if (statusCode < 400) emptyMap<String, Any?>() else null,
-                error = if (statusCode < 400) null else ApiLogError(
+                error = if (statusCode < 400) null else (context.responseError ?: ApiLogError(
                     code = GatewayErrorCode.INTERNAL_SERVER_ERROR.code,
                     message = context.failureMessage ?: GatewayErrorCode.INTERNAL_SERVER_ERROR.message,
                     value = GatewayErrorCode.INTERNAL_SERVER_ERROR.value,
                     alert = GatewayErrorCode.INTERNAL_SERVER_ERROR.alert
-                ),
-                timestamp = now()
+                )),
+                timestamp = context.responseTimestamp ?: now()
             )
         }
 
@@ -186,13 +186,13 @@ class ApiLogFactory(
             ApiLogResponse(
                 success = statusCode < 400,
                 data = if (statusCode < 400) mapOf("raw" to rawBody) else null,
-                error = if (statusCode < 400) null else ApiLogError(
+                error = if (statusCode < 400) null else (context.responseError ?: ApiLogError(
                     code = GatewayErrorCode.INTERNAL_SERVER_ERROR.code,
                     message = context.failureMessage ?: GatewayErrorCode.INTERNAL_SERVER_ERROR.message,
                     value = GatewayErrorCode.INTERNAL_SERVER_ERROR.value,
                     alert = GatewayErrorCode.INTERNAL_SERVER_ERROR.alert
-                ),
-                timestamp = now()
+                )),
+                timestamp = context.responseTimestamp ?: now()
             )
         }
     }
