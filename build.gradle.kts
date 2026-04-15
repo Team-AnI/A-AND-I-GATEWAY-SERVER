@@ -36,6 +36,8 @@ dependencies {
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 	implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
 	implementation("tools.jackson.module:jackson-module-kotlin")
+	implementation("ca.pjer:logback-awslogs-appender:1.6.0")
+	implementation("com.amazonaws:aws-java-sdk-logs:1.12.+")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-reactive-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webflux-test")
