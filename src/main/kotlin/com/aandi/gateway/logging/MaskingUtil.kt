@@ -51,7 +51,12 @@ object MaskingUtil {
 
     fun firstHeader(headers: HttpHeaders, vararg names: String): String? {
         return names.asSequence()
-            .mapNotNull { headers.getFirst(it) ?: headers.entries.firstOrNull { entry -> entry.key.equals(it, ignoreCase = true) }?.value?.firstOrNull() }
+            .mapNotNull { name ->
+                headers.getFirst(name)
+                    ?: headers.headerNames()
+                        .firstOrNull { it.equals(name, ignoreCase = true) }
+                        ?.let(headers::getFirst)
+            }
             .firstOrNull { !it.isNullOrBlank() }
     }
 
