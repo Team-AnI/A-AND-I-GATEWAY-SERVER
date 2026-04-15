@@ -66,7 +66,7 @@ jobs:
           script: |
             ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
-            DOMAIN="${{ vars.DOMAIN }}"
+            DOMAIN="api.aandiclub.com"
             AUTH_ISSUER_URI="${{ vars.AUTH_ISSUER_URI }}"
             AUTH_AUDIENCE="${{ vars.AUTH_AUDIENCE }}"
             ALLOWED_HOSTS="${{ vars.ALLOWED_HOSTS }}"
@@ -79,7 +79,6 @@ jobs:
             ONLINE_JUDGE_SERVICE_URI="${{ secrets.ONLINE_JUDGE_SERVICE_URI }}"
             AUTH_JWT_SECRET="${{ secrets.AUTH_JWT_SECRET }}"
 
-            if [ -z "$DOMAIN" ]; then DOMAIN="${{ secrets.DOMAIN }}"; fi
             if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="${{ secrets.AUTH_ISSUER_URI }}"; fi
             if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="${{ secrets.AUTH_AUDIENCE }}"; fi
             if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}"; fi
@@ -87,10 +86,9 @@ jobs:
             if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="${{ secrets.ENFORCE_HTTPS }}"; fi
             if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="${{ secrets.CORS_ALLOWED_ORIGIN_PATTERNS }}"; fi
 
-            if [ -z "$DOMAIN" ]; then DOMAIN="aandiclub.com"; fi
             if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="https://auth.aandiclub.com"; fi
             if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="aandiclub-api"; fi
-            if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="$DOMAIN,api.aandiclub.com,qa.aandiclub.com,aandiclub.com"; fi
+            if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="$DOMAIN"; fi
             if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="true"; fi
             if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="true"; fi
             if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="https://*"; fi
