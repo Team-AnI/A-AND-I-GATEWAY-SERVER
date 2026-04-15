@@ -5,6 +5,8 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import tools.jackson.databind.ObjectMapper
 
 @Component
@@ -16,7 +18,8 @@ class GatewayResponseWriter(
         errorCode: GatewayErrorCode,
         includeCorsHeaders: Boolean = true
     ): Mono<Void> {
-        ApiLogContext.get(exchange).markFailure("${errorCode.value}: ${errorCode.message}")
+        val context = ApiLogContext.get(exchange)
+        context.markFailure("${errorCode.value}: ${errorCode.message}")
 
         val response = exchange.response
         response.statusCode = errorCode.httpStatus
@@ -24,8 +27,10 @@ class GatewayResponseWriter(
             applyCorsHeaders(exchange)
         }
         response.headers.contentType = MediaType.APPLICATION_JSON
-        val body = objectMapper.writeValueAsBytes(GatewayResponse.error(errorCode))
-        return response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
+        val bodyBytes = objectMapper.writeValueAsBytes(GatewayResponse.error(errorCode))
+        context.responseBody = bodyBytes.toString(Charsets.UTF_8)
+        context.responseTimestamp = OffsetDateTime.now(KOREA_ZONE_ID).toString()
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(bodyBytes)))
     }
 
     private fun applyCorsHeaders(exchange: ServerWebExchange) {
@@ -39,5 +44,9 @@ class GatewayResponseWriter(
         if (headers.getFirst("Vary") == null) {
             headers.add("Vary", "Origin")
         }
+    }
+
+    companion object {
+        private val KOREA_ZONE_ID: ZoneId = ZoneId.of("Asia/Seoul")
     }
 }
