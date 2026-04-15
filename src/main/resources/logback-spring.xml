@@ -19,25 +19,6 @@
         </encoder>
     </appender>
 
-    <appender name="CLOUDWATCH" class="ca.pjer.logback.AwsLogsAppender">
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-        <layout class="com.aandi.gateway.logging.StructuredJsonLogLayout">
-            <env>${loggingEnv}</env>
-            <serviceName>${loggingServiceName}</serviceName>
-            <domainCode>${loggingDomainCode}</domainCode>
-            <version>${loggingVersion}</version>
-            <instanceId>${loggingInstanceId}</instanceId>
-        </layout>
-        <logGroupName>/a-and-i/gateway</logGroupName>
-        <logStreamUuidPrefix>gateway-</logStreamUuidPrefix>
-        <logRegion>ap-northeast-2</logRegion>
-        <maxBatchLogEvents>50</maxBatchLogEvents>
-        <maxFlushTimeMillis>30000</maxFlushTimeMillis>
-        <maxBlockTimeMillis>5000</maxBlockTimeMillis>
-    </appender>
-
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
@@ -47,7 +28,6 @@
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="CLOUDWATCH"/>
         </root>
     </springProfile>
 
