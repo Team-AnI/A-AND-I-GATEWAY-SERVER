@@ -745,6 +745,8 @@ class SecurityConfigTests(
             "rewrite args must target /v3/api-docs/*, actual=$rewriteArgs"
         )
     }
+
+    @Test
     fun `course admin endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
@@ -754,6 +756,79 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+    }
+
+    @Test
+    fun `native v2 course list endpoint requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/courses")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `native v2 course list endpoint is allowlisted for authenticated user`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/courses")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `native v2 assignment course endpoint is allowlisted for authenticated user`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/assignments/11111111-1111-1111-1111-111111111111/course")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `native v2 admin courses endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v2/admin/courses")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"title":"course","slug":"course-slug"}""")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `native v2 submission statuses endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/admin/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/submission-statuses")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `native v2 report routes are registered with expected predicates`() {
+        val adminCoursesRoute = routeById("report-service-v2-admin-courses-root")
+        val adminCoursesSubpathsRoute = routeById("report-service-v2-admin-courses-subpaths")
+        val coursesRoute = routeById("report-service-v2-courses-root")
+        val coursesSubpathsRoute = routeById("report-service-v2-courses-subpaths")
+        val assignmentCourseRoute = routeById("report-service-v2-assignment-course")
+
+        assertTrue(adminCoursesRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses") })
+        assertTrue(adminCoursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses/**") })
+        assertTrue(coursesRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses") })
+        assertTrue(coursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses/**") })
+        assertTrue(assignmentCourseRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/assignments/*/course") })
+        assertTrue(assignmentCourseRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
     }
 
     @Test
