@@ -37,7 +37,11 @@ class GatewayRequestPolicyFilter(
         parser.parse("/v2/post/images/**"),
         parser.parse("/v2/posts"),
         parser.parse("/v2/posts/{postId}"),
-        parser.parse("/v2/posts/images")
+        parser.parse("/v2/posts/images"),
+        parser.parse("/v2/blogs"),
+        parser.parse("/v2/blogs/{blogId}"),
+        parser.parse("/v2/lectures"),
+        parser.parse("/v2/lectures/{lectureId}")
     )
 
     private val allowRules: List<AllowRule> = listOf(
@@ -262,6 +266,22 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.DELETE, parser.parse("/v2/posts/{postId}")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/posts/{postId}/collaborators")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/posts/images")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/blogs")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/drafts")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/drafts/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/{blogId}")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/blogs/{blogId}")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/blogs/{blogId}")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/lectures")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/drafts")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/drafts/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/{lectureId}")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/lectures/{lectureId}")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/lectures/{lectureId}")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/online-judge/submissions")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/problems/{problemId}/submissions/me")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/admin/submissions")),
@@ -317,6 +337,13 @@ class GatewayRequestPolicyFilter(
         }
 
         if (policy.enforceMethodPathAllowlist && allowRules.none { it.matches(request.method, path) }) {
+            log.warn(
+                "Rejecting request due to allowlist policy: method={}, path={}, host={}, remoteAddress={}",
+                request.method,
+                path.value(),
+                request.headers.host?.hostString,
+                request.remoteAddress?.address?.hostAddress
+            )
             return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
         }
 

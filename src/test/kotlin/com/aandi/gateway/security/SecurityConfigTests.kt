@@ -485,6 +485,47 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `v2 blogs list is public`() {
+        webTestClient.get()
+            .uri("/v2/blogs")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `v2 lectures list requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/lectures")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 blogs drafts endpoint is forbidden for user role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/blogs/drafts")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `v2 lectures drafts endpoint is forbidden for user role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/lectures/drafts")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
     fun `v1 report endpoint is allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v1/report")
@@ -829,6 +870,40 @@ class SecurityConfigTests(
         assertTrue(coursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses/**") })
         assertTrue(assignmentCourseRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/assignments/*/course") })
         assertTrue(assignmentCourseRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+    }
+
+    @Test
+    fun `v2 blogs and lectures routes are registered with expected predicates`() {
+        val blogsRootGetRoute = routeById("post-service-v2-blogs-root-get")
+        val blogsRootPostRoute = routeById("post-service-v2-blogs-root-post")
+        val blogsMeRoute = routeById("post-service-v2-blogs-me")
+        val blogsDraftsRoute = routeById("post-service-v2-blogs-drafts")
+        val blogsDraftsMeRoute = routeById("post-service-v2-blogs-drafts-me")
+        val blogsSubpathsGetRoute = routeById("post-service-v2-blogs-subpaths-get")
+        val lecturesRootGetRoute = routeById("post-service-v2-lectures-root-get")
+        val lecturesRootPostRoute = routeById("post-service-v2-lectures-root-post")
+        val lecturesMeRoute = routeById("post-service-v2-lectures-me")
+        val lecturesDraftsRoute = routeById("post-service-v2-lectures-drafts")
+        val lecturesDraftsMeRoute = routeById("post-service-v2-lectures-drafts-me")
+        val lecturesSubpathsGetRoute = routeById("post-service-v2-lectures-subpaths-get")
+
+        assertTrue(blogsRootGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs") })
+        assertTrue(blogsRootGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(blogsRootPostRoute.predicates.any { it.name == "Method" && it.args.values.contains("POST") })
+        assertTrue(blogsMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/me") })
+        assertTrue(blogsDraftsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/drafts") })
+        assertTrue(blogsDraftsMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/drafts/me") })
+        assertTrue(blogsSubpathsGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/*") })
+        assertTrue(blogsSubpathsGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+
+        assertTrue(lecturesRootGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures") })
+        assertTrue(lecturesRootGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(lecturesRootPostRoute.predicates.any { it.name == "Method" && it.args.values.contains("POST") })
+        assertTrue(lecturesMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/me") })
+        assertTrue(lecturesDraftsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/drafts") })
+        assertTrue(lecturesDraftsMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/drafts/me") })
+        assertTrue(lecturesSubpathsGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/*") })
+        assertTrue(lecturesSubpathsGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
     }
 
     @Test
