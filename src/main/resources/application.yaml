@@ -46,7 +46,7 @@ spring:
                 allowed-headers: "*"
                 exposed-headers:
                   - X-Auth-Context-Cache
-                allow-credentials: false
+                allow-credentials: true
                 max-age: 3600
           default-filters:
             - RequestSize=${MAX_REQUEST_BODY_SIZE:2MB}

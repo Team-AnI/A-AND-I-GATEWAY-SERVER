@@ -318,11 +318,27 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `v2 auth logout endpoint is allowlisted and validates refresh token`() {
+    fun `v2 auth logout endpoint is allowlisted and validates refresh token from body`() {
         webTestClient.post()
             .uri("/v2/auth/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"refreshToken":"token"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_INVALID")
+    }
+
+    @Test
+    fun `v2 auth logout endpoint is allowlisted and validates refresh token from cookie`() {
+        webTestClient.post()
+            .uri("/v2/auth/logout")
+            .cookie("refresh_token", "invalid-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
             .exchange()
             .expectStatus()
             .isUnauthorized
