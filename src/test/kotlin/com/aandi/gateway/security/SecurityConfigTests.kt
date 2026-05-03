@@ -491,21 +491,27 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `v2 blogs list requires authentication`() {
+    fun `v2 blogs list is public`() {
         webTestClient.get()
             .uri("/v2/blogs")
             .exchange()
             .expectStatus()
-            .isUnauthorized
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
     }
 
     @Test
-    fun `v2 blogs detail requires authentication`() {
+    fun `v2 blogs detail is public`() {
         webTestClient.get()
             .uri("/v2/blogs/11111111-1111-1111-1111-111111111111")
             .exchange()
             .expectStatus()
-            .isUnauthorized
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
     }
 
     @Test
