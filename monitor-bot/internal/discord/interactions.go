@@ -199,24 +199,48 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 	if err != nil {
 		alarmNames = nil
 	}
-	inputs := make([]formatting.DashboardServiceInput, 0, len(serviceOrder))
-	for _, service := range serviceOrder {
-		groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
-		if err != nil {
-			inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Alarm: serviceHasAlarm(service, alarmNames)})
+	registry := h.cfg.ServiceRegistry
+	if len(registry) == 0 {
+		registry = config.BuildServiceRegistry(h.cfg.LogGroups, h.cfg.HealthURLs)
+	}
+	inputs := make([]formatting.DashboardServiceInput, 0, len(registry))
+	for _, service := range registry {
+		input := formatting.DashboardServiceInput{
+			Service:     service.Name,
+			DisplayName: service.DisplayName,
+			Health:      healthByService[service.Name],
+			Alarm:       serviceHasAlarm(service.Name, alarmNames),
+		}
+		if !service.Enabled {
+			input.Health = formatting.ServiceStatus{Service: service.Name, State: "NOT_CONFIGURED", Detail: "health URL and log group are not configured"}
+			input.LogStatus = "NOT_CONFIGURED"
+			inputs = append(inputs, input)
 			continue
 		}
-		query, err := cw.BuildDashboardSummaryQuery(service)
-		if err != nil {
-			inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Alarm: serviceHasAlarm(service, alarmNames)})
+		if strings.TrimSpace(service.LogGroup) == "" {
+			input.LogStatus = "NOT_CONFIGURED"
+			inputs = append(inputs, input)
 			continue
 		}
-		rows, err := h.logs.Query(ctx, groups, query, since, 100)
+		query, err := cw.BuildDashboardSummaryQuery(service.Name)
 		if err != nil {
-			inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Alarm: serviceHasAlarm(service, alarmNames)})
+			input.LogStatus = "LOG_QUERY_FAILED"
+			inputs = append(inputs, input)
 			continue
 		}
-		inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Rows: rows, Alarm: serviceHasAlarm(service, alarmNames)})
+		rows, err := h.logs.Query(ctx, []string{service.LogGroup}, query, since, 100)
+		if err != nil {
+			input.LogStatus = "LOG_QUERY_FAILED"
+			inputs = append(inputs, input)
+			continue
+		}
+		input.Rows = rows
+		if len(rows) == 0 {
+			input.LogStatus = "NO_LOGS"
+		} else {
+			input.LogStatus = "OK"
+		}
+		inputs = append(inputs, input)
 	}
 	return formatting.FormatDashboard(sinceLabel, inputs, alarmNames)
 }

@@ -76,13 +76,64 @@ func TestFormatDashboardAndAggregations(t *testing.T) {
 		Health:  ServiceStatus{Service: "report", State: "UP", Detail: "UP"},
 		Rows:    rows,
 	}}, nil)
-	for _, expected := range []string{"A&I Service Dashboard", "report", "13", "3"} {
+	for _, expected := range []string{"A&I Service Dashboard", "report", "OK", "3"} {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("dashboard missing %q: %s", expected, got)
 		}
 	}
 	if len([]rune(got)) > DiscordMessageLimit {
 		t.Fatalf("dashboard exceeds discord limit")
+	}
+}
+
+func TestFormatDashboardShowsUnknownNoLogsAndNotConfigured(t *testing.T) {
+	got := FormatDashboard("30m", []DashboardServiceInput{
+		{
+			Service:     "gateway",
+			DisplayName: "gateway",
+			Health:      ServiceStatus{Service: "gateway", State: "UP"},
+			LogStatus:   "OK",
+			Rows:        []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200", "lastLog": "2026-04-14T20:31:12+09:00"}},
+		},
+		{
+			Service:     "auth",
+			DisplayName: "auth",
+			Health:      ServiceStatus{Service: "auth", State: "UNKNOWN"},
+			LogStatus:   "OK",
+			Rows:        []map[string]string{{"count": "1", "logType": "API_ERROR", "level": "ERROR", "http.statusCode": "500"}},
+		},
+		{
+			Service:     "online-judge",
+			DisplayName: "online-judge",
+			Health:      ServiceStatus{Service: "online-judge", State: "UNKNOWN"},
+			LogStatus:   "NO_LOGS",
+		},
+		{
+			Service:     "post",
+			DisplayName: "post",
+			Health:      ServiceStatus{Service: "post", State: "NOT_CONFIGURED"},
+			LogStatus:   "NOT_CONFIGURED",
+		},
+	}, nil)
+	for _, expected := range []string{"gateway", "auth", "online-judge", "post", "UNKNOWN", "NO_LOGS", "NOT_CONFIGURED"} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("dashboard missing %q: %s", expected, got)
+		}
+	}
+	if strings.Index(got, "gateway") > strings.Index(got, "auth") || strings.Index(got, "auth") > strings.Index(got, "online-judge") || strings.Index(got, "online-judge") > strings.Index(got, "post") {
+		t.Fatalf("dashboard did not preserve registry order: %s", got)
+	}
+}
+
+func TestFormatTopSummaryOnlyShowsProvidedRows(t *testing.T) {
+	got := FormatTopSummary("report", "30m", "path", []map[string]string{
+		{"http.path": "/v2/report", "count": "3"},
+	})
+	if !strings.Contains(got, "/v2/report") {
+		t.Fatalf("top summary missing provided row: %s", got)
+	}
+	if strings.Contains(got, "gateway") || strings.Contains(got, "auth") || strings.Contains(got, "online-judge") || strings.Contains(got, "post") {
+		t.Fatalf("top summary should not render registry services: %s", got)
 	}
 }
 

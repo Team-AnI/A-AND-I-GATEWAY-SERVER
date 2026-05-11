@@ -21,10 +21,12 @@ type ServiceStatus struct {
 }
 
 type DashboardServiceInput struct {
-	Service string
-	Health  ServiceStatus
-	Rows    []map[string]string
-	Alarm   bool
+	Service     string
+	DisplayName string
+	Health      ServiceStatus
+	LogStatus   string
+	Rows        []map[string]string
+	Alarm       bool
 }
 
 type ServiceDetailInput struct {
@@ -114,37 +116,48 @@ func FormatDashboard(since string, services []DashboardServiceInput, alarmNames 
 	topIssue := "none"
 	for _, service := range services {
 		summary := SummarizeRows(service.Rows)
-		if service.Alarm || strings.EqualFold(service.Health.State, "DOWN") || summary.FiveXX > 0 {
+		if service.Alarm || strings.EqualFold(service.Health.State, "DOWN") || summary.FiveXX > 0 || service.LogStatus == "LOG_QUERY_FAILED" {
 			statusIcon = "🔴"
 			if topIssue == "none" {
 				topIssue = fmt.Sprintf("%s 5xx x%d", service.Service, summary.FiveXX)
 			}
 			break
 		}
-		if strings.EqualFold(service.Health.State, "UNKNOWN") || summary.Error > 0 || summary.P95 >= 1000 || summary.LastLog == "" {
+		if strings.EqualFold(service.Health.State, "UNKNOWN") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NO_LOGS" || service.LogStatus == "NOT_CONFIGURED" {
 			statusIcon = "🟡"
 		}
 	}
 	fmt.Fprintf(&b, "%s A&I Service Dashboard - last %s\n\n", statusIcon, since)
-	b.WriteString("Service        Health     Total   4xx   5xx   ERROR   p95    Last log\n")
+	b.WriteString("Service        Health          Logs             4xx   5xx   ERROR   Last log\n")
 	for _, service := range services {
 		summary := SummarizeRows(service.Rows)
 		state := strings.ToUpper(service.Health.State)
 		if state == "" {
 			state = "UNKNOWN"
 		}
-		icon := serviceHealthIcon(state, summary, service.Alarm)
+		logStatus := strings.ToUpper(strings.TrimSpace(service.LogStatus))
+		if logStatus == "" {
+			if len(service.Rows) == 0 {
+				logStatus = "NO_LOGS"
+			} else {
+				logStatus = "OK"
+			}
+		}
+		icon := dashboardIcon(state, logStatus, summary, service.Alarm)
+		displayName := service.DisplayName
+		if displayName == "" {
+			displayName = service.Service
+		}
 		fmt.Fprintf(
 			&b,
-			"%-14s %-10s %-7d %-5d %-5d %-7d %-6s %s\n",
-			service.Service,
+			"%-14s %-15s %-16s %-5s %-5s %-7s %s\n",
+			displayName,
 			icon+" "+state,
-			summary.Total,
-			summary.FourXX,
-			summary.FiveXX,
-			summary.Error,
-			formatLatency(summary.P95),
-			formatLastLog(summary.LastLog),
+			formatLogStatus(logStatus),
+			dashboardNumber(summary.FourXX, logStatus),
+			dashboardNumber(summary.FiveXX, logStatus),
+			dashboardNumber(summary.Error, logStatus),
+			dashboardLastLog(summary.LastLog, logStatus),
 		)
 	}
 	b.WriteString("\nAlarms: ")
@@ -373,6 +386,50 @@ func serviceHealthIcon(state string, summary LogSummary, alarm bool) string {
 	default:
 		return "🟢"
 	}
+}
+
+func dashboardIcon(healthState, logStatus string, summary LogSummary, alarm bool) string {
+	switch {
+	case logStatus == "NOT_CONFIGURED":
+		return "⚫"
+	case alarm || healthState == "DOWN" || logStatus == "LOG_QUERY_FAILED" || summary.FiveXX > 0:
+		return "🔴"
+	case logStatus == "NO_LOGS":
+		return "⚪"
+	case healthState == "UNKNOWN" || healthState == "" || summary.Error > 0 || summary.P95 >= 1000:
+		return "🟡"
+	default:
+		return "🟢"
+	}
+}
+
+func formatLogStatus(status string) string {
+	switch status {
+	case "OK":
+		return "OK"
+	case "NO_LOGS":
+		return "NO_LOGS"
+	case "NOT_CONFIGURED":
+		return "NOT_CONFIGURED"
+	case "LOG_QUERY_FAILED":
+		return "LOG_QUERY_FAILED"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func dashboardNumber(value int, logStatus string) string {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "LOG_QUERY_FAILED" {
+		return "-"
+	}
+	return strconv.Itoa(value)
+}
+
+func dashboardLastLog(value, logStatus string) string {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "NO_LOGS" || logStatus == "LOG_QUERY_FAILED" {
+		return "-"
+	}
+	return formatLastLog(value)
 }
 
 func formatLatency(value int) string {

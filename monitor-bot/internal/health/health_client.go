@@ -33,11 +33,11 @@ func (c *Client) Check(ctx context.Context, service string) formatting.ServiceSt
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return formatting.ServiceStatus{Service: service, State: "DOWN", Detail: "잘못된 health URL"}
+		return formatting.ServiceStatus{Service: service, State: "UNKNOWN", Detail: "잘못된 health URL"}
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return formatting.ServiceStatus{Service: service, State: "DOWN", Detail: err.Error()}
+		return formatting.ServiceStatus{Service: service, State: "UNKNOWN", Detail: err.Error()}
 	}
 	defer resp.Body.Close()
 

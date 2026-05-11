@@ -25,9 +25,32 @@ type Config struct {
 	HealthRequestTimeout        time.Duration
 	LogGroups                   map[string]string
 	HealthURLs                  map[string]string
+	ServiceRegistry             []ServiceDefinition
+}
+
+type ServiceDefinition struct {
+	Name        string
+	DisplayName string
+	LogGroup    string
+	HealthURL   string
+	Enabled     bool
 }
 
 func Load() Config {
+	logGroups := map[string]string{
+		"gateway":      env("LOG_GROUP_GATEWAY", "/a-and-i/gateway"),
+		"auth":         env("LOG_GROUP_AUTH", "/a-and-i/auth"),
+		"report":       env("LOG_GROUP_REPORT", "/a-and-i/prod/report"),
+		"online-judge": env("LOG_GROUP_ONLINE_JUDGE", "/a-and-i/online-judge"),
+		"post":         env("LOG_GROUP_POST", "/a-and-i/prod/tech-blog"),
+	}
+	healthURLs := map[string]string{
+		"gateway":      env("HEALTH_URL_GATEWAY", "http://gateway:9090/actuator/health"),
+		"auth":         env("HEALTH_URL_AUTH", ""),
+		"report":       env("HEALTH_URL_REPORT", ""),
+		"online-judge": env("HEALTH_URL_ONLINE_JUDGE", ""),
+		"post":         env("HEALTH_URL_POST", ""),
+	}
 	return Config{
 		HTTPPort:                    env("BOT_HTTP_PORT", "8088"),
 		DiscordApplicationID:        env("DISCORD_APPLICATION_ID", ""),
@@ -44,21 +67,36 @@ func Load() Config {
 		CloudWatchQueryLimit:        envInt("CLOUDWATCH_QUERY_LIMIT", 20),
 		CloudWatchMaxLogGroups:      envInt("CLOUDWATCH_MAX_LOG_GROUPS_PER_QUERY", 5),
 		HealthRequestTimeout:        time.Duration(envInt("HEALTH_REQUEST_TIMEOUT_MS", 2000)) * time.Millisecond,
-		LogGroups: map[string]string{
-			"gateway":      env("LOG_GROUP_GATEWAY", "/a-and-i/gateway"),
-			"auth":         env("LOG_GROUP_AUTH", "/a-and-i/auth"),
-			"report":       env("LOG_GROUP_REPORT", "/a-and-i/prod/report"),
-			"online-judge": env("LOG_GROUP_ONLINE_JUDGE", "/a-and-i/online-judge"),
-			"post":         env("LOG_GROUP_POST", "/a-and-i/prod/tech-blog"),
-		},
-		HealthURLs: map[string]string{
-			"gateway":      env("HEALTH_URL_GATEWAY", "http://gateway:9090/actuator/health"),
-			"auth":         env("HEALTH_URL_AUTH", ""),
-			"report":       env("HEALTH_URL_REPORT", ""),
-			"online-judge": env("HEALTH_URL_ONLINE_JUDGE", ""),
-			"post":         env("HEALTH_URL_POST", ""),
-		},
+		LogGroups:                   logGroups,
+		HealthURLs:                  healthURLs,
+		ServiceRegistry:             BuildServiceRegistry(logGroups, healthURLs),
 	}
+}
+
+func BuildServiceRegistry(logGroups, healthURLs map[string]string) []ServiceDefinition {
+	order := []struct {
+		name        string
+		displayName string
+	}{
+		{"gateway", "gateway"},
+		{"auth", "auth"},
+		{"report", "report"},
+		{"online-judge", "online-judge"},
+		{"post", "post"},
+	}
+	registry := make([]ServiceDefinition, 0, len(order))
+	for _, item := range order {
+		logGroup := strings.TrimSpace(logGroups[item.name])
+		healthURL := strings.TrimSpace(healthURLs[item.name])
+		registry = append(registry, ServiceDefinition{
+			Name:        item.name,
+			DisplayName: item.displayName,
+			LogGroup:    logGroup,
+			HealthURL:   healthURL,
+			Enabled:     logGroup != "" || healthURL != "",
+		})
+	}
+	return registry
 }
 
 func env(key, fallback string) string {

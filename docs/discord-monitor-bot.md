@@ -32,24 +32,36 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 
 `/dashboard`는 운영자가 Discord에서 첫 화면으로 볼 수 있는 요약이다. health endpoint와 CloudWatch Logs Insights 결과를 slash command 호출 시점에만 조회한다. background polling, scheduler, 대용량 cache는 두지 않는다.
 
+Dashboard는 현재 연결된 서비스만 보여주지 않는다. 운영 대상 전체 서비스인 `gateway`, `auth`, `report`, `online-judge`, `post`를 `ServiceRegistry` 고정 순서로 항상 표시한다. health URL이나 log group이 없는 서비스도 숨기지 않고 `UNKNOWN`, `NO_LOGS`, `NOT_CONFIGURED`, `LOG_QUERY_FAILED` 중 하나로 표시한다.
+
 상태 색상 기준:
 
 - `🟢`: health UP, 5xx/ERROR 없음
 - `🟡`: health UNKNOWN, 소량 ERROR, latency 높음, last log 오래됨
 - `🔴`: health DOWN, 5xx 발생, CloudWatch ALARM 감지
 - `⚪`: 로그 데이터 없음
+- `⚫`: health URL과 log group 중 필요한 설정 없음
+
+상태 정의:
+
+- `UP`: health check 성공
+- `DOWN`: health check HTTP 실패
+- `UNKNOWN`: health URL이 없거나 timeout/접근 실패
+- `NO_LOGS`: log group은 설정되어 있으나 지정한 `since` 범위에 로그 없음
+- `NOT_CONFIGURED`: health URL과 log group 중 dashboard에 필요한 설정 없음
+- `LOG_QUERY_FAILED`: CloudWatch Logs Insights query 실패
 
 예시:
 
 ```text
 🟢 A&I Service Dashboard - last 30m
 
-Service        Health     Total   4xx   5xx   ERROR   p95    Last log
-gateway        🟢 UP      1240    18    0     0       92ms   12s ago
-report         🟢 UP      312     4     0     0       148ms  24s ago
-auth           🟡 UNKNOWN 890     22    1     1       110ms  1m ago
-online-judge   🟢 UP      74      0     0     0       820ms  3m ago
-post           🟡 UNKNOWN 41      0     0     0       170ms  8m ago
+Service        Health          Logs             4xx   5xx   ERROR   Last log
+gateway        🟢 UP           OK               12    0     0       10s ago
+report         🟢 UP           OK               4     0     0       24s ago
+auth           🟡 UNKNOWN      OK               22    1     1       1m ago
+online-judge   ⚪ UNKNOWN      NO_LOGS          0     0     0       -
+post           ⚫ NOT_CONFIGURED NOT_CONFIGURED -     -     -       -
 
 Alarms: none
 Top issue: auth 5xx x1
