@@ -410,6 +410,11 @@ spring:
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/admin/courses
+            - id: report-service-v2-admin-assignment-copy
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/admin/courses/{targetCourseSlug}/assignments/copy
+                - Method=POST
             - id: report-service-v2-admin-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:

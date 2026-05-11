@@ -1,0 +1,251 @@
+package discord
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+
+	cw "github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/cloudwatch"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/config"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/health"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
+)
+
+const (
+	interactionTypePing               = 1
+	interactionTypeApplicationCommand = 2
+	maxBodyBytes                      = 64 * 1024
+)
+
+var serviceOrder = []string{"gateway", "auth", "report", "online-judge", "post"}
+
+type Handler struct {
+	cfg          config.Config
+	health       *health.Client
+	logs         *cw.LogsClient
+	alarms       *cw.AlarmClient
+	httpClient   *http.Client
+	replayWindow time.Duration
+}
+
+type Interaction struct {
+	ID            string                 `json:"id"`
+	ApplicationID string                 `json:"application_id"`
+	Type          int                    `json:"type"`
+	Token         string                 `json:"token"`
+	GuildID       string                 `json:"guild_id"`
+	Member        *Member                `json:"member,omitempty"`
+	Data          ApplicationCommandData `json:"data"`
+}
+
+type Member struct {
+	Roles []string `json:"roles"`
+}
+
+type ApplicationCommandData struct {
+	Name    string                  `json:"name"`
+	Options []ApplicationCommandOpt `json:"options,omitempty"`
+}
+
+type ApplicationCommandOpt struct {
+	Name  string          `json:"name"`
+	Value json.RawMessage `json:"value,omitempty"`
+}
+
+func NewHandler(cfg config.Config, healthClient *health.Client, logsClient *cw.LogsClient, alarmClient *cw.AlarmClient) *Handler {
+	return &Handler{
+		cfg:          cfg,
+		health:       healthClient,
+		logs:         logsClient,
+		alarms:       alarmClient,
+		httpClient:   &http.Client{Timeout: 10 * time.Second},
+		replayWindow: 5 * time.Minute,
+	}
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	if err != nil {
+		http.Error(w, "request too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	if err := VerifySignature(
+		h.cfg.DiscordPublicKey,
+		r.Header.Get("X-Signature-Timestamp"),
+		body,
+		r.Header.Get("X-Signature-Ed25519"),
+		time.Now(),
+		h.replayWindow,
+	); err != nil {
+		http.Error(w, "invalid request signature", http.StatusUnauthorized)
+		return
+	}
+
+	var interaction Interaction
+	if err := json.Unmarshal(body, &interaction); err != nil {
+		http.Error(w, "bad interaction payload", http.StatusBadRequest)
+		return
+	}
+	if interaction.Type == interactionTypePing {
+		writeJSON(w, pongResponse())
+		return
+	}
+	if interaction.Type != interactionTypeApplicationCommand {
+		writeJSON(w, messageResponse("지원하지 않는 interaction type입니다.", h.cfg.DiscordEphemeralResponses))
+		return
+	}
+	if err := h.authorize(interaction); err != nil {
+		writeJSON(w, messageResponse(err.Error(), true))
+		return
+	}
+
+	writeJSON(w, deferredResponse(h.cfg.DiscordEphemeralResponses))
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), h.cfg.CloudWatchQueryTimeout+3*time.Second)
+		defer cancel()
+		content := h.execute(ctx, interaction)
+		if err := SendFollowUp(ctx, h.httpClient, h.cfg.DiscordApplicationID, interaction.Token, content, h.cfg.DiscordEphemeralResponses); err != nil {
+			log.Printf("discord follow-up failed: %v", err)
+		}
+	}()
+}
+
+func (h *Handler) authorize(interaction Interaction) error {
+	if h.cfg.DiscordAllowedGuildID != "" && interaction.GuildID != h.cfg.DiscordAllowedGuildID {
+		return errors.New("허용되지 않은 Discord guild입니다.")
+	}
+	if len(h.cfg.DiscordAllowedRoleIDs) == 0 {
+		return nil
+	}
+	if interaction.Member == nil {
+		return errors.New("명령 실행 권한이 없습니다.")
+	}
+	allowed := make(map[string]struct{}, len(h.cfg.DiscordAllowedRoleIDs))
+	for _, role := range h.cfg.DiscordAllowedRoleIDs {
+		allowed[role] = struct{}{}
+	}
+	for _, role := range interaction.Member.Roles {
+		if _, ok := allowed[role]; ok {
+			return nil
+		}
+	}
+	return errors.New("명령 실행 권한이 없습니다.")
+}
+
+func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
+	switch interaction.Data.Name {
+	case "status":
+		return formatting.FormatStatus(h.health.CheckAll(ctx, serviceOrder))
+	case "health":
+		service, ok := security.NormalizeService(optionString(interaction, "service"))
+		if !ok {
+			return "지원하지 않는 service입니다."
+		}
+		return formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)})
+	case "logs":
+		return h.logsCommand(ctx, interaction)
+	case "errors":
+		return h.errorsCommand(ctx, interaction)
+	case "trace":
+		return h.traceCommand(ctx, interaction)
+	case "alarm":
+		names, err := h.alarms.AlarmNames(ctx)
+		if err != nil {
+			return "CloudWatch alarm 조회 실패: " + security.SanitizeText(err.Error())
+		}
+		return formatting.FormatAlarms(names)
+	case "help":
+		return formatting.HelpText()
+	default:
+		return "지원하지 않는 명령어입니다. /help 를 확인하세요."
+	}
+}
+
+func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) string {
+	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	since, ok := security.ParseSince(optionString(interaction, "since"))
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	level, ok := security.NormalizeLevel(optionString(interaction, "level"))
+	if !ok {
+		return "지원하지 않는 level 값입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	query, err := cw.BuildRecentLogsQuery(service, level, h.cfg.CloudWatchQueryLimit)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, since, security.ClampLimit(h.cfg.CloudWatchQueryLimit, 20, 100))
+	if err != nil {
+		return "CloudWatch logs 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatLogRows("최근 로그", rows)
+}
+
+func (h *Handler) errorsCommand(ctx context.Context, interaction Interaction) string {
+	since, ok := security.ParseSince(optionString(interaction, "since"))
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, optionString(interaction, "service"), h.cfg.CloudWatchMaxLogGroups)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, cw.BuildErrorsQuery(optionString(interaction, "service"), h.cfg.CloudWatchQueryLimit), since, security.ClampLimit(h.cfg.CloudWatchQueryLimit, 20, 100))
+	if err != nil {
+		return "CloudWatch errors 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatErrors(rows)
+}
+
+func (h *Handler) traceCommand(ctx context.Context, interaction Interaction) string {
+	traceID := optionString(interaction, "trace_id")
+	query, err := cw.BuildTraceQuery(traceID)
+	if err != nil {
+		return "올바르지 않은 trace_id입니다."
+	}
+	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, "", h.cfg.CloudWatchMaxLogGroups)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, 3*time.Hour, 100)
+	if err != nil {
+		return "CloudWatch trace 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatTrace(rows)
+}
+
+func optionString(interaction Interaction, name string) string {
+	for _, option := range interaction.Data.Options {
+		if option.Name != name {
+			continue
+		}
+		var value string
+		if err := json.Unmarshal(option.Value, &value); err == nil {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func writeJSON(w http.ResponseWriter, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(payload)
+}

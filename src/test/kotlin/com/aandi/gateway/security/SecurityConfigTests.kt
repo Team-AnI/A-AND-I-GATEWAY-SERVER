@@ -880,6 +880,83 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `native v2 admin assignment copy endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint is allowlisted for admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+                assertNotEquals(404, it)
+                assertNotEquals(415, it)
+            }
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint rejects non allowlisted methods`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .get()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .patch()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .delete()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint requires json content type`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .isEqualTo(415)
+    }
+
+    @Test
     fun `native v2 submission statuses endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .get()
@@ -892,12 +969,15 @@ class SecurityConfigTests(
     @Test
     fun `native v2 report routes are registered with expected predicates`() {
         val adminCoursesRoute = routeById("report-service-v2-admin-courses-root")
+        val adminAssignmentCopyRoute = routeById("report-service-v2-admin-assignment-copy")
         val adminCoursesSubpathsRoute = routeById("report-service-v2-admin-courses-subpaths")
         val coursesRoute = routeById("report-service-v2-courses-root")
         val coursesSubpathsRoute = routeById("report-service-v2-courses-subpaths")
         val assignmentCourseRoute = routeById("report-service-v2-assignment-course")
 
         assertTrue(adminCoursesRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses") })
+        assertTrue(adminAssignmentCopyRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses/{targetCourseSlug}/assignments/copy") })
+        assertTrue(adminAssignmentCopyRoute.predicates.any { it.name == "Method" && it.args.values.contains("POST") })
         assertTrue(adminCoursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses/**") })
         assertTrue(coursesRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses") })
         assertTrue(coursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses/**") })
@@ -1103,5 +1183,17 @@ class SecurityConfigTests(
         val definitions = routeDefinitionLocator.routeDefinitions.collectList().block().orEmpty()
         return definitions.firstOrNull { it.id == routeId }
             ?: error("Missing route definition: $routeId")
+    }
+
+    private companion object {
+        private const val assignmentCopyRequestBody = """
+            {
+              "sourceAssignmentId": "11111111-1111-1111-1111-111111111111",
+              "targetWeekNo": 1,
+              "targetOrderInWeek": 2,
+              "targetStartAt": "2026-05-12T09:00:00+09:00",
+              "targetEndAt": "2026-05-19T08:59:59+09:00"
+            }
+        """
     }
 }

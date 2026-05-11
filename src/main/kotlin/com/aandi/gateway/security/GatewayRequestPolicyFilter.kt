@@ -221,6 +221,7 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/admin/courses/{courseSlug}/assignments")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}/submission-statuses")),
@@ -299,6 +300,12 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}/stream"))
     )
 
+    private val denyRules: List<AllowRule> = listOf(
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy"))
+    )
+
     override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 20
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
@@ -339,15 +346,27 @@ class GatewayRequestPolicyFilter(
             }
         }
 
-        if (policy.enforceMethodPathAllowlist && allowRules.none { it.matches(request.method, path) }) {
-            log.warn(
-                "Rejecting request due to allowlist policy: method={}, path={}, host={}, remoteAddress={}",
-                request.method,
-                path.value(),
-                request.headers.host?.hostString,
-                request.remoteAddress?.address?.hostAddress
-            )
-            return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+        if (policy.enforceMethodPathAllowlist) {
+            if (denyRules.any { it.matches(request.method, path) }) {
+                log.warn(
+                    "Rejecting request due to explicit deny policy: method={}, path={}, host={}, remoteAddress={}",
+                    request.method,
+                    path.value(),
+                    request.headers.host?.hostString,
+                    request.remoteAddress?.address?.hostAddress
+                )
+                return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+            }
+            if (allowRules.none { it.matches(request.method, path) }) {
+                log.warn(
+                    "Rejecting request due to allowlist policy: method={}, path={}, host={}, remoteAddress={}",
+                    request.method,
+                    path.value(),
+                    request.headers.host?.hostString,
+                    request.remoteAddress?.address?.hostAddress
+                )
+                return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+            }
         }
 
         if (policy.enforceJsonContentType && requiresJsonContentType(request.method) && !isJsonRequest(request, path)) {
