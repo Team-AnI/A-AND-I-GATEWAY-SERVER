@@ -31,7 +31,35 @@ func Definitions() []commandDefinition {
 	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
 	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
 	levelChoices := choices("INFO", "WARN", "ERROR")
+	countTypeChoices := choices("all", "api", "error", "4xx", "5xx")
+	topByChoices := choices("path", "error", "status")
 	return []commandDefinition{
+		{Name: "dashboard", Description: "전체 서비스 운영 대시보드", Options: []commandOption{
+			stringOption("since", "조회 기간", true, sinceChoices),
+		}},
+		{Name: "service", Description: "특정 서비스 상세 운영 상태", Options: []commandOption{
+			stringOption("service", "조회할 서비스", true, serviceChoices),
+			stringOption("since", "조회 기간", true, sinceChoices),
+		}},
+		{Name: "count", Description: "서비스 로그 숫자 집계", Options: []commandOption{
+			stringOption("service", "조회할 서비스", true, serviceChoices),
+			stringOption("since", "조회 기간", true, sinceChoices),
+			stringOption("type", "집계 타입", true, countTypeChoices),
+		}},
+		{Name: "top", Description: "서비스 상위 문제 항목", Options: []commandOption{
+			stringOption("service", "조회할 서비스", true, serviceChoices),
+			stringOption("since", "조회 기간", true, sinceChoices),
+			stringOption("by", "집계 기준", true, topByChoices),
+		}},
+		{Name: "slow", Description: "느린 API 조회", Options: []commandOption{
+			stringOption("service", "조회할 서비스", true, serviceChoices),
+			stringOption("since", "조회 기간", true, sinceChoices),
+			integerOption("limit", "출력 개수(1..20)", false),
+			integerOption("threshold_ms", "최소 latency ms", false),
+		}},
+		{Name: "copy-status", Description: "Report 과제 복사 API 상태", Options: []commandOption{
+			stringOption("since", "조회 기간", true, sinceChoices),
+		}},
 		{Name: "status", Description: "A&I 서비스 상태 요약"},
 		{Name: "health", Description: "특정 서비스 health 조회", Options: []commandOption{
 			stringOption("service", "조회할 서비스", true, serviceChoices),
@@ -84,6 +112,10 @@ func RegisterGuildCommands(ctx context.Context, client *http.Client, botToken, a
 
 func stringOption(name, description string, required bool, choices []commandChoice) commandOption {
 	return commandOption{Type: 3, Name: name, Description: description, Required: required, Choices: choices}
+}
+
+func integerOption(name, description string, required bool) commandOption {
+	return commandOption{Type: 4, Name: name, Description: description, Required: required}
 }
 
 func choices(values ...string) []commandChoice {

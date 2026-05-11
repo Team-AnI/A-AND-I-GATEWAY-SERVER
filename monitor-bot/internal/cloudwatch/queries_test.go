@@ -71,3 +71,51 @@ func TestBuildErrorsQueryIncludesWarn(t *testing.T) {
 		t.Fatalf("report errors query should filter report-service: %s", query)
 	}
 }
+
+func TestBuildDashboardAndAggregationQueriesValidateInput(t *testing.T) {
+	if _, err := BuildDashboardSummaryQuery(`report" or request.body like /secret/`); err == nil {
+		t.Fatal("unsafe dashboard service accepted")
+	}
+	if _, err := BuildCountQuery("report", `all" or token like /x/`); err == nil {
+		t.Fatal("unsafe count type accepted")
+	}
+	if _, err := BuildTopQuery("report", "request.body"); err == nil {
+		t.Fatal("unsafe top by accepted")
+	}
+	if _, err := BuildSlowQuery("redis", 0, 10); err == nil {
+		t.Fatal("unsupported slow service accepted")
+	}
+}
+
+func TestBuildDashboardQueriesUseSafeV2Fields(t *testing.T) {
+	query, err := BuildDashboardSummaryQuery("report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"request.body", "response.data", "@message"} {
+		if strings.Contains(query, forbidden) {
+			t.Fatalf("dashboard query selected forbidden field %s: %s", forbidden, query)
+		}
+	}
+	if !strings.Contains(query, `service.name = "report-service"`) {
+		t.Fatalf("report dashboard query should filter report-service: %s", query)
+	}
+	countQuery, err := BuildCountQuery("report", "5xx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(countQuery, "http.statusCode >= 500") {
+		t.Fatalf("5xx query missing status filter: %s", countQuery)
+	}
+	slowQuery, err := BuildSlowQuery("report", 1000, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(slowQuery, "http.latencyMs >= 1000") || !strings.Contains(slowQuery, "limit 20") {
+		t.Fatalf("slow query should include threshold and clamp limit: %s", slowQuery)
+	}
+	copyQuery := BuildCopyStatusQuery()
+	if !strings.Contains(copyQuery, `service.name = "report-service"`) || !strings.Contains(copyQuery, "assignments") {
+		t.Fatalf("copy status query should target report copy API: %s", copyQuery)
+	}
+}

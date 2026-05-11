@@ -154,10 +154,7 @@ jobs:
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
             sudo docker rm -f \
               ${{ env.CONTAINER_NAME }} \
-              ${{ env.BOT_CONTAINER_NAME }} \
-              aandi-gateway-redis \
-              aandi-gateway-nginx \
-              aandi-gateway-nginx-bootstrap || true
+              ${{ env.BOT_CONTAINER_NAME }} || true
             sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
             server {
               listen 80;
@@ -393,8 +390,15 @@ jobs:
                   retries: 5
             EOF
             cd /opt/aandi/gateway
-            sudo docker compose pull gateway monitor-bot nginx redis
-            sudo docker compose up -d --remove-orphans gateway monitor-bot nginx redis
+            sudo docker compose pull gateway monitor-bot
+            sudo docker compose up -d --no-deps gateway
+            sudo docker compose up -d --no-deps monitor-bot
+            if sudo docker ps --format '{{.Names}}' | grep -qx 'aandi-gateway-nginx'; then
+              sudo docker exec aandi-gateway-nginx nginx -t
+              sudo docker exec aandi-gateway-nginx nginx -s reload
+            else
+              sudo docker compose up -d nginx
+            fi
             sudo docker run --rm \
               -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
               -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \

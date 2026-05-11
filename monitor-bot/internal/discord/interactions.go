@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ const (
 	maxBodyBytes                      = 64 * 1024
 )
 
-var serviceOrder = []string{"gateway", "auth", "report", "online-judge", "post"}
+var serviceOrder = []string{"gateway", "report", "auth", "online-judge", "post"}
 
 type Handler struct {
 	cfg          config.Config
@@ -111,7 +112,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, deferredResponse(h.cfg.DiscordEphemeralResponses))
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), h.cfg.CloudWatchQueryTimeout+3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), h.commandTimeout(interaction.Data.Name))
 		defer cancel()
 		content := h.execute(ctx, interaction)
 		if err := SendFollowUp(ctx, h.httpClient, h.cfg.DiscordApplicationID, interaction.Token, content, h.cfg.DiscordEphemeralResponses); err != nil {
@@ -144,6 +145,18 @@ func (h *Handler) authorize(interaction Interaction) error {
 
 func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 	switch interaction.Data.Name {
+	case "dashboard":
+		return h.dashboardCommand(ctx, interaction)
+	case "service":
+		return h.serviceCommand(ctx, interaction)
+	case "count":
+		return h.countCommand(ctx, interaction)
+	case "top":
+		return h.topCommand(ctx, interaction)
+	case "slow":
+		return h.slowCommand(ctx, interaction)
+	case "copy-status":
+		return h.copyStatusCommand(ctx, interaction)
 	case "status":
 		return formatting.FormatStatus(h.health.CheckAll(ctx, serviceOrder))
 	case "health":
@@ -169,6 +182,193 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 	default:
 		return "지원하지 않는 명령어입니다. /help 를 확인하세요."
 	}
+}
+
+func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction) string {
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	healthRows := h.health.CheckAll(ctx, serviceOrder)
+	healthByService := make(map[string]formatting.ServiceStatus, len(healthRows))
+	for _, row := range healthRows {
+		healthByService[row.Service] = row
+	}
+	alarmNames, err := h.alarms.AlarmNames(ctx)
+	if err != nil {
+		alarmNames = nil
+	}
+	inputs := make([]formatting.DashboardServiceInput, 0, len(serviceOrder))
+	for _, service := range serviceOrder {
+		groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+		if err != nil {
+			inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Alarm: serviceHasAlarm(service, alarmNames)})
+			continue
+		}
+		query, err := cw.BuildDashboardSummaryQuery(service)
+		if err != nil {
+			inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Alarm: serviceHasAlarm(service, alarmNames)})
+			continue
+		}
+		rows, err := h.logs.Query(ctx, groups, query, since, 100)
+		if err != nil {
+			inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Alarm: serviceHasAlarm(service, alarmNames)})
+			continue
+		}
+		inputs = append(inputs, formatting.DashboardServiceInput{Service: service, Health: healthByService[service], Rows: rows, Alarm: serviceHasAlarm(service, alarmNames)})
+	}
+	return formatting.FormatDashboard(sinceLabel, inputs, alarmNames)
+}
+
+func (h *Handler) serviceCommand(ctx context.Context, interaction Interaction) string {
+	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	countQuery, err := cw.BuildCountQuery(service, "all")
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	topQuery, err := cw.BuildTopQuery(service, "path")
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	countRows, err := h.logs.Query(ctx, groups, countQuery, since, 50)
+	if err != nil {
+		return "CloudWatch count 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	topRows, err := h.logs.Query(ctx, groups, topQuery, since, 10)
+	if err != nil {
+		return "CloudWatch top 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	errorRows, err := h.logs.Query(ctx, groups, cw.BuildErrorsQuery(service, 10), since, 10)
+	if err != nil {
+		return "CloudWatch errors 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatServiceDetail(formatting.ServiceDetailInput{
+		Service:   service,
+		LogGroup:  groups[0],
+		Since:     sinceLabel,
+		Health:    h.health.Check(ctx, service),
+		CountRows: countRows,
+		TopRows:   topRows,
+		ErrorRows: errorRows,
+	})
+}
+
+func (h *Handler) countCommand(ctx context.Context, interaction Interaction) string {
+	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	countType, ok := security.NormalizeCountType(optionString(interaction, "type"))
+	if !ok {
+		return "지원하지 않는 type 값입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	query, err := cw.BuildCountQuery(service, countType)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, since, 50)
+	if err != nil {
+		return "CloudWatch count 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatCountSummary(service, sinceLabel, countType, rows)
+}
+
+func (h *Handler) topCommand(ctx context.Context, interaction Interaction) string {
+	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	by, ok := security.NormalizeTopBy(optionString(interaction, "by"))
+	if !ok {
+		return "지원하지 않는 by 값입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	query, err := cw.BuildTopQuery(service, by)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, since, 10)
+	if err != nil {
+		return "CloudWatch top 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatTopSummary(service, sinceLabel, by, rows)
+}
+
+func (h *Handler) slowCommand(ctx context.Context, interaction Interaction) string {
+	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	limit := security.ParsePositiveInt(optionString(interaction, "limit"), 10)
+	if limit > 20 {
+		limit = 20
+	}
+	threshold := security.ParsePositiveInt(optionString(interaction, "threshold_ms"), 0)
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	query, err := cw.BuildSlowQuery(service, threshold, limit)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, since, int32(limit))
+	if err != nil {
+		return "CloudWatch slow 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatSlowSummary(service, sinceLabel, rows)
+}
+
+func (h *Handler) copyStatusCommand(ctx context.Context, interaction Interaction) string {
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, cw.BuildCopyStatusQuery(), since, 100)
+	if err != nil {
+		return "CloudWatch copy-status 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatCopyStatus(sinceLabel, rows)
 }
 
 func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) string {
@@ -232,6 +432,27 @@ func (h *Handler) traceCommand(ctx context.Context, interaction Interaction) str
 	return formatting.FormatTrace(rows)
 }
 
+func (h *Handler) commandTimeout(command string) time.Duration {
+	switch command {
+	case "dashboard":
+		return h.cfg.CloudWatchQueryTimeout*time.Duration(len(serviceOrder)) + 8*time.Second
+	case "service":
+		return h.cfg.CloudWatchQueryTimeout*3 + 5*time.Second
+	default:
+		return h.cfg.CloudWatchQueryTimeout + 3*time.Second
+	}
+}
+
+func serviceHasAlarm(service string, alarmNames []string) bool {
+	for _, name := range alarmNames {
+		normalized := strings.ToLower(name)
+		if strings.Contains(normalized, service) || (service == "post" && strings.Contains(normalized, "blog")) {
+			return true
+		}
+	}
+	return false
+}
+
 func optionString(interaction Interaction, name string) string {
 	for _, option := range interaction.Data.Options {
 		if option.Name != name {
@@ -240,6 +461,10 @@ func optionString(interaction Interaction, name string) string {
 		var value string
 		if err := json.Unmarshal(option.Value, &value); err == nil {
 			return strings.TrimSpace(value)
+		}
+		var number int
+		if err := json.Unmarshal(option.Value, &number); err == nil {
+			return strconv.Itoa(number)
 		}
 	}
 	return ""

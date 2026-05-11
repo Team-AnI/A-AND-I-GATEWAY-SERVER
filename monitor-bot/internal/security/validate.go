@@ -27,6 +27,18 @@ var (
 		"WARN":  {},
 		"ERROR": {},
 	}
+	allowedCountTypes = map[string]struct{}{
+		"all":   {},
+		"api":   {},
+		"error": {},
+		"4xx":   {},
+		"5xx":   {},
+	}
+	allowedTopBy = map[string]struct{}{
+		"path":   {},
+		"error":  {},
+		"status": {},
+	}
 	traceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,128}$`)
 )
 
@@ -49,6 +61,18 @@ func ParseSince(value string) (time.Duration, bool) {
 func NormalizeLevel(level string) (string, bool) {
 	normalized := strings.ToUpper(strings.TrimSpace(level))
 	_, ok := allowedLevels[normalized]
+	return normalized, ok
+}
+
+func NormalizeCountType(value string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	_, ok := allowedCountTypes[normalized]
+	return normalized, ok
+}
+
+func NormalizeTopBy(value string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	_, ok := allowedTopBy[normalized]
 	return normalized, ok
 }
 

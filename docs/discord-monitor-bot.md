@@ -8,8 +8,16 @@ Gateway 리포에 Go 기반 경량 Discord HTTP Interactions sidecar를 둔다. 
 
 CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR repository에 push한다. monitor-bot은 별도 ECR repository를 만들지 않고, `monitor-bot-${releaseTag}` 형식의 tag로만 구분한다.
 
+태그 배포는 운영 Gateway와 monitor-bot 컨테이너를 변경하므로 사용자 승인 후에만 진행한다. 승인 전에는 `git tag`, `git push origin v*.*.*`, GitHub Actions CD 수동 실행을 하지 않는다.
+
 ## Discord Commands
 
+- `/dashboard since:<5m|15m|30m|1h|3h>`: 전체 서비스 health, 요청 수, 에러 수, latency, last log, alarm 요약
+- `/service service:<service> since:<duration>`: 특정 서비스 상세 상태, top path, 최근 에러 요약
+- `/count service:<service> since:<duration> type:<all|api|error|4xx|5xx>`: 숫자 기반 로그 집계
+- `/top service:<service> since:<duration> by:<path|error|status>`: 상위 path/error/status 집계
+- `/slow service:<service> since:<duration> limit:<1..20> threshold_ms:<optional>`: 느린 API 조회
+- `/copy-status since:<duration>`: Report assignment copy API 전용 성공/실패/latency 요약
 - `/status`: gateway, report, auth, online-judge, post health 요약
 - `/health service:<service>`: allowlist service health 조회
 - `/logs service:<service> since:<5m|15m|30m|1h|3h> level:<INFO|WARN|ERROR>`: CloudWatch Logs 조회
@@ -19,6 +27,43 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 - `/help`: 명령어 예시
 
 `service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다.
+
+## Dashboard UX
+
+`/dashboard`는 운영자가 Discord에서 첫 화면으로 볼 수 있는 요약이다. health endpoint와 CloudWatch Logs Insights 결과를 slash command 호출 시점에만 조회한다. background polling, scheduler, 대용량 cache는 두지 않는다.
+
+상태 색상 기준:
+
+- `🟢`: health UP, 5xx/ERROR 없음
+- `🟡`: health UNKNOWN, 소량 ERROR, latency 높음, last log 오래됨
+- `🔴`: health DOWN, 5xx 발생, CloudWatch ALARM 감지
+- `⚪`: 로그 데이터 없음
+
+예시:
+
+```text
+🟢 A&I Service Dashboard - last 30m
+
+Service        Health     Total   4xx   5xx   ERROR   p95    Last log
+gateway        🟢 UP      1240    18    0     0       92ms   12s ago
+report         🟢 UP      312     4     0     0       148ms  24s ago
+auth           🟡 UNKNOWN 890     22    1     1       110ms  1m ago
+online-judge   🟢 UP      74      0     0     0       820ms  3m ago
+post           🟡 UNKNOWN 41      0     0     0       170ms  8m ago
+
+Alarms: none
+Top issue: auth 5xx x1
+```
+
+상세/집계 명령 예시:
+
+```text
+/service service:report since:30m
+/count service:report since:1h type:error
+/top service:report since:1h by:error
+/slow service:gateway since:30m limit:10 threshold_ms:1000
+/copy-status since:1h
+```
 
 ## V2 JSON Log Schema
 
@@ -70,7 +115,40 @@ fields service.name, http.path, http.statusCode, response.error.code, response.e
 | limit 20
 ```
 
+Dashboard/count 집계:
+
+```text
+fields service.name, logType, level, http.statusCode
+| filter service.name = "report-service"
+| stats count(*) as count by logType, level, http.statusCode
+| sort count desc
+| limit 50
+```
+
+Slow API:
+
+```text
+fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, message
+| filter service.name = "report-service"
+| filter logType = "API" or logType = "API_ERROR"
+| sort http.latencyMs desc
+| limit 10
+```
+
+Assignment copy status:
+
+```text
+fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message
+| filter service.name = "report-service"
+| filter http.method = "POST"
+| filter http.path like /\/v2\/admin\/courses\/.*\/assignments\/copy/
+| sort @timestamp desc
+| limit 100
+```
+
 사용자 입력은 service/since/level allowlist 또는 traceId regex `^[a-zA-Z0-9._:-]{1,128}$` 검증 후에만 query에 사용한다. query는 반드시 좁은 시간 범위로 실행한다.
+
+CloudWatch 비용과 응답 시간을 줄이기 위해 기본 조회 범위는 5m, 15m, 30m, 1h, 3h allowlist로만 제한한다. `/dashboard`는 최대 5개 log group만 조회하고, 각 query는 `CLOUDWATCH_QUERY_TIMEOUT_SECONDS` 기본 8초를 따른다.
 
 ## Discord Output Policy
 

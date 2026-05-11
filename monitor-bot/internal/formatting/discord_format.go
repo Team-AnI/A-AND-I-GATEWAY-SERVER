@@ -2,8 +2,12 @@ package formatting
 
 import (
 	"fmt"
+	"math"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 )
@@ -14,6 +18,35 @@ type ServiceStatus struct {
 	Service string
 	State   string
 	Detail  string
+}
+
+type DashboardServiceInput struct {
+	Service string
+	Health  ServiceStatus
+	Rows    []map[string]string
+	Alarm   bool
+}
+
+type ServiceDetailInput struct {
+	Service   string
+	LogGroup  string
+	Since     string
+	Health    ServiceStatus
+	CountRows []map[string]string
+	TopRows   []map[string]string
+	ErrorRows []map[string]string
+}
+
+type LogSummary struct {
+	Total    int
+	API      int
+	APIError int
+	Warn     int
+	Error    int
+	FourXX   int
+	FiveXX   int
+	P95      int
+	LastLog  string
 }
 
 func TruncateDiscordMessage(message string) string {
@@ -75,8 +108,206 @@ func FormatAlarms(names []string) string {
 	return TruncateDiscordMessage("ALARM 상태 알람\n- " + strings.Join(names, "\n- "))
 }
 
+func FormatDashboard(since string, services []DashboardServiceInput, alarmNames []string) string {
+	var b strings.Builder
+	statusIcon := "🟢"
+	topIssue := "none"
+	for _, service := range services {
+		summary := SummarizeRows(service.Rows)
+		if service.Alarm || strings.EqualFold(service.Health.State, "DOWN") || summary.FiveXX > 0 {
+			statusIcon = "🔴"
+			if topIssue == "none" {
+				topIssue = fmt.Sprintf("%s 5xx x%d", service.Service, summary.FiveXX)
+			}
+			break
+		}
+		if strings.EqualFold(service.Health.State, "UNKNOWN") || summary.Error > 0 || summary.P95 >= 1000 || summary.LastLog == "" {
+			statusIcon = "🟡"
+		}
+	}
+	fmt.Fprintf(&b, "%s A&I Service Dashboard - last %s\n\n", statusIcon, since)
+	b.WriteString("Service        Health     Total   4xx   5xx   ERROR   p95    Last log\n")
+	for _, service := range services {
+		summary := SummarizeRows(service.Rows)
+		state := strings.ToUpper(service.Health.State)
+		if state == "" {
+			state = "UNKNOWN"
+		}
+		icon := serviceHealthIcon(state, summary, service.Alarm)
+		fmt.Fprintf(
+			&b,
+			"%-14s %-10s %-7d %-5d %-5d %-7d %-6s %s\n",
+			service.Service,
+			icon+" "+state,
+			summary.Total,
+			summary.FourXX,
+			summary.FiveXX,
+			summary.Error,
+			formatLatency(summary.P95),
+			formatLastLog(summary.LastLog),
+		)
+	}
+	b.WriteString("\nAlarms: ")
+	if len(alarmNames) == 0 {
+		b.WriteString("none")
+	} else {
+		b.WriteString(strings.Join(alarmNames, ", "))
+	}
+	b.WriteString("\nTop issue: " + topIssue)
+	b.WriteString("\n\nNext: `/errors service:report since:" + since + "` 또는 `/copy-status since:" + since + "`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatServiceDetail(input ServiceDetailInput) string {
+	summary := SummarizeRows(input.CountRows)
+	var b strings.Builder
+	icon := serviceHealthIcon(strings.ToUpper(input.Health.State), summary, false)
+	fmt.Fprintf(&b, "%s %s detail - last %s\n\n", icon, input.Service, input.Since)
+	fmt.Fprintf(&b, "Health: %s\n", strings.ToUpper(input.Health.State))
+	fmt.Fprintf(&b, "Log group: %s\n", input.LogGroup)
+	fmt.Fprintf(&b, "Last log: %s\n", formatLastLog(summary.LastLog))
+	fmt.Fprintf(&b, "Total requests: %d\n", summary.Total)
+	fmt.Fprintf(&b, "API_ERROR: %d\n", summary.APIError)
+	fmt.Fprintf(&b, "4xx/5xx: %d/%d\n", summary.FourXX, summary.FiveXX)
+	fmt.Fprintf(&b, "p95 latency: %s\n\n", formatLatency(summary.P95))
+	b.WriteString("Top paths:\n")
+	writeTopRows(&b, input.TopRows)
+	b.WriteString("\nRecent error summary:\n")
+	writeTopRows(&b, input.ErrorRows)
+	fmt.Fprintf(&b, "\nNext:\n/errors service:%s since:%s", input.Service, input.Since)
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatCountSummary(service, since, countType string, rows []map[string]string) string {
+	summary := SummarizeRows(rows)
+	var b strings.Builder
+	fmt.Fprintf(&b, "📊 %s log count - last %s\n\n", service, since)
+	fmt.Fprintf(&b, "type: %s\n", countType)
+	fmt.Fprintf(&b, "total: %d\n", summary.Total)
+	fmt.Fprintf(&b, "API: %d\n", summary.API)
+	fmt.Fprintf(&b, "API_ERROR: %d\n", summary.APIError)
+	fmt.Fprintf(&b, "WARN: %d\n", summary.Warn)
+	fmt.Fprintf(&b, "ERROR: %d\n", summary.Error)
+	fmt.Fprintf(&b, "4xx: %d\n", summary.FourXX)
+	fmt.Fprintf(&b, "5xx: %d", summary.FiveXX)
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatTopSummary(service, since, by string, rows []map[string]string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "🔥 Top %s %s - last %s\n\n", service, by, since)
+	writeTopRows(&b, rows)
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatSlowSummary(service, since string, rows []map[string]string) string {
+	if len(rows) == 0 {
+		return fmt.Sprintf("🐢 Slow %s APIs - last %s\n\n조회 결과가 없습니다.", service, since)
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "🐢 Slow %s APIs - last %s\n\n", service, since)
+	for i, row := range rows {
+		if i >= 20 {
+			break
+		}
+		fmt.Fprintf(
+			&b,
+			"%d. %s %s\n   latency=%sms status=%s trace=%s\n",
+			i+1,
+			value(row, "http.method", "-"),
+			redactPath(value(row, "http.path", "-")),
+			value(row, "http.latencyMs", "-"),
+			value(row, "http.statusCode", "-"),
+			value(row, "trace.traceId", "-"),
+		)
+	}
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatCopyStatus(since string, rows []map[string]string) string {
+	summary := SummarizeRows(rows)
+	success := 0
+	duplicate := 0
+	var failed []string
+	for _, row := range rows {
+		status := parseInt(row["http.statusCode"])
+		if status >= 200 && status < 400 {
+			success++
+			continue
+		}
+		if status == 409 {
+			duplicate++
+		}
+		if len(failed) < 5 && status >= 400 {
+			failed = append(failed, fmt.Sprintf("- trace=%s status=%d code=%s", value(row, "trace.traceId", "-"), status, value(row, "response.error.code", "-")))
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "📦 Assignment Copy API - last %s\n\n", since)
+	fmt.Fprintf(&b, "total: %d\n", summary.Total)
+	fmt.Fprintf(&b, "success: %d\n", success)
+	fmt.Fprintf(&b, "fail: %d\n", summary.FourXX+summary.FiveXX)
+	fmt.Fprintf(&b, "409 duplicate: %d\n", duplicate)
+	fmt.Fprintf(&b, "5xx: %d\n", summary.FiveXX)
+	fmt.Fprintf(&b, "p95 latency: %s\n\n", formatLatency(summary.P95))
+	b.WriteString("Recent failed traces:\n")
+	if len(failed) == 0 {
+		b.WriteString("- none")
+	} else {
+		b.WriteString(strings.Join(failed, "\n"))
+	}
+	return TruncateDiscordMessage(b.String())
+}
+
+func SummarizeRows(rows []map[string]string) LogSummary {
+	var summary LogSummary
+	for _, row := range rows {
+		count := parseInt(row["count"])
+		if count <= 0 {
+			count = 1
+		}
+		summary.Total += count
+		logType := strings.ToUpper(strings.TrimSpace(row["logType"]))
+		level := strings.ToUpper(strings.TrimSpace(row["level"]))
+		statusCode := parseInt(row["http.statusCode"])
+		if logType == "API" {
+			summary.API += count
+		}
+		if logType == "API_ERROR" {
+			summary.APIError += count
+		}
+		if level == "WARN" {
+			summary.Warn += count
+		}
+		if level == "ERROR" {
+			summary.Error += count
+		}
+		if statusCode >= 400 && statusCode < 500 {
+			summary.FourXX += count
+		}
+		if statusCode >= 500 {
+			summary.FiveXX += count
+		}
+		for _, key := range []string{"p95", "maxLatency", "http.latencyMs"} {
+			if latency := parseFloatInt(row[key]); latency > summary.P95 {
+				summary.P95 = latency
+			}
+		}
+		if candidate := firstNonEmpty(row["lastLog"], row["@timestamp"]); newerTimestamp(candidate, summary.LastLog) {
+			summary.LastLog = candidate
+		}
+	}
+	return summary
+}
+
 func HelpText() string {
-	return strings.TrimSpace(`/status - 전체 서비스 상태 요약
+	return strings.TrimSpace(`/dashboard since:<5m|15m|30m|1h|3h> - 전체 운영 대시보드
+/service service:<service> since:<duration> - 서비스 상세 상태
+/count service:<service> since:<duration> type:<all|api|error|4xx|5xx> - 숫자 집계
+/top service:<service> since:<duration> by:<path|error|status> - 상위 문제 항목
+/slow service:<service> since:<duration> limit:<1..20> threshold_ms:<optional> - 느린 API
+/copy-status since:<duration> - Report 과제 복사 API 상태
+/status - 전체 서비스 상태 요약
 /health service:<service> - 특정 서비스 health 조회
 /logs service:<service> since:<5m|15m|30m|1h|3h> level:<INFO|WARN|ERROR> - 최근 로그 조회
 /errors service:<optional> since:<duration> - 에러 집계
@@ -97,4 +328,142 @@ func writeCompactRow(b *strings.Builder, row map[string]string) {
 		}
 		fmt.Fprintf(b, "%s=%s", pair[0], pair[1])
 	}
+}
+
+func writeTopRows(b *strings.Builder, rows []map[string]string) {
+	if len(rows) == 0 {
+		b.WriteString("- none\n")
+		return
+	}
+	for i, row := range rows {
+		if i >= 10 {
+			break
+		}
+		count := value(row, "count", "1")
+		path := redactPath(value(row, "http.path", ""))
+		status := value(row, "http.statusCode", "")
+		code := value(row, "response.error.code", "")
+		message := security.SanitizeText(value(row, "response.error.message", ""))
+		if path == "" {
+			path = "status=" + status
+		}
+		fmt.Fprintf(b, "%d. %s", i+1, path)
+		if status != "" {
+			fmt.Fprintf(b, " status=%s", status)
+		}
+		if code != "" {
+			fmt.Fprintf(b, " code=%s", code)
+		}
+		fmt.Fprintf(b, " count=%s", count)
+		if message != "" {
+			fmt.Fprintf(b, "\n   message=%s", message)
+		}
+		b.WriteByte('\n')
+	}
+}
+
+func serviceHealthIcon(state string, summary LogSummary, alarm bool) string {
+	switch {
+	case alarm || state == "DOWN" || summary.FiveXX > 0:
+		return "🔴"
+	case state == "UNKNOWN" || state == "" || summary.Error > 0 || summary.P95 >= 1000 || summary.LastLog == "":
+		return "🟡"
+	case summary.Total == 0:
+		return "⚪"
+	default:
+		return "🟢"
+	}
+}
+
+func formatLatency(value int) string {
+	if value <= 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%dms", value)
+}
+
+func formatLastLog(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "no data"
+	}
+	parsed, ok := parseTimestamp(value)
+	if !ok {
+		return security.SanitizeText(value)
+	}
+	ago := time.Since(parsed)
+	switch {
+	case ago < time.Minute:
+		return fmt.Sprintf("%ds ago", int(ago.Seconds()))
+	case ago < time.Hour:
+		return fmt.Sprintf("%dm ago", int(ago.Minutes()))
+	default:
+		return fmt.Sprintf("%dh ago", int(ago.Hours()))
+	}
+}
+
+func parseTimestamp(value string) (time.Time, bool) {
+	trimmed := strings.TrimSpace(value)
+	for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02 15:04:05.000"} {
+		if parsed, err := time.Parse(layout, trimmed); err == nil {
+			return parsed, true
+		}
+	}
+	if unixFloat, err := strconv.ParseFloat(trimmed, 64); err == nil && unixFloat > 0 {
+		seconds, fraction := math.Modf(unixFloat)
+		return time.Unix(int64(seconds), int64(fraction*1e9)), true
+	}
+	return time.Time{}, false
+}
+
+func newerTimestamp(candidate, current string) bool {
+	if strings.TrimSpace(candidate) == "" {
+		return false
+	}
+	candidateTime, candidateOK := parseTimestamp(candidate)
+	currentTime, currentOK := parseTimestamp(current)
+	if candidateOK && currentOK {
+		return candidateTime.After(currentTime)
+	}
+	if candidateOK && !currentOK {
+		return true
+	}
+	return current == "" || candidate > current
+}
+
+func parseInt(value string) int {
+	parsed, _ := strconv.Atoi(strings.TrimSpace(value))
+	return parsed
+}
+
+func parseFloatInt(value string) int {
+	if strings.TrimSpace(value) == "" {
+		return 0
+	}
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil {
+		return 0
+	}
+	return int(math.Round(parsed))
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func value(row map[string]string, key, fallback string) string {
+	if value := strings.TrimSpace(security.SanitizeText(row[key])); value != "" {
+		return value
+	}
+	return fallback
+}
+
+var coursePathPattern = regexp.MustCompile(`/v2/admin/courses/[^/]+/assignments/copy`)
+
+func redactPath(path string) string {
+	return coursePathPattern.ReplaceAllString(security.SanitizeText(path), "/v2/admin/courses/*/assignments/copy")
 }
