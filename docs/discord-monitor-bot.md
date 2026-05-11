@@ -13,9 +13,11 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 ## Discord Commands
 
 - `/dashboard since:<5m|15m|30m|1h|3h>`: 전체 서비스 health, 요청 수, 에러 수, latency, last log, alarm 요약
+- `/watch channel:<channel> interval:<5m|10m|15m>`: 지정 채널에 dashboard message 1개를 만들고 주기적으로 edit
+- `/unwatch`: 지속 dashboard 갱신 중지
 - `/service service:<service> since:<duration>`: 특정 서비스 상세 상태, top path, 최근 에러 요약
-- `/count service:<service> since:<duration> type:<all|api|error|4xx|5xx>`: 숫자 기반 로그 집계
-- `/top service:<service> since:<duration> by:<path|error|status>`: 상위 path/error/status 집계
+- `/count service:<service|all> since:<duration> type:<all|api|error|4xx|5xx>`: 숫자 기반 로그 집계
+- `/top service:<service|all> since:<duration> by:<path|error|status>`: 상위 path/error/status 집계
 - `/slow service:<service> since:<duration> limit:<1..20> threshold_ms:<optional>`: 느린 API 조회
 - `/copy-status since:<duration>`: Report assignment copy API 전용 성공/실패/latency 요약
 - `/status`: gateway, report, auth, online-judge, post health 요약
@@ -76,6 +78,39 @@ Top issue: auth 5xx x1
 /slow service:gateway since:30m limit:10 threshold_ms:1000
 /copy-status since:1h
 ```
+
+## Persistent Dashboard And Alerts
+
+`DASHBOARD_ENABLED=true`이면 monitor-bot은 `DISCORD_DASHBOARD_CHANNEL_ID`에 dashboard message를 1개 생성하고 이후 같은 message를 edit한다. message id는 `/var/lib/monitor-bot/state.json`에 저장한다. 새 메시지를 계속 보내지 않으므로 운영 채널이 도배되지 않는다.
+
+`/watch`는 실행한 채널 또는 지정 채널에 dashboard 갱신을 설정한다. `/unwatch`는 state에서 dashboard channel/message id를 비우고 갱신을 중지한다.
+
+state file에는 다음 정도의 작은 상태만 저장한다.
+
+- `dashboardChannelId`
+- `dashboardMessageId`
+- `lastDashboardUpdatedAt`
+- alert fingerprint별 `lastSentAt`, `active`, `resolvedAt`
+- health DOWN 연속 횟수
+
+CloudWatch raw log, query result, request/response body는 저장하지 않는다.
+
+자동 알림은 `ALERT_ENABLED=true`일 때만 동작한다. 알림 조건:
+
+- health DOWN 연속 `ALERT_HEALTH_DOWN_CONSECUTIVE`회
+- 최근 5분 5xx가 `ALERT_5XX_THRESHOLD_5M` 이상
+- 최근 5분 ERROR가 `ALERT_ERROR_THRESHOLD_5M` 이상
+- assignment copy API 5xx가 `ALERT_COPY_API_5XX_THRESHOLD_5M` 이상
+- 같은 fingerprint는 `ALERT_COOLDOWN_SECONDS` 동안 중복 전송하지 않음
+- 활성 alert가 다음 poll에서 사라지면 resolved 알림 전송
+
+fingerprint 형식:
+
+```text
+prod:<service>:<alertType>:<path>:<errorCode>
+```
+
+운영 EC2가 t3.micro라 dashboard interval을 너무 짧게 잡지 않는다. 권장값은 5분 이상이며, `MAX_CLOUDWATCH_QUERIES_PER_TICK=6` 기본값을 유지한다.
 
 ## V2 JSON Log Schema
 
@@ -226,10 +261,30 @@ Required Vars:
 - `LOG_GROUP_ONLINE_JUDGE=/a-and-i/online-judge`
 - `LOG_GROUP_POST=/a-and-i/prod/tech-blog`
 - `HEALTH_URL_REPORT=http://<REPORT_PRIVATE_IP>:8080/actuator/health`
+- `HEALTH_URL_AUTH`
+- `HEALTH_URL_ONLINE_JUDGE`
+- `HEALTH_URL_POST`
 - `DISCORD_REGISTER_COMMANDS=true`
 - `CLOUDWATCH_QUERY_TIMEOUT_SECONDS=8`
 - `CLOUDWATCH_QUERY_POLL_INTERVAL_MS=500`
 - `CLOUDWATCH_QUERY_LIMIT=20`
+- `DASHBOARD_ENABLED=true`
+- `DASHBOARD_REFRESH_INTERVAL_SECONDS=300`
+- `DASHBOARD_SINCE=30m`
+- `ALERT_ENABLED=true`
+- `ALERT_POLL_INTERVAL_SECONDS=180`
+- `ALERT_COOLDOWN_SECONDS=900`
+- `ALERT_5XX_THRESHOLD_5M=3`
+- `ALERT_ERROR_THRESHOLD_5M=5`
+- `ALERT_HEALTH_DOWN_CONSECUTIVE=2`
+- `ALERT_NO_LOGS_MINUTES=30`
+- `ALERT_COPY_API_5XX_THRESHOLD_5M=1`
+- `MAX_CLOUDWATCH_QUERIES_PER_TICK=6`
+
+Additional Secrets:
+
+- `DISCORD_DASHBOARD_CHANNEL_ID`
+- `DISCORD_ALERT_CHANNEL_ID`
 
 Runtime defaults:
 
@@ -289,6 +344,22 @@ monitor-bot:
     CLOUDWATCH_QUERY_TIMEOUT_SECONDS: "8"
     CLOUDWATCH_QUERY_POLL_INTERVAL_MS: "500"
     CLOUDWATCH_QUERY_LIMIT: "20"
+    DASHBOARD_ENABLED: "true"
+    DISCORD_DASHBOARD_CHANNEL_ID: "${DISCORD_DASHBOARD_CHANNEL_ID}"
+    DASHBOARD_REFRESH_INTERVAL_SECONDS: "300"
+    DASHBOARD_SINCE: "30m"
+    ALERT_ENABLED: "true"
+    DISCORD_ALERT_CHANNEL_ID: "${DISCORD_ALERT_CHANNEL_ID}"
+    ALERT_POLL_INTERVAL_SECONDS: "180"
+    ALERT_COOLDOWN_SECONDS: "900"
+    ALERT_5XX_THRESHOLD_5M: "3"
+    ALERT_ERROR_THRESHOLD_5M: "5"
+    ALERT_HEALTH_DOWN_CONSECUTIVE: "2"
+    ALERT_NO_LOGS_MINUTES: "30"
+    ALERT_COPY_API_5XX_THRESHOLD_5M: "1"
+    MAX_CLOUDWATCH_QUERIES_PER_TICK: "6"
+  volumes:
+    - monitor-bot-state:/var/lib/monitor-bot
   logging:
     driver: awslogs
     options:
@@ -302,6 +373,13 @@ monitor-bot:
     timeout: 3s
     retries: 3
     start_period: 20s
+```
+
+Compose top-level volume:
+
+```yaml
+volumes:
+  monitor-bot-state:
 ```
 
 nginx 예시:

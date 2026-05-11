@@ -48,6 +48,14 @@ func NormalizeService(service string) (string, bool) {
 	return normalized, ok
 }
 
+func NormalizeServiceOrAll(service string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(service))
+	if normalized == "all" {
+		return normalized, true
+	}
+	return NormalizeService(service)
+}
+
 func ValidateService(service string) bool {
 	_, ok := NormalizeService(service)
 	return ok

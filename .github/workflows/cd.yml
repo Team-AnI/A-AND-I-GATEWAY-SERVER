@@ -106,9 +106,26 @@ jobs:
             LOG_GROUP_ONLINE_JUDGE="${{ vars.LOG_GROUP_ONLINE_JUDGE }}"
             LOG_GROUP_POST="${{ vars.LOG_GROUP_POST }}"
             HEALTH_URL_REPORT="${{ vars.HEALTH_URL_REPORT }}"
+            HEALTH_URL_AUTH="${{ vars.HEALTH_URL_AUTH }}"
+            HEALTH_URL_ONLINE_JUDGE="${{ vars.HEALTH_URL_ONLINE_JUDGE }}"
+            HEALTH_URL_POST="${{ vars.HEALTH_URL_POST }}"
             CLOUDWATCH_QUERY_TIMEOUT_SECONDS="${{ vars.CLOUDWATCH_QUERY_TIMEOUT_SECONDS }}"
             CLOUDWATCH_QUERY_POLL_INTERVAL_MS="${{ vars.CLOUDWATCH_QUERY_POLL_INTERVAL_MS }}"
             CLOUDWATCH_QUERY_LIMIT="${{ vars.CLOUDWATCH_QUERY_LIMIT }}"
+            DASHBOARD_ENABLED="${{ vars.DASHBOARD_ENABLED }}"
+            DISCORD_DASHBOARD_CHANNEL_ID="${{ secrets.DISCORD_DASHBOARD_CHANNEL_ID }}"
+            DASHBOARD_REFRESH_INTERVAL_SECONDS="${{ vars.DASHBOARD_REFRESH_INTERVAL_SECONDS }}"
+            DASHBOARD_SINCE="${{ vars.DASHBOARD_SINCE }}"
+            ALERT_ENABLED="${{ vars.ALERT_ENABLED }}"
+            DISCORD_ALERT_CHANNEL_ID="${{ secrets.DISCORD_ALERT_CHANNEL_ID }}"
+            ALERT_POLL_INTERVAL_SECONDS="${{ vars.ALERT_POLL_INTERVAL_SECONDS }}"
+            ALERT_COOLDOWN_SECONDS="${{ vars.ALERT_COOLDOWN_SECONDS }}"
+            ALERT_5XX_THRESHOLD_5M="${{ vars.ALERT_5XX_THRESHOLD_5M }}"
+            ALERT_ERROR_THRESHOLD_5M="${{ vars.ALERT_ERROR_THRESHOLD_5M }}"
+            ALERT_HEALTH_DOWN_CONSECUTIVE="${{ vars.ALERT_HEALTH_DOWN_CONSECUTIVE }}"
+            ALERT_NO_LOGS_MINUTES="${{ vars.ALERT_NO_LOGS_MINUTES }}"
+            ALERT_COPY_API_5XX_THRESHOLD_5M="${{ vars.ALERT_COPY_API_5XX_THRESHOLD_5M }}"
+            MAX_CLOUDWATCH_QUERIES_PER_TICK="${{ vars.MAX_CLOUDWATCH_QUERIES_PER_TICK }}"
             AUTH_SERVICE_URI="${{ secrets.AUTH_SERVICE_URI }}"
             REPORT_SERVICE_URI="${{ secrets.REPORT_SERVICE_URI }}"
             POST_SERVICE_URI="${{ secrets.POST_SERVICE_URI }}"
@@ -137,6 +154,18 @@ jobs:
             if [ -z "$CLOUDWATCH_QUERY_TIMEOUT_SECONDS" ]; then CLOUDWATCH_QUERY_TIMEOUT_SECONDS="8"; fi
             if [ -z "$CLOUDWATCH_QUERY_POLL_INTERVAL_MS" ]; then CLOUDWATCH_QUERY_POLL_INTERVAL_MS="500"; fi
             if [ -z "$CLOUDWATCH_QUERY_LIMIT" ]; then CLOUDWATCH_QUERY_LIMIT="20"; fi
+            if [ -z "$DASHBOARD_ENABLED" ]; then DASHBOARD_ENABLED="false"; fi
+            if [ -z "$DASHBOARD_REFRESH_INTERVAL_SECONDS" ]; then DASHBOARD_REFRESH_INTERVAL_SECONDS="300"; fi
+            if [ -z "$DASHBOARD_SINCE" ]; then DASHBOARD_SINCE="30m"; fi
+            if [ -z "$ALERT_ENABLED" ]; then ALERT_ENABLED="false"; fi
+            if [ -z "$ALERT_POLL_INTERVAL_SECONDS" ]; then ALERT_POLL_INTERVAL_SECONDS="180"; fi
+            if [ -z "$ALERT_COOLDOWN_SECONDS" ]; then ALERT_COOLDOWN_SECONDS="900"; fi
+            if [ -z "$ALERT_5XX_THRESHOLD_5M" ]; then ALERT_5XX_THRESHOLD_5M="3"; fi
+            if [ -z "$ALERT_ERROR_THRESHOLD_5M" ]; then ALERT_ERROR_THRESHOLD_5M="5"; fi
+            if [ -z "$ALERT_HEALTH_DOWN_CONSECUTIVE" ]; then ALERT_HEALTH_DOWN_CONSECUTIVE="2"; fi
+            if [ -z "$ALERT_NO_LOGS_MINUTES" ]; then ALERT_NO_LOGS_MINUTES="30"; fi
+            if [ -z "$ALERT_COPY_API_5XX_THRESHOLD_5M" ]; then ALERT_COPY_API_5XX_THRESHOLD_5M="1"; fi
+            if [ -z "$MAX_CLOUDWATCH_QUERIES_PER_TICK" ]; then MAX_CLOUDWATCH_QUERIES_PER_TICK="6"; fi
 
             [ -n "$AUTH_SERVICE_URI" ] || { echo "Missing secret: AUTH_SERVICE_URI"; exit 1; }
             [ -n "$REPORT_SERVICE_URI" ] || { echo "Missing secret: REPORT_SERVICE_URI"; exit 1; }
@@ -351,9 +380,28 @@ jobs:
                   LOG_GROUP_POST: "${LOG_GROUP_POST}"
                   HEALTH_URL_GATEWAY: "http://gateway:9090/actuator/health"
                   HEALTH_URL_REPORT: "${HEALTH_URL_REPORT}"
+                  HEALTH_URL_AUTH: "${HEALTH_URL_AUTH}"
+                  HEALTH_URL_ONLINE_JUDGE: "${HEALTH_URL_ONLINE_JUDGE}"
+                  HEALTH_URL_POST: "${HEALTH_URL_POST}"
                   CLOUDWATCH_QUERY_TIMEOUT_SECONDS: "${CLOUDWATCH_QUERY_TIMEOUT_SECONDS}"
                   CLOUDWATCH_QUERY_POLL_INTERVAL_MS: "${CLOUDWATCH_QUERY_POLL_INTERVAL_MS}"
                   CLOUDWATCH_QUERY_LIMIT: "${CLOUDWATCH_QUERY_LIMIT}"
+                  DASHBOARD_ENABLED: "${DASHBOARD_ENABLED}"
+                  DISCORD_DASHBOARD_CHANNEL_ID: "${DISCORD_DASHBOARD_CHANNEL_ID}"
+                  DASHBOARD_REFRESH_INTERVAL_SECONDS: "${DASHBOARD_REFRESH_INTERVAL_SECONDS}"
+                  DASHBOARD_SINCE: "${DASHBOARD_SINCE}"
+                  ALERT_ENABLED: "${ALERT_ENABLED}"
+                  DISCORD_ALERT_CHANNEL_ID: "${DISCORD_ALERT_CHANNEL_ID}"
+                  ALERT_POLL_INTERVAL_SECONDS: "${ALERT_POLL_INTERVAL_SECONDS}"
+                  ALERT_COOLDOWN_SECONDS: "${ALERT_COOLDOWN_SECONDS}"
+                  ALERT_5XX_THRESHOLD_5M: "${ALERT_5XX_THRESHOLD_5M}"
+                  ALERT_ERROR_THRESHOLD_5M: "${ALERT_ERROR_THRESHOLD_5M}"
+                  ALERT_HEALTH_DOWN_CONSECUTIVE: "${ALERT_HEALTH_DOWN_CONSECUTIVE}"
+                  ALERT_NO_LOGS_MINUTES: "${ALERT_NO_LOGS_MINUTES}"
+                  ALERT_COPY_API_5XX_THRESHOLD_5M: "${ALERT_COPY_API_5XX_THRESHOLD_5M}"
+                  MAX_CLOUDWATCH_QUERIES_PER_TICK: "${MAX_CLOUDWATCH_QUERIES_PER_TICK}"
+                volumes:
+                  - monitor-bot-state:/var/lib/monitor-bot
                 depends_on:
                   gateway:
                     condition: service_started
@@ -388,6 +436,9 @@ jobs:
                   interval: 5s
                   timeout: 3s
                   retries: 5
+
+            volumes:
+              monitor-bot-state:
             EOF
             cd /opt/aandi/gateway
             sudo docker compose pull gateway monitor-bot

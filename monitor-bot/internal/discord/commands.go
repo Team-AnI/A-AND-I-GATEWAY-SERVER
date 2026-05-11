@@ -29,7 +29,9 @@ type commandChoice struct {
 
 func Definitions() []commandDefinition {
 	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
+	serviceOrAllChoices := choices("all", "gateway", "auth", "report", "online-judge", "post")
 	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
+	watchIntervalChoices := choices("5m", "10m", "15m")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	countTypeChoices := choices("all", "api", "error", "4xx", "5xx")
 	topByChoices := choices("path", "error", "status")
@@ -37,17 +39,22 @@ func Definitions() []commandDefinition {
 		{Name: "dashboard", Description: "전체 서비스 운영 대시보드", Options: []commandOption{
 			stringOption("since", "조회 기간", true, sinceChoices),
 		}},
+		{Name: "watch", Description: "지속 dashboard message 갱신 설정", Options: []commandOption{
+			channelOption("channel", "dashboard를 표시할 채널", true),
+			stringOption("interval", "갱신 주기", true, watchIntervalChoices),
+		}},
+		{Name: "unwatch", Description: "지속 dashboard message 갱신 중지"},
 		{Name: "service", Description: "특정 서비스 상세 운영 상태", Options: []commandOption{
 			stringOption("service", "조회할 서비스", true, serviceChoices),
 			stringOption("since", "조회 기간", true, sinceChoices),
 		}},
 		{Name: "count", Description: "서비스 로그 숫자 집계", Options: []commandOption{
-			stringOption("service", "조회할 서비스", true, serviceChoices),
+			stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
 			stringOption("since", "조회 기간", true, sinceChoices),
 			stringOption("type", "집계 타입", true, countTypeChoices),
 		}},
 		{Name: "top", Description: "서비스 상위 문제 항목", Options: []commandOption{
-			stringOption("service", "조회할 서비스", true, serviceChoices),
+			stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
 			stringOption("since", "조회 기간", true, sinceChoices),
 			stringOption("by", "집계 기준", true, topByChoices),
 		}},
@@ -116,6 +123,10 @@ func stringOption(name, description string, required bool, choices []commandChoi
 
 func integerOption(name, description string, required bool) commandOption {
 	return commandOption{Type: 4, Name: name, Description: description, Required: required}
+}
+
+func channelOption(name, description string, required bool) commandOption {
+	return commandOption{Type: 7, Name: name, Description: description, Required: required}
 }
 
 func choices(values ...string) []commandChoice {

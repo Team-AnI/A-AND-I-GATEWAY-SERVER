@@ -17,6 +17,8 @@ import (
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/config"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/discord"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/health"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/monitor"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
 
 var version = "dev"
@@ -48,7 +50,14 @@ func main() {
 	healthClient := health.NewClient(cfg.HealthURLs, cfg.HealthRequestTimeout)
 	logsClient := cw.NewLogsClient(awslogs.NewFromConfig(awsCfg), cfg.CloudWatchQueryTimeout, cfg.CloudWatchQueryPollInterval, cfg.CloudWatchQueryLimit)
 	alarmClient := cw.NewAlarmClient(awscloudwatch.NewFromConfig(awsCfg))
+	stateStore := state.NewStore(cfg.StatePath)
+	if err := stateStore.Load(); err != nil {
+		log.Printf("state load failed: %v", err)
+	}
+	monitorService := monitor.NewService(cfg, healthClient, logsClient, alarmClient, stateStore, httpClient)
 	interactionHandler := discord.NewHandler(cfg, healthClient, logsClient, alarmClient)
+	interactionHandler.SetWatcher(monitorService)
+	monitorService.Start(context.Background())
 
 	mux := http.NewServeMux()
 	mux.Handle("/interactions", interactionHandler)

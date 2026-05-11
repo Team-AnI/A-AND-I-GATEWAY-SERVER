@@ -119,3 +119,20 @@ func TestBuildDashboardQueriesUseSafeV2Fields(t *testing.T) {
 		t.Fatalf("copy status query should target report copy API: %s", copyQuery)
 	}
 }
+
+func TestBuildAggregationQueriesAllowAllWithoutRawInput(t *testing.T) {
+	countQuery, err := BuildCountQuery("all", "error")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(countQuery, `service.name =`) {
+		t.Fatalf("all count query should not force one service filter: %s", countQuery)
+	}
+	topQuery, err := BuildTopQuery("all", "status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(topQuery, "request.body") || strings.Contains(topQuery, "response.data") {
+		t.Fatalf("top query leaked forbidden fields: %s", topQuery)
+	}
+}

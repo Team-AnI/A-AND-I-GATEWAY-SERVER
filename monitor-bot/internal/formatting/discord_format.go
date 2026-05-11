@@ -111,6 +111,10 @@ func FormatAlarms(names []string) string {
 }
 
 func FormatDashboard(since string, services []DashboardServiceInput, alarmNames []string) string {
+	return FormatDashboardWithMeta(since, services, alarmNames, time.Time{}, 0)
+}
+
+func FormatDashboardWithMeta(since string, services []DashboardServiceInput, alarmNames []string, updatedAt time.Time, nextRefresh time.Duration) string {
 	var b strings.Builder
 	statusIcon := "🟢"
 	topIssue := "none"
@@ -128,6 +132,15 @@ func FormatDashboard(since string, services []DashboardServiceInput, alarmNames 
 		}
 	}
 	fmt.Fprintf(&b, "%s A&I Service Dashboard - last %s\n\n", statusIcon, since)
+	if !updatedAt.IsZero() {
+		fmt.Fprintf(&b, "Last updated: %s KST\n", updatedAt.In(time.FixedZone("KST", 9*60*60)).Format("2006-01-02 15:04:05"))
+	}
+	if nextRefresh > 0 {
+		fmt.Fprintf(&b, "Next refresh: %s\n", formatDurationCompact(nextRefresh))
+	}
+	if !updatedAt.IsZero() || nextRefresh > 0 {
+		b.WriteByte('\n')
+	}
 	b.WriteString("Service        Health          Logs             4xx   5xx   ERROR   Last log\n")
 	for _, service := range services {
 		summary := SummarizeRows(service.Rows)
@@ -437,6 +450,16 @@ func formatLatency(value int) string {
 		return "-"
 	}
 	return fmt.Sprintf("%dms", value)
+}
+
+func formatDurationCompact(value time.Duration) string {
+	if value%time.Hour == 0 && value >= time.Hour {
+		return fmt.Sprintf("%dh", int(value.Hours()))
+	}
+	if value%time.Minute == 0 && value >= time.Minute {
+		return fmt.Sprintf("%dm", int(value.Minutes()))
+	}
+	return fmt.Sprintf("%ds", int(value.Seconds()))
 }
 
 func formatLastLog(value string) string {

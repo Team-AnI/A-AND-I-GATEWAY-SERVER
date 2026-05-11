@@ -13,6 +13,15 @@ func TestValidateServiceAllowlist(t *testing.T) {
 	}
 }
 
+func TestNormalizeServiceOrAll(t *testing.T) {
+	if got, ok := NormalizeServiceOrAll("all"); !ok || got != "all" {
+		t.Fatalf("expected all to be accepted, got %q ok=%v", got, ok)
+	}
+	if _, ok := NormalizeServiceOrAll("redis"); ok {
+		t.Fatal("redis must not be accepted")
+	}
+}
+
 func TestParseSinceAllowlist(t *testing.T) {
 	if _, ok := ParseSince("15m"); !ok {
 		t.Fatal("15m should be accepted")

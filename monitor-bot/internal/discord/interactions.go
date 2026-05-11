@@ -33,6 +33,12 @@ type Handler struct {
 	alarms       *cw.AlarmClient
 	httpClient   *http.Client
 	replayWindow time.Duration
+	watcher      Watcher
+}
+
+type Watcher interface {
+	WatchDashboard(ctx context.Context, channelID string, interval time.Duration) (string, error)
+	UnwatchDashboard(ctx context.Context) (string, error)
 }
 
 type Interaction struct {
@@ -43,6 +49,10 @@ type Interaction struct {
 	GuildID       string                 `json:"guild_id"`
 	Member        *Member                `json:"member,omitempty"`
 	Data          ApplicationCommandData `json:"data"`
+}
+
+func (h *Handler) SetWatcher(watcher Watcher) {
+	h.watcher = watcher
 }
 
 type Member struct {
@@ -147,6 +157,10 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 	switch interaction.Data.Name {
 	case "dashboard":
 		return h.dashboardCommand(ctx, interaction)
+	case "watch":
+		return h.watchCommand(ctx, interaction)
+	case "unwatch":
+		return h.unwatchCommand(ctx, interaction)
 	case "service":
 		return h.serviceCommand(ctx, interaction)
 	case "count":
@@ -182,6 +196,33 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 	default:
 		return "지원하지 않는 명령어입니다. /help 를 확인하세요."
 	}
+}
+
+func (h *Handler) watchCommand(ctx context.Context, interaction Interaction) string {
+	if h.watcher == nil {
+		return "dashboard watcher가 설정되어 있지 않습니다."
+	}
+	channelID := optionString(interaction, "channel")
+	interval, ok := parseWatchInterval(optionString(interaction, "interval"))
+	if !ok {
+		return "지원하지 않는 interval 값입니다."
+	}
+	message, err := h.watcher.WatchDashboard(ctx, channelID, interval)
+	if err != nil {
+		return "dashboard watch 설정 실패: " + security.SanitizeText(err.Error())
+	}
+	return message
+}
+
+func (h *Handler) unwatchCommand(ctx context.Context, interaction Interaction) string {
+	if h.watcher == nil {
+		return "dashboard watcher가 설정되어 있지 않습니다."
+	}
+	message, err := h.watcher.UnwatchDashboard(ctx)
+	if err != nil {
+		return "dashboard watch 해제 실패: " + security.SanitizeText(err.Error())
+	}
+	return message
 }
 
 func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction) string {
@@ -255,7 +296,7 @@ func (h *Handler) serviceCommand(ctx context.Context, interaction Interaction) s
 	if !ok {
 		return "지원하지 않는 since 값입니다."
 	}
-	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -291,7 +332,7 @@ func (h *Handler) serviceCommand(ctx context.Context, interaction Interaction) s
 }
 
 func (h *Handler) countCommand(ctx context.Context, interaction Interaction) string {
-	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	service, ok := security.NormalizeServiceOrAll(optionString(interaction, "service"))
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
@@ -304,7 +345,7 @@ func (h *Handler) countCommand(ctx context.Context, interaction Interaction) str
 	if !ok {
 		return "지원하지 않는 type 값입니다."
 	}
-	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -320,7 +361,7 @@ func (h *Handler) countCommand(ctx context.Context, interaction Interaction) str
 }
 
 func (h *Handler) topCommand(ctx context.Context, interaction Interaction) string {
-	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	service, ok := security.NormalizeServiceOrAll(optionString(interaction, "service"))
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
@@ -475,6 +516,19 @@ func serviceHasAlarm(service string, alarmNames []string) bool {
 		}
 	}
 	return false
+}
+
+func parseWatchInterval(value string) (time.Duration, bool) {
+	switch strings.TrimSpace(value) {
+	case "5m":
+		return 5 * time.Minute, true
+	case "10m":
+		return 10 * time.Minute, true
+	case "15m":
+		return 15 * time.Minute, true
+	default:
+		return 0, false
+	}
 }
 
 func optionString(interaction Interaction, name string) string {

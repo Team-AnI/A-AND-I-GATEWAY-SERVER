@@ -30,7 +30,7 @@ func LogGroupsForService(logGroups map[string]string, service string) ([]string,
 }
 
 func LogGroupsForOptionalService(logGroups map[string]string, service string, maxGroups int) ([]string, error) {
-	if strings.TrimSpace(service) != "" {
+	if strings.TrimSpace(service) != "" && strings.TrimSpace(service) != "all" {
 		return LogGroupsForService(logGroups, service)
 	}
 	if maxGroups <= 0 {
@@ -109,18 +109,18 @@ func BuildDashboardSummaryQuery(service string) (string, error) {
 		return "", err
 	}
 	filter := serviceNameFilter(normalized)
-	return fmt.Sprintf(`%s
+	return fmt.Sprintf(`fields service.name, logType, level, http.path, http.statusCode, http.latencyMs, response.error.code, response.error.value
 %s
 | filter logType = "API" or logType = "API_ERROR" or level = "WARN" or level = "ERROR"
-| stats count(*) as count, max(@timestamp) as lastLog, max(http.latencyMs) as maxLatency, pct(http.latencyMs, 95) as p95 by service.name, logType, level, http.statusCode
+| stats count(*) as count, max(@timestamp) as lastLog, max(http.latencyMs) as maxLatency, pct(http.latencyMs, 95) as p95 by service.name, logType, level, http.path, http.statusCode, response.error.code, response.error.value
 | sort count desc
-| limit 100`, countFields, filter), nil
+| limit 100`, filter), nil
 }
 
 func BuildCountQuery(service, countType string) (string, error) {
-	normalized, err := normalizeQueryService(service)
-	if err != nil {
-		return "", err
+	normalized, ok := security.NormalizeServiceOrAll(service)
+	if !ok {
+		return "", fmt.Errorf("unsupported service: %s", service)
 	}
 	normalizedType, ok := security.NormalizeCountType(countType)
 	if !ok {
@@ -135,9 +135,9 @@ func BuildCountQuery(service, countType string) (string, error) {
 }
 
 func BuildTopQuery(service, by string) (string, error) {
-	normalized, err := normalizeQueryService(service)
-	if err != nil {
-		return "", err
+	normalized, ok := security.NormalizeServiceOrAll(service)
+	if !ok {
+		return "", fmt.Errorf("unsupported service: %s", service)
 	}
 	normalizedBy, ok := security.NormalizeTopBy(by)
 	if !ok {
@@ -186,6 +186,18 @@ func BuildCopyStatusQuery() string {
 | limit 100`, copyFields)
 }
 
+func BuildAlertQuery(service string) (string, error) {
+	normalized, err := normalizeQueryService(service)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(`%s
+%s
+| filter logType = "API_ERROR" or level = "ERROR" or http.statusCode >= 500
+| sort @timestamp desc
+| limit 50`, slowFields, serviceNameFilter(normalized)), nil
+}
+
 func BuildLastLogQuery(service string) (string, error) {
 	normalized, err := normalizeQueryService(service)
 	if err != nil {
@@ -211,6 +223,9 @@ func normalizeQueryService(service string) (string, error) {
 }
 
 func serviceNameFilter(service string) string {
+	if service == "all" {
+		return ""
+	}
 	if service == "report" {
 		return `| filter service.name = "report-service"`
 	}

@@ -26,14 +26,39 @@ type Config struct {
 	LogGroups                   map[string]string
 	HealthURLs                  map[string]string
 	ServiceRegistry             []ServiceDefinition
+	StatePath                   string
+	Dashboard                   DashboardConfig
+	Alert                       AlertConfig
 }
 
 type ServiceDefinition struct {
 	Name        string
 	DisplayName string
+	ServiceName string
+	DomainCode  int
 	LogGroup    string
 	HealthURL   string
 	Enabled     bool
+}
+
+type DashboardConfig struct {
+	Enabled              bool
+	ChannelID            string
+	RefreshInterval      time.Duration
+	Since                string
+	MaxCloudWatchQueries int
+}
+
+type AlertConfig struct {
+	Enabled                  bool
+	ChannelID                string
+	PollInterval             time.Duration
+	Cooldown                 time.Duration
+	FiveXXThreshold5m        int
+	ErrorThreshold5m         int
+	HealthDownConsecutive    int
+	NoLogsMinutes            int
+	CopyAPIFiveXXThreshold5m int
 }
 
 func Load() Config {
@@ -70,6 +95,25 @@ func Load() Config {
 		LogGroups:                   logGroups,
 		HealthURLs:                  healthURLs,
 		ServiceRegistry:             BuildServiceRegistry(logGroups, healthURLs),
+		StatePath:                   env("MONITOR_BOT_STATE_PATH", "/var/lib/monitor-bot/state.json"),
+		Dashboard: DashboardConfig{
+			Enabled:              envBool("DASHBOARD_ENABLED", false),
+			ChannelID:            env("DISCORD_DASHBOARD_CHANNEL_ID", ""),
+			RefreshInterval:      time.Duration(envInt("DASHBOARD_REFRESH_INTERVAL_SECONDS", 300)) * time.Second,
+			Since:                env("DASHBOARD_SINCE", "30m"),
+			MaxCloudWatchQueries: envInt("MAX_CLOUDWATCH_QUERIES_PER_TICK", 6),
+		},
+		Alert: AlertConfig{
+			Enabled:                  envBool("ALERT_ENABLED", false),
+			ChannelID:                env("DISCORD_ALERT_CHANNEL_ID", ""),
+			PollInterval:             time.Duration(envInt("ALERT_POLL_INTERVAL_SECONDS", 180)) * time.Second,
+			Cooldown:                 time.Duration(envInt("ALERT_COOLDOWN_SECONDS", 900)) * time.Second,
+			FiveXXThreshold5m:        envInt("ALERT_5XX_THRESHOLD_5M", 3),
+			ErrorThreshold5m:         envInt("ALERT_ERROR_THRESHOLD_5M", 5),
+			HealthDownConsecutive:    envInt("ALERT_HEALTH_DOWN_CONSECUTIVE", 2),
+			NoLogsMinutes:            envInt("ALERT_NO_LOGS_MINUTES", 30),
+			CopyAPIFiveXXThreshold5m: envInt("ALERT_COPY_API_5XX_THRESHOLD_5M", 1),
+		},
 	}
 }
 
@@ -77,12 +121,14 @@ func BuildServiceRegistry(logGroups, healthURLs map[string]string) []ServiceDefi
 	order := []struct {
 		name        string
 		displayName string
+		serviceName string
+		domainCode  int
 	}{
-		{"gateway", "gateway"},
-		{"auth", "auth"},
-		{"report", "report"},
-		{"online-judge", "online-judge"},
-		{"post", "post"},
+		{"gateway", "gateway", "gateway", 0},
+		{"auth", "auth", "auth-service", 1},
+		{"report", "report", "report-service", 4},
+		{"online-judge", "online-judge", "online-judge-service", 3},
+		{"post", "post", "post-service", 2},
 	}
 	registry := make([]ServiceDefinition, 0, len(order))
 	for _, item := range order {
@@ -91,6 +137,8 @@ func BuildServiceRegistry(logGroups, healthURLs map[string]string) []ServiceDefi
 		registry = append(registry, ServiceDefinition{
 			Name:        item.name,
 			DisplayName: item.displayName,
+			ServiceName: item.serviceName,
+			DomainCode:  item.domainCode,
 			LogGroup:    logGroup,
 			HealthURL:   healthURL,
 			Enabled:     logGroup != "" || healthURL != "",
