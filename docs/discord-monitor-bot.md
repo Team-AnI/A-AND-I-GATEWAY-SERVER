@@ -6,7 +6,7 @@ Gateway 리포에 Go 기반 경량 Discord HTTP Interactions sidecar를 둔다. 
 
 운영 Gateway EC2는 t3.micro이고 MemAvailable이 약 184MiB 수준이라 Python, Node.js, JVM 기반 bot은 피한다. bot은 로그 저장소가 아니며, 로그 저장소는 CloudWatch Logs다. 사용자가 slash command를 호출할 때만 CloudWatch Logs Insights를 조회한다.
 
-이 PR에서는 운영 배포를 하지 않는다. 새 tag를 만들지 않고, CD workflow를 실행하지 않는다.
+CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR repository에 push한다. monitor-bot은 별도 ECR repository를 만들지 않고, `monitor-bot-${releaseTag}` 형식의 tag로만 구분한다.
 
 ## Discord Commands
 
@@ -120,31 +120,61 @@ CloudWatch query 결과에 금지 필드가 포함되어도 formatting 단계에
 
 ## Required Environment
 
-- `BOT_HTTP_PORT=8088`
+Required Secrets:
+
 - `DISCORD_APPLICATION_ID`
 - `DISCORD_PUBLIC_KEY`
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_ALLOWED_GUILD_ID`
 - `DISCORD_ALLOWED_ROLE_IDS`
-- `DISCORD_REGISTER_COMMANDS=false`
-- `AWS_REGION=ap-northeast-2`
+
+Required Vars:
+
 - `LOG_GROUP_REPORT=/a-and-i/prod/report`
+- `LOG_GROUP_GATEWAY=/a-and-i/gateway`
+- `LOG_GROUP_AUTH=/a-and-i/auth`
+- `LOG_GROUP_ONLINE_JUDGE=/a-and-i/online-judge`
+- `LOG_GROUP_POST=/a-and-i/prod/tech-blog`
 - `HEALTH_URL_REPORT=http://<REPORT_PRIVATE_IP>:8080/actuator/health`
+- `DISCORD_REGISTER_COMMANDS=true`
+- `CLOUDWATCH_QUERY_TIMEOUT_SECONDS=8`
+- `CLOUDWATCH_QUERY_POLL_INTERVAL_MS=500`
+- `CLOUDWATCH_QUERY_LIMIT=20`
 
-기타 log group override:
+Runtime defaults:
 
-- `LOG_GROUP_GATEWAY`
-- `LOG_GROUP_AUTH`
-- `LOG_GROUP_ONLINE_JUDGE`
-- `LOG_GROUP_POST`
+- `BOT_HTTP_PORT=8088`
+- `AWS_REGION=ap-northeast-2`
+- `DISCORD_REGISTER_COMMANDS=false` when the var is empty
 
-## Future Manual Deployment Example
+`BOT_ECR_REPOSITORY`는 사용하지 않는다.
 
-이 PR에서는 `cd.yml`에 monitor-bot 배포를 붙이지 않는다. 운영 배포는 별도 승인 후 수동으로만 한다.
+## CD Deployment
+
+monitor-bot은 기존 Gateway ECR repository를 사용한다. 예시:
+
+```text
+362622729632.dkr.ecr.ap-northeast-2.amazonaws.com/aandi-gateway-server:monitor-bot-v2.0.14
+```
+
+Gateway image tags:
+
+```text
+<ECR>/aandi-gateway-server:latest
+<ECR>/aandi-gateway-server:<releaseTag>
+```
+
+Monitor bot image tag:
+
+```text
+<ECR>/aandi-gateway-server:monitor-bot-<releaseTag>
+```
+
+The generated compose service:
 
 ```yaml
 monitor-bot:
-  image: <ECR>/aandi-gateway-monitor-bot:<tag-or-sha>
+  image: 362622729632.dkr.ecr.ap-northeast-2.amazonaws.com/aandi-gateway-server:monitor-bot-v2.0.14
   container_name: aandi-gateway-discord-bot
   restart: unless-stopped
   mem_limit: 96m
@@ -158,10 +188,17 @@ monitor-bot:
     DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
     DISCORD_ALLOWED_GUILD_ID: "${DISCORD_ALLOWED_GUILD_ID}"
     DISCORD_ALLOWED_ROLE_IDS: "${DISCORD_ALLOWED_ROLE_IDS}"
+    DISCORD_REGISTER_COMMANDS: "${DISCORD_REGISTER_COMMANDS}"
+    LOG_GROUP_GATEWAY: "/a-and-i/gateway"
     LOG_GROUP_REPORT: "/a-and-i/prod/report"
+    LOG_GROUP_AUTH: "/a-and-i/auth"
+    LOG_GROUP_ONLINE_JUDGE: "/a-and-i/online-judge"
+    LOG_GROUP_POST: "/a-and-i/prod/tech-blog"
+    HEALTH_URL_GATEWAY: "http://gateway:9090/actuator/health"
     HEALTH_URL_REPORT: "http://<REPORT_PRIVATE_IP>:8080/actuator/health"
     CLOUDWATCH_QUERY_TIMEOUT_SECONDS: "8"
     CLOUDWATCH_QUERY_POLL_INTERVAL_MS: "500"
+    CLOUDWATCH_QUERY_LIMIT: "20"
   logging:
     driver: awslogs
     options:
@@ -195,10 +232,13 @@ location = /discord/interactions {
 - `/healthz`는 외부 노출하지 않는다.
 - `/actuator/` deny는 유지한다.
 - 9090 management port를 외부 publish하지 않는다.
-- Gateway management address를 sidecar 접근용으로 `0.0.0.0`으로 바꾸는 것은 향후 배포 시에만 검토한다.
+- Gateway management address는 Docker 내부 network 접근을 위해 compose에서 `MANAGEMENT_SERVER_ADDRESS=0.0.0.0`으로 설정한다.
 - monitor-bot에 Docker socket을 마운트하지 않는다.
+- monitor-bot host port를 publish하지 않는다.
 
 ## IAM
+
+별도 monitor-bot ECR repository는 만들지 않으므로 ECR repository 권한 추가는 필요 없다. 기존 `aandi-gateway-server` repository push/pull 권한을 그대로 사용한다.
 
 CloudWatch 조회 권한:
 
@@ -229,4 +269,31 @@ monitor-bot 자체 로그를 `awslogs`로 보낼 경우:
   ],
   "Resource": "*"
 }
+```
+
+## Deployment Checks
+
+```bash
+cd /opt/aandi/gateway
+
+sudo docker compose ps
+
+sudo docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
+
+sudo docker logs --tail=100 aandi-gateway-discord-bot
+
+sudo docker inspect aandi-gateway-discord-bot \
+  --format 'OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}'
+
+free -h
+vmstat 1 5
+
+sudo docker exec aandi-gateway-discord-bot \
+  /monitor-bot healthcheck --url http://127.0.0.1:8088/healthz
+```
+
+Discord Developer Portal:
+
+```text
+Interactions Endpoint URL: https://api.aandiclub.com/discord/interactions
 ```

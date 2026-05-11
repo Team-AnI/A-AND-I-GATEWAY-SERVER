@@ -15,6 +15,7 @@ jobs:
     env:
       ECR_REPOSITORY: aandi-gateway-server
       CONTAINER_NAME: aandi-gateway-server
+      BOT_CONTAINER_NAME: aandi-gateway-discord-bot
       AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
@@ -30,8 +31,18 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: monitor-bot/go.mod
+
       - name: Run tests
         run: ./gradlew test
+
+      - name: Test monitor-bot
+        run: |
+          cd monitor-bot
+          go test ./...
 
       - name: Build JAR
         run: ./gradlew build
@@ -56,6 +67,14 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}
 
+      - name: Build and push monitor-bot Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./monitor-bot
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:monitor-bot-${{ github.ref_name }}
+
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.2.1
         with:
@@ -65,7 +84,9 @@ jobs:
           script_stop: true
           script: |
             ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+            AWS_REGION="${{ env.AWS_REGION }}"
             IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
+            BOT_IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:monitor-bot-${{ github.ref_name }}"
             DOMAIN="api.aandiclub.com"
             AUTH_ISSUER_URI="${{ vars.AUTH_ISSUER_URI }}"
             AUTH_AUDIENCE="${{ vars.AUTH_AUDIENCE }}"
@@ -73,6 +94,21 @@ jobs:
             ALLOW_PRIVATE_IP_HOST="${{ vars.ALLOW_PRIVATE_IP_HOST }}"
             ENFORCE_HTTPS="${{ vars.ENFORCE_HTTPS }}"
             CORS_ALLOWED_ORIGIN_PATTERNS="${{ vars.CORS_ALLOWED_ORIGIN_PATTERNS }}"
+            DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
+            DISCORD_PUBLIC_KEY="${{ secrets.DISCORD_PUBLIC_KEY }}"
+            DISCORD_BOT_TOKEN="${{ secrets.DISCORD_BOT_TOKEN }}"
+            DISCORD_ALLOWED_GUILD_ID="${{ secrets.DISCORD_ALLOWED_GUILD_ID }}"
+            DISCORD_ALLOWED_ROLE_IDS="${{ secrets.DISCORD_ALLOWED_ROLE_IDS }}"
+            DISCORD_REGISTER_COMMANDS="${{ vars.DISCORD_REGISTER_COMMANDS }}"
+            LOG_GROUP_GATEWAY="${{ vars.LOG_GROUP_GATEWAY }}"
+            LOG_GROUP_REPORT="${{ vars.LOG_GROUP_REPORT }}"
+            LOG_GROUP_AUTH="${{ vars.LOG_GROUP_AUTH }}"
+            LOG_GROUP_ONLINE_JUDGE="${{ vars.LOG_GROUP_ONLINE_JUDGE }}"
+            LOG_GROUP_POST="${{ vars.LOG_GROUP_POST }}"
+            HEALTH_URL_REPORT="${{ vars.HEALTH_URL_REPORT }}"
+            CLOUDWATCH_QUERY_TIMEOUT_SECONDS="${{ vars.CLOUDWATCH_QUERY_TIMEOUT_SECONDS }}"
+            CLOUDWATCH_QUERY_POLL_INTERVAL_MS="${{ vars.CLOUDWATCH_QUERY_POLL_INTERVAL_MS }}"
+            CLOUDWATCH_QUERY_LIMIT="${{ vars.CLOUDWATCH_QUERY_LIMIT }}"
             AUTH_SERVICE_URI="${{ secrets.AUTH_SERVICE_URI }}"
             REPORT_SERVICE_URI="${{ secrets.REPORT_SERVICE_URI }}"
             POST_SERVICE_URI="${{ secrets.POST_SERVICE_URI }}"
@@ -92,18 +128,33 @@ jobs:
             if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="true"; fi
             if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="true"; fi
             if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="https://*"; fi
+            if [ -z "$DISCORD_REGISTER_COMMANDS" ]; then DISCORD_REGISTER_COMMANDS="false"; fi
+            if [ -z "$LOG_GROUP_GATEWAY" ]; then LOG_GROUP_GATEWAY="/a-and-i/gateway"; fi
+            if [ -z "$LOG_GROUP_REPORT" ]; then LOG_GROUP_REPORT="/a-and-i/prod/report"; fi
+            if [ -z "$LOG_GROUP_AUTH" ]; then LOG_GROUP_AUTH="/a-and-i/auth"; fi
+            if [ -z "$LOG_GROUP_ONLINE_JUDGE" ]; then LOG_GROUP_ONLINE_JUDGE="/a-and-i/online-judge"; fi
+            if [ -z "$LOG_GROUP_POST" ]; then LOG_GROUP_POST="/a-and-i/prod/tech-blog"; fi
+            if [ -z "$CLOUDWATCH_QUERY_TIMEOUT_SECONDS" ]; then CLOUDWATCH_QUERY_TIMEOUT_SECONDS="8"; fi
+            if [ -z "$CLOUDWATCH_QUERY_POLL_INTERVAL_MS" ]; then CLOUDWATCH_QUERY_POLL_INTERVAL_MS="500"; fi
+            if [ -z "$CLOUDWATCH_QUERY_LIMIT" ]; then CLOUDWATCH_QUERY_LIMIT="20"; fi
 
             [ -n "$AUTH_SERVICE_URI" ] || { echo "Missing secret: AUTH_SERVICE_URI"; exit 1; }
             [ -n "$REPORT_SERVICE_URI" ] || { echo "Missing secret: REPORT_SERVICE_URI"; exit 1; }
             [ -n "$POST_SERVICE_URI" ] || { echo "Missing secret: POST_SERVICE_URI"; exit 1; }
             [ -n "$ONLINE_JUDGE_SERVICE_URI" ] || { echo "Missing secret: ONLINE_JUDGE_SERVICE_URI"; exit 1; }
             [ -n "$AUTH_JWT_SECRET" ] || { echo "Missing secret: AUTH_JWT_SECRET"; exit 1; }
+            [ -n "$DISCORD_APPLICATION_ID" ] || { echo "Missing secret: DISCORD_APPLICATION_ID"; exit 1; }
+            [ -n "$DISCORD_PUBLIC_KEY" ] || { echo "Missing secret: DISCORD_PUBLIC_KEY"; exit 1; }
+            [ -n "$DISCORD_BOT_TOKEN" ] || { echo "Missing secret: DISCORD_BOT_TOKEN"; exit 1; }
+            [ -n "$DISCORD_ALLOWED_GUILD_ID" ] || { echo "Missing secret: DISCORD_ALLOWED_GUILD_ID"; exit 1; }
+            [ -n "$DISCORD_ALLOWED_ROLE_IDS" ] || { echo "Missing secret: DISCORD_ALLOWED_ROLE_IDS"; exit 1; }
 
             aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
             sudo mkdir -p /opt/aandi/gateway
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
             sudo docker rm -f \
               ${{ env.CONTAINER_NAME }} \
+              ${{ env.BOT_CONTAINER_NAME }} \
               aandi-gateway-redis \
               aandi-gateway-nginx \
               aandi-gateway-nginx-bootstrap || true
@@ -183,6 +234,15 @@ jobs:
                 proxy_set_header X-Forwarded-Proto \$scheme;
               }
 
+              location = /discord/interactions {
+                proxy_pass http://monitor-bot:8088/interactions;
+                proxy_http_version 1.1;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+              }
+
               location /actuator/ {
                 deny all;
                 return 403;
@@ -225,6 +285,7 @@ jobs:
                   - /opt/aandi/gateway/certbot/www:/var/www/certbot:ro
                 depends_on:
                   - gateway
+                  - monitor-bot
 
               gateway:
                 image: ${IMAGE_URI}
@@ -264,9 +325,54 @@ jobs:
                   REDIS_HOST: redis
                   REDIS_PORT: "6379"
                   REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"
+                  MANAGEMENT_SERVER_PORT: "9090"
+                  MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
                 depends_on:
                   redis:
                     condition: service_healthy
+
+              monitor-bot:
+                image: ${BOT_IMAGE_URI}
+                container_name: ${{ env.BOT_CONTAINER_NAME }}
+                restart: unless-stopped
+                mem_limit: 96m
+                memswap_limit: 192m
+                cpus: "0.20"
+                environment:
+                  AWS_REGION: "${AWS_REGION}"
+                  BOT_HTTP_PORT: "8088"
+                  DISCORD_APPLICATION_ID: "${DISCORD_APPLICATION_ID}"
+                  DISCORD_PUBLIC_KEY: "${DISCORD_PUBLIC_KEY}"
+                  DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
+                  DISCORD_ALLOWED_GUILD_ID: "${DISCORD_ALLOWED_GUILD_ID}"
+                  DISCORD_ALLOWED_ROLE_IDS: "${DISCORD_ALLOWED_ROLE_IDS}"
+                  DISCORD_REGISTER_COMMANDS: "${DISCORD_REGISTER_COMMANDS}"
+                  LOG_GROUP_GATEWAY: "${LOG_GROUP_GATEWAY}"
+                  LOG_GROUP_REPORT: "${LOG_GROUP_REPORT}"
+                  LOG_GROUP_AUTH: "${LOG_GROUP_AUTH}"
+                  LOG_GROUP_ONLINE_JUDGE: "${LOG_GROUP_ONLINE_JUDGE}"
+                  LOG_GROUP_POST: "${LOG_GROUP_POST}"
+                  HEALTH_URL_GATEWAY: "http://gateway:9090/actuator/health"
+                  HEALTH_URL_REPORT: "${HEALTH_URL_REPORT}"
+                  CLOUDWATCH_QUERY_TIMEOUT_SECONDS: "${CLOUDWATCH_QUERY_TIMEOUT_SECONDS}"
+                  CLOUDWATCH_QUERY_POLL_INTERVAL_MS: "${CLOUDWATCH_QUERY_POLL_INTERVAL_MS}"
+                  CLOUDWATCH_QUERY_LIMIT: "${CLOUDWATCH_QUERY_LIMIT}"
+                depends_on:
+                  gateway:
+                    condition: service_started
+                logging:
+                  driver: awslogs
+                  options:
+                    awslogs-region: "${AWS_REGION}"
+                    awslogs-group: "/a-and-i/prod/monitor-bot"
+                    awslogs-stream: "gateway-discord-bot"
+                    awslogs-create-group: "true"
+                healthcheck:
+                  test: ["/monitor-bot", "healthcheck", "--url", "http://127.0.0.1:8088/healthz"]
+                  interval: 30s
+                  timeout: 3s
+                  retries: 3
+                  start_period: 20s
 
               redis:
                 image: redis:7-alpine
@@ -287,8 +393,8 @@ jobs:
                   retries: 5
             EOF
             cd /opt/aandi/gateway
-            sudo docker compose pull nginx gateway redis
-            sudo docker compose up -d --remove-orphans nginx gateway redis
+            sudo docker compose pull gateway monitor-bot nginx redis
+            sudo docker compose up -d --remove-orphans gateway monitor-bot nginx redis
             sudo docker run --rm \
               -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
               -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
