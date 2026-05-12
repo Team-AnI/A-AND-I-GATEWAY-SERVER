@@ -75,21 +75,37 @@ Dashboard는 현재 연결된 서비스만 보여주지 않는다. 운영 대상
 - `NOT_CONFIGURED`: health URL과 log group 중 dashboard에 필요한 설정 없음
 - `LOG_QUERY_FAILED`: CloudWatch Logs Insights query 실패
 
+Discord 일반 메시지는 비례폭 폰트라 공백 기반 표가 깨질 수 있다. Dashboard 표는 markdown `txt` code block 안에 고정폭으로 출력하고, 긴 상태명과 서비스명은 축약한다. 상세 원문은 `/ops service`에서 확인한다.
+
+축약 표기:
+
+- `UNKNOWN` -> `UNK`
+- `NO_LOGS` -> `NOLOG`
+- `NOT_CONFIGURED` -> `NOCFG`
+- `LOG_QUERY_FAILED` -> `QFAIL`
+- `online-judge` -> `judge`
+- `ERROR` -> `Err`
+- `Last log` -> `Last`
+
 예시:
 
-```text
+````text
 🟢 A&I Service Dashboard - last 30m
 
-Service        Health          Logs             4xx   5xx   ERROR   Last log
-gateway        🟢 UP           OK               12    0     0       10s ago
-report         🟢 UP           OK               4     0     0       24s ago
-auth           🟡 UNKNOWN      OK               22    1     1       1m ago
-online-judge   ⚪ UNKNOWN      NO_LOGS          0     0     0       -
-post           ⚫ NOT_CONFIGURED NOT_CONFIGURED -     -     -       -
+```txt
+Service   Health  Logs    4xx  5xx  Err  Last
+gateway   🟢 UP   OK       12    0    0   10s
+report    🟢 UP   OK        4    0    0   24s
+auth      🟡 UNK  OK       22    1    1   1m
+judge     ⚪ UNK  NOLOG     0    0    0   -
+post      ⚫ NOCFG NOCFG    -    -    -   -
+```
 
 Alarms: none
 Top issue: auth 5xx x1
-```
+````
+
+클라이언트별 emoji width 차이로 code block에서도 완벽히 맞지 않는 경우가 있으면, 후속 PR에서 dashboard를 Discord embed field 기반으로 바꾼다.
 
 상세/집계 명령 예시:
 

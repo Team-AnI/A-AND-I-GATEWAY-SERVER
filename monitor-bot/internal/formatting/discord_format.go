@@ -164,7 +164,8 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 	if !updatedAt.IsZero() || nextRefresh > 0 {
 		b.WriteByte('\n')
 	}
-	b.WriteString("Service        Health          Logs             4xx   5xx   ERROR   Last log\n")
+	b.WriteString("```txt\n")
+	b.WriteString(dashboardTableHeader())
 	for _, service := range services {
 		summary := SummarizeRows(service.Rows)
 		state := strings.ToUpper(service.Health.State)
@@ -180,22 +181,19 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 			}
 		}
 		icon := dashboardIcon(state, logStatus, summary, service.Alarm)
-		displayName := service.DisplayName
-		if displayName == "" {
-			displayName = service.Service
-		}
 		fmt.Fprintf(
 			&b,
-			"%-14s %-15s %-16s %-5s %-5s %-7s %s\n",
-			displayName,
-			icon+" "+state,
-			formatLogStatus(logStatus),
+			"%-9s %-7s %-6s %4s %4s %4s %-5s\n",
+			dashboardServiceName(service.Service, service.DisplayName),
+			icon+" "+dashboardShortStatus(state),
+			formatLogStatusShort(logStatus),
 			dashboardNumber(summary.FourXX, logStatus),
 			dashboardNumber(summary.FiveXX, logStatus),
 			dashboardNumber(summary.Error, logStatus),
-			dashboardLastLog(summary.LastLog, logStatus),
+			dashboardLastLogShort(summary.LastLog, logStatus),
 		)
 	}
+	b.WriteString("```")
 	b.WriteString("\nAlarms: ")
 	if len(alarmNames) == 0 {
 		b.WriteString("none")
@@ -205,6 +203,10 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 	b.WriteString("\nTop issue: " + topIssue)
 	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops service service:report view:copy since:" + since + "`")
 	return TruncateDiscordMessage(b.String())
+}
+
+func dashboardTableHeader() string {
+	return fmt.Sprintf("%-9s %-7s %-6s %4s %4s %4s %-5s\n", "Service", "Health", "Logs", "4xx", "5xx", "Err", "Last")
 }
 
 func FormatServiceDetail(input ServiceDetailInput) string {
@@ -438,18 +440,56 @@ func dashboardIcon(healthState, logStatus string, summary LogSummary, alarm bool
 	}
 }
 
-func formatLogStatus(status string) string {
+func formatLogStatusShort(status string) string {
 	switch status {
 	case "OK":
 		return "OK"
 	case "NO_LOGS":
-		return "NO_LOGS"
+		return "NOLOG"
 	case "NOT_CONFIGURED":
-		return "NOT_CONFIGURED"
+		return "NOCFG"
 	case "LOG_QUERY_FAILED":
-		return "LOG_QUERY_FAILED"
+		return "QFAIL"
 	default:
-		return "UNKNOWN"
+		return "UNK"
+	}
+}
+
+func dashboardShortStatus(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "UP":
+		return "UP"
+	case "DOWN":
+		return "DOWN"
+	case "UNKNOWN":
+		return "UNK"
+	case "NO_LOGS":
+		return "NOLOG"
+	case "NOT_CONFIGURED":
+		return "NOCFG"
+	case "LOG_QUERY_FAILED":
+		return "QFAIL"
+	default:
+		return "UNK"
+	}
+}
+
+func dashboardServiceName(service, displayName string) string {
+	normalized := strings.ToLower(strings.TrimSpace(firstNonEmpty(service, displayName)))
+	switch normalized {
+	case "online-judge":
+		return "judge"
+	case "gateway", "auth", "report", "post":
+		return normalized
+	default:
+		name := strings.ToLower(strings.TrimSpace(firstNonEmpty(displayName, service)))
+		if name == "online-judge" {
+			return "judge"
+		}
+		if len([]rune(name)) > 9 {
+			return string([]rune(name)[:9])
+		}
+		return security.SanitizeText(name)
 	}
 }
 
@@ -460,11 +500,11 @@ func dashboardNumber(value int, logStatus string) string {
 	return strconv.Itoa(value)
 }
 
-func dashboardLastLog(value, logStatus string) string {
+func dashboardLastLogShort(value, logStatus string) string {
 	if logStatus == "NOT_CONFIGURED" || logStatus == "NO_LOGS" || logStatus == "LOG_QUERY_FAILED" {
 		return "-"
 	}
-	return formatLastLog(value)
+	return formatLastLogCompact(value)
 }
 
 func formatLatency(value int) string {
@@ -520,6 +560,25 @@ func formatLastLog(value string) string {
 		return fmt.Sprintf("%dm ago", int(ago.Minutes()))
 	default:
 		return fmt.Sprintf("%dh ago", int(ago.Hours()))
+	}
+}
+
+func formatLastLogCompact(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "-"
+	}
+	parsed, ok := parseTimestamp(value)
+	if !ok {
+		return security.SanitizeText(value)
+	}
+	ago := time.Since(parsed)
+	switch {
+	case ago < time.Minute:
+		return fmt.Sprintf("%ds", int(ago.Seconds()))
+	case ago < time.Hour:
+		return fmt.Sprintf("%dm", int(ago.Minutes()))
+	default:
+		return fmt.Sprintf("%dh", int(ago.Hours()))
 	}
 }
 

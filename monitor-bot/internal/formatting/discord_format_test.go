@@ -3,6 +3,7 @@ package formatting
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestTruncateDiscordMessage(t *testing.T) {
@@ -76,7 +77,7 @@ func TestFormatDashboardAndAggregations(t *testing.T) {
 		Health:  ServiceStatus{Service: "report", State: "UP", Detail: "UP"},
 		Rows:    rows,
 	}}, nil)
-	for _, expected := range []string{"A&I Service Dashboard", "report", "OK", "3"} {
+	for _, expected := range []string{"A&I Service Dashboard", "```txt", "Service", "Health", "Logs", "Err", "report", "OK", "3"} {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("dashboard missing %q: %s", expected, got)
 		}
@@ -87,13 +88,14 @@ func TestFormatDashboardAndAggregations(t *testing.T) {
 }
 
 func TestFormatDashboardShowsUnknownNoLogsAndNotConfigured(t *testing.T) {
+	lastLog := time.Now().Add(-18 * time.Minute).Format(time.RFC3339)
 	got := FormatDashboard("30m", []DashboardServiceInput{
 		{
 			Service:     "gateway",
 			DisplayName: "gateway",
 			Health:      ServiceStatus{Service: "gateway", State: "UP"},
 			LogStatus:   "OK",
-			Rows:        []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200", "lastLog": "2026-04-14T20:31:12+09:00"}},
+			Rows:        []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200", "lastLog": lastLog}},
 		},
 		{
 			Service:     "auth",
@@ -115,13 +117,45 @@ func TestFormatDashboardShowsUnknownNoLogsAndNotConfigured(t *testing.T) {
 			LogStatus:   "NOT_CONFIGURED",
 		},
 	}, nil)
-	for _, expected := range []string{"gateway", "auth", "online-judge", "post", "UNKNOWN", "NO_LOGS", "NOT_CONFIGURED"} {
+	for _, expected := range []string{"gateway", "auth", "judge", "post", "UNK", "NOLOG", "NOCFG", "18m"} {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("dashboard missing %q: %s", expected, got)
 		}
 	}
-	if strings.Index(got, "gateway") > strings.Index(got, "auth") || strings.Index(got, "auth") > strings.Index(got, "online-judge") || strings.Index(got, "online-judge") > strings.Index(got, "post") {
+	for _, long := range []string{"online-judge", "UNKNOWN", "NO_LOGS", "NOT_CONFIGURED", "Last log"} {
+		if strings.Contains(got, long) {
+			t.Fatalf("dashboard should use compact labels and omit %q: %s", long, got)
+		}
+	}
+	if strings.Index(got, "gateway") > strings.Index(got, "auth") || strings.Index(got, "auth") > strings.Index(got, "judge") || strings.Index(got, "judge") > strings.Index(got, "post") {
 		t.Fatalf("dashboard did not preserve registry order: %s", got)
+	}
+}
+
+func TestFormatDashboardDoesNotLeakSensitiveRawFields(t *testing.T) {
+	got := FormatDashboard("30m", []DashboardServiceInput{{
+		Service:   "report",
+		Health:    ServiceStatus{Service: "report", State: "UP"},
+		LogStatus: "OK",
+		Rows: []map[string]string{{
+			"count":           "1",
+			"logType":         "API_ERROR",
+			"level":           "ERROR",
+			"http.statusCode": "500",
+			"@message":        `{"request":{"body":"raw-secret"},"response":{"data":"secret-data"}}`,
+			"request.body":    "secret-body",
+			"response.data":   "secret-data",
+			"message":         "failed token=secret password=secret",
+			"userCode":        "secret-code",
+		}},
+	}}, nil)
+	for _, forbidden := range []string{"raw-secret", "secret-data", "secret-body", "secret-code", "token=secret", "password=secret", "@message"} {
+		if strings.Contains(got, forbidden) {
+			t.Fatalf("dashboard leaked %q: %s", forbidden, got)
+		}
+	}
+	if len([]rune(got)) > DiscordMessageLimit {
+		t.Fatalf("dashboard exceeds discord limit")
 	}
 }
 
