@@ -410,6 +410,11 @@ spring:
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/admin/courses
+            - id: report-service-v2-admin-assignment-copy
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/admin/courses/{targetCourseSlug}/assignments/copy
+                - Method=POST
             - id: report-service-v2-admin-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
@@ -604,6 +609,12 @@ spring:
               predicates:
                 - Path=/v2/posts/me
                 - Method=GET
+            - id: post-service-v2-posts-scheduled-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/scheduled/me
+                - Method=GET
             - id: post-service-v2-posts-drafts-me
               order: -1
               uri: ${POST_SERVICE_URI:http://localhost:8084}
@@ -641,6 +652,104 @@ spring:
               predicates:
                 - Path=/v2/posts/images
                 - Method=POST
+            - id: post-service-v2-blogs-root-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs
+                - Method=GET
+            - id: post-service-v2-blogs-root-post
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs
+                - Method=POST
+            - id: post-service-v2-blogs-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/me
+                - Method=GET
+            - id: post-service-v2-blogs-scheduled-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/scheduled/me
+                - Method=GET
+            - id: post-service-v2-blogs-drafts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/drafts/me
+                - Method=GET
+            - id: post-service-v2-blogs-drafts
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/drafts
+                - Method=GET
+            - id: post-service-v2-blogs-subpaths-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/*
+                - Method=GET
+            - id: post-service-v2-blogs-subpaths-patch
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/*
+                - Method=PATCH
+            - id: post-service-v2-blogs-subpaths-delete
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/*
+                - Method=DELETE
+            - id: post-service-v2-lectures-root-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures
+                - Method=GET
+            - id: post-service-v2-lectures-root-post
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures
+                - Method=POST
+            - id: post-service-v2-lectures-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/me
+                - Method=GET
+            - id: post-service-v2-lectures-scheduled-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/scheduled/me
+                - Method=GET
+            - id: post-service-v2-lectures-drafts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/drafts/me
+                - Method=GET
+            - id: post-service-v2-lectures-drafts
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/drafts
+                - Method=GET
+            - id: post-service-v2-lectures-subpaths-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/*
+                - Method=GET
+            - id: post-service-v2-lectures-subpaths-patch
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/*
+                - Method=PATCH
+            - id: post-service-v2-lectures-subpaths-delete
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/*
+                - Method=DELETE
             - id: report-service-admin-courses-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:

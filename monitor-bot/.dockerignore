@@ -1,0 +1,4 @@
+.git
+monitor-bot
+*.test
+coverage.out
