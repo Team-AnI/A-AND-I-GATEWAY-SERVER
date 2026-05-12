@@ -134,7 +134,7 @@ func BuildCountQuery(service, countType string) (string, error) {
 | limit 50`, countFields, filter), nil
 }
 
-func BuildTopQuery(service, by string) (string, error) {
+func BuildTopQuery(service, by string, limit int) (string, error) {
 	normalized, ok := security.NormalizeServiceOrAll(service)
 	if !ok {
 		return "", fmt.Errorf("unsupported service: %s", service)
@@ -152,12 +152,13 @@ func BuildTopQuery(service, by string) (string, error) {
 		groupBy = "http.statusCode"
 		fields = `fields service.name, http.statusCode`
 	}
+	limit32 := security.ClampLimit(limit, 10, 20)
 	return fmt.Sprintf(`%s
 %s
 | filter logType = "API_ERROR" or level = "ERROR" or http.statusCode >= 400
 | stats count(*) as count by %s
 | sort count desc
-| limit 10`, fields, serviceNameFilter(normalized), groupBy), nil
+| limit %d`, fields, serviceNameFilter(normalized), groupBy, limit32), nil
 }
 
 func BuildSlowQuery(service string, thresholdMs, limit int) (string, error) {

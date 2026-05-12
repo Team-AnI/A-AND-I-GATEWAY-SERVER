@@ -171,6 +171,26 @@ func TestFormatTopSummaryOnlyShowsProvidedRows(t *testing.T) {
 	}
 }
 
+func TestFormatTopSummaryHonorsLimit(t *testing.T) {
+	rows := make([]map[string]string, 12)
+	for i := range rows {
+		rows[i] = map[string]string{
+			"http.path": "/v2/items",
+			"count":     "1",
+		}
+	}
+
+	got := FormatTopSummaryWithLimit("report", "30m", "path", rows, 5)
+	if count := strings.Count(got, "count=1"); count != 5 {
+		t.Fatalf("expected 5 top rows, got %d: %s", count, got)
+	}
+
+	got = FormatTopSummaryWithLimit("report", "30m", "path", rows, 20)
+	if count := strings.Count(got, "count=1"); count != 12 {
+		t.Fatalf("expected all 12 provided rows with limit 20, got %d: %s", count, got)
+	}
+}
+
 func TestFormatNewCommandsDoNotLeakSensitiveRawFields(t *testing.T) {
 	rows := []map[string]string{{
 		"count":                  "2",
@@ -243,12 +263,22 @@ func TestFormatRetentionDoesNotExposeDeleteOperationsOrSecrets(t *testing.T) {
 
 func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	got := HelpText()
-	for _, want := range []string{"A&I Ops Incident Flow", "1. /ops dashboard", "2. /ops logs service:report mode:errors", "3. /ops trace trace_id:<traceId>", "4. /ops service service:report view:copy", "Use /ops service for service state.", "Use /ops logs for log analysis."} {
+	for _, want := range []string{
+		"A&I Ops Incident Flow",
+		"/ops dashboard since:30m",
+		"/ops logs service:all mode:errors since:15m limit:10",
+		"/ops logs service:report mode:errors since:30m limit:10",
+		"/ops logs service:report mode:slow since:30m limit:10",
+		"/ops trace trace_id:<traceId>",
+		"/ops copy since:30m",
+		"Use /ops service for service state.",
+		"Use /ops logs for log analysis.",
+	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)
 		}
 	}
-	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops storage view:usage"} {
+	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops service service:report view:copy", "/ops storage view:usage"} {
 		if strings.Contains(got, legacy) {
 			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
 		}

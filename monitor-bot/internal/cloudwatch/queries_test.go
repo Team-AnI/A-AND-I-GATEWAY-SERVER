@@ -37,6 +37,20 @@ func TestBuildQueriesUseAllowlistedValues(t *testing.T) {
 	}
 }
 
+func TestBuildRecentAndErrorsQueriesApplyLimit(t *testing.T) {
+	recentQuery, err := BuildRecentLogsQuery("report", "ERROR", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(recentQuery, "limit 5") {
+		t.Fatalf("recent query should apply requested limit: %s", recentQuery)
+	}
+	errorsQuery := BuildErrorsQuery("report", 5)
+	if !strings.Contains(errorsQuery, "limit 5") {
+		t.Fatalf("errors query should apply requested limit: %s", errorsQuery)
+	}
+}
+
 func TestLogGroupsForServiceAllowlist(t *testing.T) {
 	groups := map[string]string{"gateway": "/a-and-i/gateway", "auth": "/a-and-i/auth"}
 	got, err := LogGroupsForService(groups, "gateway")
@@ -79,7 +93,7 @@ func TestBuildDashboardAndAggregationQueriesValidateInput(t *testing.T) {
 	if _, err := BuildCountQuery("report", `all" or token like /x/`); err == nil {
 		t.Fatal("unsafe count type accepted")
 	}
-	if _, err := BuildTopQuery("report", "request.body"); err == nil {
+	if _, err := BuildTopQuery("report", "request.body", 10); err == nil {
 		t.Fatal("unsafe top by accepted")
 	}
 	if _, err := BuildSlowQuery("redis", 0, 10); err == nil {
@@ -128,12 +142,29 @@ func TestBuildAggregationQueriesAllowAllWithoutRawInput(t *testing.T) {
 	if strings.Contains(countQuery, `service.name =`) {
 		t.Fatalf("all count query should not force one service filter: %s", countQuery)
 	}
-	topQuery, err := BuildTopQuery("all", "status")
+	topQuery, err := BuildTopQuery("all", "status", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(topQuery, "request.body") || strings.Contains(topQuery, "response.data") {
 		t.Fatalf("top query leaked forbidden fields: %s", topQuery)
+	}
+}
+
+func TestBuildTopQueryAppliesLimit(t *testing.T) {
+	query, err := BuildTopQuery("report", "path", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(query, "limit 10") {
+		t.Fatalf("top query should apply requested limit: %s", query)
+	}
+	query, err = BuildTopQuery("report", "path", 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(query, "limit 20") {
+		t.Fatalf("top query should clamp limit to 20: %s", query)
 	}
 }
 

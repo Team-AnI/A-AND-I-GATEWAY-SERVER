@@ -63,10 +63,35 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "copy", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
+	}
+}
+
+func TestOpsDashboardHasNoViewOption(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dashboardCommand := findSubcommand(t, command, "dashboard")
+	if _, ok := findOptionByName(dashboardCommand.Options, "view"); ok {
+		t.Fatal("/ops dashboard should not register a view option")
+	}
+}
+
+func TestOpsLogsLimitChoices(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	logsCommand := findSubcommand(t, command, "logs")
+	limitOption := findOption(t, logsCommand.Options, "limit")
+	got := choiceValues(limitOption.Choices)
+	want := []string{"5", "10", "20"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("/ops logs limit choices = %#v, want %#v", got, want)
 	}
 }
 
@@ -109,7 +134,7 @@ func TestLegacyCommandsDelegateToOpsHandlers(t *testing.T) {
 	cases := map[string]string{
 		"dashboard":   "/ops dashboard",
 		"service":     "/ops service",
-		"copy-status": "/ops service service:report view:copy",
+		"copy-status": "/ops copy",
 		"logs":        "/ops logs mode:recent",
 		"errors":      "/ops logs mode:errors",
 		"trace":       "/ops trace",
@@ -137,6 +162,24 @@ func TestAllServiceQueryGuard(t *testing.T) {
 	}
 	if !strings.Contains(allServiceGuardMessage(), "errors/dashboard") {
 		t.Fatalf("all-service guard should explain allowed modes: %s", allServiceGuardMessage())
+	}
+}
+
+func TestParseOpsLimit(t *testing.T) {
+	cases := map[string]int{
+		"5":  5,
+		"10": 10,
+		"20": 20,
+		"":   20,
+		"7":  20,
+	}
+	for input, want := range cases {
+		if got := parseOpsLimit(input, 20); got != want {
+			t.Fatalf("parseOpsLimit(%q) = %d, want %d", input, got, want)
+		}
+	}
+	if got := parseOpsLimit("", 10); got != 10 {
+		t.Fatalf("parseOpsLimit should keep safe fallback choice, got %d", got)
 	}
 }
 
@@ -245,19 +288,27 @@ func findSubcommand(t *testing.T, command commandDefinition, name string) comman
 
 func findOption(t *testing.T, options []commandOption, name string) commandOption {
 	t.Helper()
-	for _, option := range options {
-		if option.Name == name {
-			return option
-		}
+	option, ok := findOptionByName(options, name)
+	if ok {
+		return option
 	}
 	t.Fatalf("option %q not found", name)
 	return commandOption{}
 }
 
+func findOptionByName(options []commandOption, name string) (commandOption, bool) {
+	for _, option := range options {
+		if option.Name == name {
+			return option, true
+		}
+	}
+	return commandOption{}, false
+}
+
 func choiceValues(choices []commandChoice) []string {
 	values := make([]string, 0, len(choices))
 	for _, choice := range choices {
-		values = append(values, choice.Value)
+		values = append(values, fmt.Sprint(choice.Value))
 	}
 	return values
 }

@@ -201,7 +201,7 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 		b.WriteString(strings.Join(alarmNames, ", "))
 	}
 	b.WriteString("\nTop issue: " + topIssue)
-	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops service service:report view:copy since:" + since + "`")
+	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops copy since:" + since + "`")
 	return TruncateDiscordMessage(b.String())
 }
 
@@ -245,9 +245,13 @@ func FormatCountSummary(service, since, countType string, rows []map[string]stri
 }
 
 func FormatTopSummary(service, since, by string, rows []map[string]string) string {
+	return FormatTopSummaryWithLimit(service, since, by, rows, 10)
+}
+
+func FormatTopSummaryWithLimit(service, since, by string, rows []map[string]string, limit int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "🔥 Top %s %s - last %s\n\n", service, by, since)
-	writeTopRows(&b, rows)
+	writeTopRowsWithLimit(&b, rows, limit)
 	return TruncateDiscordMessage(b.String())
 }
 
@@ -354,10 +358,18 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 func HelpText() string {
 	return strings.TrimSpace(`A&I Ops Incident Flow
 
-1. /ops dashboard
-2. /ops logs service:report mode:errors
-3. /ops trace trace_id:<traceId>
-4. /ops service service:report view:copy
+1. 전체 상태 확인
+   /ops dashboard since:30m
+2. 전체 서비스 에러 빠른 확인
+   /ops logs service:all mode:errors since:15m limit:10
+3. 특정 서비스 에러 분석
+   /ops logs service:report mode:errors since:30m limit:10
+4. 느린 API 확인
+   /ops logs service:report mode:slow since:30m limit:10
+5. trace 추적
+   /ops trace trace_id:<traceId>
+6. report copy API 상태
+   /ops copy since:30m
 
 Use /ops service for service state.
 Use /ops logs for log analysis.
@@ -379,12 +391,22 @@ func writeCompactRow(b *strings.Builder, row map[string]string) {
 }
 
 func writeTopRows(b *strings.Builder, rows []map[string]string) {
+	writeTopRowsWithLimit(b, rows, 10)
+}
+
+func writeTopRowsWithLimit(b *strings.Builder, rows []map[string]string, limit int) {
 	if len(rows) == 0 {
 		b.WriteString("- none\n")
 		return
 	}
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 20 {
+		limit = 20
+	}
 	for i, row := range rows {
-		if i >= 10 {
+		if i >= limit {
 			break
 		}
 		count := value(row, "count", "1")
