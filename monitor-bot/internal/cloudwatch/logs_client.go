@@ -13,6 +13,7 @@ import (
 type LogsAPI interface {
 	StartQuery(context.Context, *cloudwatchlogs.StartQueryInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.StartQueryOutput, error)
 	GetQueryResults(context.Context, *cloudwatchlogs.GetQueryResultsInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.GetQueryResultsOutput, error)
+	DescribeLogGroups(context.Context, *cloudwatchlogs.DescribeLogGroupsInput, ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error)
 }
 
 type LogsClient struct {
@@ -20,6 +21,12 @@ type LogsClient struct {
 	timeout      time.Duration
 	pollInterval time.Duration
 	limit        int
+}
+
+type LogGroupInfo struct {
+	Name          string
+	RetentionDays *int32
+	StoredBytes   int64
 }
 
 func NewLogsClient(api LogsAPI, timeout, pollInterval time.Duration, limit int) *LogsClient {
@@ -70,6 +77,40 @@ func (c *LogsClient) Query(ctx context.Context, logGroups []string, query string
 			}
 		}
 	}
+}
+
+func (c *LogsClient) DescribeGroups(ctx context.Context, logGroups []string) ([]LogGroupInfo, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	result := make([]LogGroupInfo, 0, len(logGroups))
+	seen := make(map[string]struct{}, len(logGroups))
+	for _, group := range logGroups {
+		if group == "" {
+			continue
+		}
+		if _, ok := seen[group]; ok {
+			continue
+		}
+		seen[group] = struct{}{}
+		output, err := c.api.DescribeLogGroups(queryCtx, &cloudwatchlogs.DescribeLogGroupsInput{
+			LogGroupNamePrefix: aws.String(group),
+		})
+		if err != nil {
+			return nil, err
+		}
+		info := LogGroupInfo{Name: group}
+		for _, item := range output.LogGroups {
+			if aws.ToString(item.LogGroupName) != group {
+				continue
+			}
+			info.RetentionDays = item.RetentionInDays
+			info.StoredBytes = aws.ToInt64(item.StoredBytes)
+			break
+		}
+		result = append(result, info)
+	}
+	return result, nil
 }
 
 func flattenResults(results [][]types.ResultField) []map[string]string {

@@ -179,3 +179,30 @@ func TestFormatNewCommandsDoNotLeakSensitiveRawFields(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatRetentionShowsInfiniteAndHumanBytes(t *testing.T) {
+	retention := int32(14)
+	got := FormatRetention("📦 CloudWatch Log Retention", []LogGroupRetention{
+		{Name: "/a-and-i/gateway", RetentionDays: &retention, StoredBytes: 222298112},
+		{Name: "/a-and-i/prod/report", StoredBytes: 0},
+	})
+	for _, expected := range []string{"/a-and-i/gateway", "14d", "212MB", "/a-and-i/prod/report", "INFINITE"} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("retention output missing %q: %s", expected, got)
+		}
+	}
+	if len([]rune(got)) > DiscordMessageLimit {
+		t.Fatalf("retention output exceeds discord limit")
+	}
+}
+
+func TestFormatRetentionDoesNotExposeDeleteOperationsOrSecrets(t *testing.T) {
+	got := FormatRetention("💽 CloudWatch Log Usage", []LogGroupRetention{
+		{Name: "/a-and-i/prod/monitor-bot", StoredBytes: 3 * 1024 * 1024},
+	})
+	for _, forbidden := range []string{"delete", "prune", "request.body", "response.data", "token", "password"} {
+		if strings.Contains(strings.ToLower(got), forbidden) {
+			t.Fatalf("retention output should stay read-only and non-sensitive, found %q in %s", forbidden, got)
+		}
+	}
+}

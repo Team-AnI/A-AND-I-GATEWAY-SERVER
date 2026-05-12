@@ -136,3 +136,30 @@ func TestBuildAggregationQueriesAllowAllWithoutRawInput(t *testing.T) {
 		t.Fatalf("top query leaked forbidden fields: %s", topQuery)
 	}
 }
+
+func TestRetentionTargetLogGroups(t *testing.T) {
+	got := RetentionTargetLogGroups(map[string]string{
+		"gateway":      "/custom/gateway",
+		"report":       "/a-and-i/prod/report",
+		"auth":         "/a-and-i/auth",
+		"online-judge": "/a-and-i/online-judge",
+		"post":         "/a-and-i/prod/tech-blog",
+	})
+	expected := []string{
+		"/custom/gateway",
+		"/a-and-i/prod/monitor-bot",
+		"/a-and-i/prod/report",
+		"/a-and-i/prod/report-mongodb",
+		"/a-and-i/auth",
+		"/a-and-i/online-judge",
+		"/a-and-i/prod/tech-blog",
+	}
+	if len(got) != len(expected) {
+		t.Fatalf("unexpected retention targets: %#v", got)
+	}
+	for i := range expected {
+		if got[i] != expected[i] {
+			t.Fatalf("target[%d] = %q, want %q; all=%#v", i, got[i], expected[i], got)
+		}
+	}
+}

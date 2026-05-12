@@ -84,6 +84,8 @@ func Definitions() []commandDefinition {
 			stringOption("trace_id", "조회할 traceId", true, nil),
 		}},
 		{Name: "alarm", Description: "CloudWatch ALARM 상태 조회"},
+		{Name: "disk", Description: "CloudWatch log group 사용량 조회"},
+		{Name: "retention", Description: "CloudWatch log retention 조회"},
 		{Name: "help", Description: "명령어 도움말"},
 	}
 }

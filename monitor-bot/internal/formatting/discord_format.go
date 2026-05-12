@@ -51,6 +51,12 @@ type LogSummary struct {
 	LastLog  string
 }
 
+type LogGroupRetention struct {
+	Name          string
+	RetentionDays *int32
+	StoredBytes   int64
+}
+
 func TruncateDiscordMessage(message string) string {
 	const suffix = "\n...(truncated)"
 	if len([]rune(message)) <= DiscordMessageLimit {
@@ -108,6 +114,23 @@ func FormatAlarms(names []string) string {
 	}
 	sort.Strings(names)
 	return TruncateDiscordMessage("ALARM 상태 알람\n- " + strings.Join(names, "\n- "))
+}
+
+func FormatRetention(title string, groups []LogGroupRetention) string {
+	if len(groups) == 0 {
+		return title + "\n조회 결과가 없습니다."
+	}
+	var b strings.Builder
+	b.WriteString(title)
+	b.WriteString("\n\n")
+	for _, group := range groups {
+		retention := "INFINITE"
+		if group.RetentionDays != nil {
+			retention = fmt.Sprintf("%dd", *group.RetentionDays)
+		}
+		fmt.Fprintf(&b, "%-35s %-8s %s\n", security.SanitizeText(group.Name), retention, humanBytes(group.StoredBytes))
+	}
+	return TruncateDiscordMessage(b.String())
 }
 
 func FormatDashboard(since string, services []DashboardServiceInput, alarmNames []string) string {
@@ -339,6 +362,8 @@ func HelpText() string {
 /errors service:<optional> since:<duration> - 에러 집계
 /trace trace_id:<traceId> - traceId 기준 시간순 조회
 /alarm - CloudWatch ALARM 상태 조회
+/disk - CloudWatch log group 사용량 조회
+/retention - CloudWatch log retention 조회
 /help - 명령어 도움말`)
 }
 
@@ -460,6 +485,26 @@ func formatDurationCompact(value time.Duration) string {
 		return fmt.Sprintf("%dm", int(value.Minutes()))
 	}
 	return fmt.Sprintf("%ds", int(value.Seconds()))
+}
+
+func humanBytes(bytes int64) string {
+	if bytes < 0 {
+		bytes = 0
+	}
+	units := []string{"B", "KB", "MB", "GB", "TB"}
+	value := float64(bytes)
+	unit := 0
+	for value >= 1024 && unit < len(units)-1 {
+		value /= 1024
+		unit++
+	}
+	if unit == 0 {
+		return fmt.Sprintf("%d%s", bytes, units[unit])
+	}
+	if value >= 10 {
+		return fmt.Sprintf("%.0f%s", value, units[unit])
+	}
+	return fmt.Sprintf("%.1f%s", value, units[unit])
 }
 
 func formatLastLog(value string) string {

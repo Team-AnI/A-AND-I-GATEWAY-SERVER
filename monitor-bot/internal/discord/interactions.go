@@ -191,6 +191,10 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 			return "CloudWatch alarm 조회 실패: " + security.SanitizeText(err.Error())
 		}
 		return formatting.FormatAlarms(names)
+	case "disk":
+		return h.retentionCommand(ctx, "💽 CloudWatch Log Usage")
+	case "retention":
+		return h.retentionCommand(ctx, "📦 CloudWatch Log Retention")
 	case "help":
 		return formatting.HelpText()
 	default:
@@ -374,7 +378,7 @@ func (h *Handler) topCommand(ctx context.Context, interaction Interaction) strin
 	if !ok {
 		return "지원하지 않는 by 값입니다."
 	}
-	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -495,6 +499,22 @@ func (h *Handler) traceCommand(ctx context.Context, interaction Interaction) str
 		return "CloudWatch trace 조회 실패: " + security.SanitizeText(err.Error())
 	}
 	return formatting.FormatTrace(rows)
+}
+
+func (h *Handler) retentionCommand(ctx context.Context, title string) string {
+	groups, err := h.logs.DescribeGroups(ctx, cw.RetentionTargetLogGroups(h.cfg.LogGroups))
+	if err != nil {
+		return "CloudWatch log group 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	rows := make([]formatting.LogGroupRetention, 0, len(groups))
+	for _, group := range groups {
+		rows = append(rows, formatting.LogGroupRetention{
+			Name:          group.Name,
+			RetentionDays: group.RetentionDays,
+			StoredBytes:   group.StoredBytes,
+		})
+	}
+	return formatting.FormatRetention(title, rows)
 }
 
 func (h *Handler) commandTimeout(command string) time.Duration {

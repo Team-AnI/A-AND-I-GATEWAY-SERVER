@@ -26,6 +26,8 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 - `/errors service:<optional> since:<duration>`: API_ERROR, WARN/ERROR, 4xx 이상 집계
 - `/trace trace_id:<traceId>`: traceId 기준 시간순 조회
 - `/alarm`: ALARM 상태 CloudWatch alarm 출력
+- `/disk`: CloudWatch log group stored bytes와 retention 조회
+- `/retention`: CloudWatch log group retention 조회
 - `/help`: 명령어 예시
 
 `service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다.
@@ -197,6 +199,24 @@ fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, ht
 
 CloudWatch 비용과 응답 시간을 줄이기 위해 기본 조회 범위는 5m, 15m, 30m, 1h, 3h allowlist로만 제한한다. `/dashboard`는 최대 5개 log group만 조회하고, 각 query는 `CLOUDWATCH_QUERY_TIMEOUT_SECONDS` 기본 8초를 따른다.
 
+## Log Retention And Usage
+
+로그 삭제/보관은 앱 내부 Quartz Cron이나 monitor-bot 명령으로 처리하지 않는다. CloudWatch Logs는 retention policy로 관리하고, EC2 로컬 Docker 로그는 Docker log rotation으로 제한한다.
+
+CD는 주요 log group에 `CLOUDWATCH_LOG_RETENTION_DAYS`를 적용한다. 값이 비어 있으면 기본 14일을 사용한다. retention 설정 실패는 배포를 막지 않고 warning만 남긴다.
+
+대상 log group:
+
+- `/a-and-i/gateway`
+- `/a-and-i/prod/monitor-bot`
+- `/a-and-i/prod/report`
+- `/a-and-i/prod/report-mongodb`
+- `/a-and-i/auth`
+- `/a-and-i/online-judge`
+- `/a-and-i/prod/tech-blog`
+
+`/disk`와 `/retention`은 CloudWatch `DescribeLogGroups` 기반 조회 전용 명령이다. host Docker disk를 직접 조회하거나 삭제하지 않고, Docker socket도 마운트하지 않는다. retention이 없는 log group은 `INFINITE`로 표시한다.
+
 ## Discord Output Policy
 
 출력 허용 필드:
@@ -280,6 +300,10 @@ Required Vars:
 - `ALERT_NO_LOGS_MINUTES=30`
 - `ALERT_COPY_API_5XX_THRESHOLD_5M=1`
 - `MAX_CLOUDWATCH_QUERIES_PER_TICK=6`
+
+Optional Vars:
+
+- `CLOUDWATCH_LOG_RETENTION_DAYS=14`
 
 Additional Secrets:
 
@@ -419,6 +443,20 @@ CloudWatch 조회 권한:
     "logs:DescribeLogGroups",
     "logs:DescribeLogStreams",
     "cloudwatch:DescribeAlarms"
+  ],
+  "Resource": "*"
+}
+```
+
+CloudWatch retention 설정 권한:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "logs:CreateLogGroup",
+    "logs:PutRetentionPolicy",
+    "logs:DescribeLogGroups"
   ],
   "Resource": "*"
 }
