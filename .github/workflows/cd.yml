@@ -83,6 +83,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           script: |
+            set -Eeuo pipefail
+
             ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             AWS_REGION="${{ env.AWS_REGION }}"
             IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
@@ -207,9 +209,6 @@ jobs:
 
             sudo mkdir -p /opt/aandi/gateway
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
-            sudo docker rm -f \
-              ${{ env.CONTAINER_NAME }} \
-              ${{ env.BOT_CONTAINER_NAME }} || true
             sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
             server {
               listen 80;
@@ -239,8 +238,8 @@ jobs:
                   - /opt/aandi/gateway/certbot/www:/var/www/certbot:ro
             EOF_BOOTSTRAP_COMPOSE
               cd /opt/aandi/gateway
-              sudo docker compose -f docker-compose.bootstrap.yml up -d
-              sudo docker run --rm \
+              sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml up -d
+              if ! sudo docker run --rm \
                 -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
                 -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
                 certbot/certbot certonly --webroot \
@@ -248,8 +247,13 @@ jobs:
                 -d "${DOMAIN}" \
                 --email "${{ secrets.LETSENCRYPT_EMAIL }}" \
                 --agree-tos \
-                --no-eff-email
-              sudo docker compose -f docker-compose.bootstrap.yml down
+                --no-eff-email \
+                --non-interactive \
+                --keep-until-expiring; then
+                sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml down
+                exit 1
+              fi
+              sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml down
             fi
 
             sudo tee /opt/aandi/gateway/nginx/gateway.conf >/dev/null <<EOF_NGINX
@@ -444,7 +448,7 @@ jobs:
                     awslogs-stream: "gateway-discord-bot"
                     awslogs-create-group: "true"
                 healthcheck:
-                  test: ["/monitor-bot", "healthcheck", "--url", "http://127.0.0.1:8088/healthz"]
+                  test: ["CMD", "/monitor-bot", "healthcheck", "--url", "http://127.0.0.1:8088/healthz"]
                   interval: 30s
                   timeout: 3s
                   retries: 3
@@ -477,6 +481,7 @@ jobs:
               monitor-bot-state:
             EOF
             cd /opt/aandi/gateway
+            sudo docker compose config -q
             sudo docker compose pull gateway monitor-bot
             sudo docker compose up -d --no-deps gateway
             sudo docker compose up -d --no-deps monitor-bot
@@ -489,4 +494,4 @@ jobs:
             sudo docker run --rm \
               -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
               -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
-              certbot/certbot renew --webroot -w /var/www/certbot --quiet || true
+              certbot/certbot renew --webroot -w /var/www/certbot --quiet --non-interactive || true
