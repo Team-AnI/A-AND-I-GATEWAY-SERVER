@@ -5,7 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 )
 
 type commandDefinition struct {
@@ -25,6 +31,26 @@ type commandOption struct {
 type commandChoice struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+type RegistrationError struct {
+	StatusCode int
+	Body       string
+	RetryAfter time.Duration
+}
+
+func (e *RegistrationError) Error() string {
+	if e == nil {
+		return ""
+	}
+	message := fmt.Sprintf("discord command registration failed: status=%d", e.StatusCode)
+	if e.RetryAfter > 0 {
+		message += fmt.Sprintf(" retry_after=%s", e.RetryAfter)
+	}
+	if strings.TrimSpace(e.Body) != "" {
+		message += " body=" + e.Body
+	}
+	return message
 }
 
 func Definitions() []commandDefinition {
@@ -91,6 +117,10 @@ func Definitions() []commandDefinition {
 }
 
 func RegisterGuildCommands(ctx context.Context, client *http.Client, botToken, applicationID, guildID string) error {
+	return registerGuildCommands(ctx, client, botToken, applicationID, guildID, "https://discord.com/api/v10")
+}
+
+func registerGuildCommands(ctx context.Context, client *http.Client, botToken, applicationID, guildID, baseURL string) error {
 	if botToken == "" {
 		return fmt.Errorf("DISCORD_BOT_TOKEN is required to register commands")
 	}
@@ -101,7 +131,7 @@ func RegisterGuildCommands(ctx context.Context, client *http.Client, botToken, a
 	if err != nil {
 		return err
 	}
-	url := fmt.Sprintf("https://discord.com/api/v10/applications/%s/guilds/%s/commands", applicationID, guildID)
+	url := fmt.Sprintf("%s/applications/%s/guilds/%s/commands", strings.TrimRight(baseURL, "/"), applicationID, guildID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(payload))
 	if err != nil {
 		return err
@@ -114,9 +144,34 @@ func RegisterGuildCommands(ctx context.Context, client *http.Client, botToken, a
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("discord command registration failed: HTTP %d", resp.StatusCode)
+		return registrationHTTPError(resp)
 	}
 	return nil
+}
+
+func registrationHTTPError(resp *http.Response) error {
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	body := security.SanitizeText(strings.TrimSpace(string(bodyBytes)))
+	return &RegistrationError{
+		StatusCode: resp.StatusCode,
+		Body:       body,
+		RetryAfter: retryAfterDuration(resp, bodyBytes),
+	}
+}
+
+func retryAfterDuration(resp *http.Response, body []byte) time.Duration {
+	if value := strings.TrimSpace(resp.Header.Get("Retry-After")); value != "" {
+		if seconds, err := strconv.ParseFloat(value, 64); err == nil && seconds > 0 {
+			return time.Duration(seconds * float64(time.Second))
+		}
+	}
+	var payload struct {
+		RetryAfter float64 `json:"retry_after"`
+	}
+	if err := json.Unmarshal(body, &payload); err == nil && payload.RetryAfter > 0 {
+		return time.Duration(payload.RetryAfter * float64(time.Second))
+	}
+	return 0
 }
 
 func stringOption(name, description string, required bool, choices []commandChoice) commandOption {

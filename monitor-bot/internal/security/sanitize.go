@@ -61,7 +61,7 @@ var forbiddenFieldFragments = []string{
 	"request.body",
 }
 
-var sensitiveKeyPattern = regexp.MustCompile(`(?i)(password|accessToken|refreshToken|authorization|authenticate|salt|secret|credentials?|cookie|session|privateTestCases|hiddenTestCases|expectedOutput|userCode|sourceCode|response\.data|request\.body|token|code)\s*[:=]\s*("[^"]*"|'[^']*'|[^\s,}]+)`)
+var sensitiveKeyPattern = regexp.MustCompile(`(?i)("?(password|accessToken|refreshToken|authorization|authenticate|salt|secret|credentials?|cookie|session|privateTestCases|hiddenTestCases|expectedOutput|userCode|sourceCode|response\.data|request\.body|token|code)"?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}]+)`)
 
 func AllowedOutputFields() []string {
 	fields := make([]string, 0, len(allowedOutputFields))
@@ -86,7 +86,7 @@ func SanitizeText(value string) string {
 	if value == "" {
 		return ""
 	}
-	value = sensitiveKeyPattern.ReplaceAllString(value, `$1=[REDACTED]`)
+	value = sensitiveKeyPattern.ReplaceAllString(value, `${1}[REDACTED]`)
 	value = regexp.MustCompile(`(?i)authorization:\s*[^\s,}]+`).ReplaceAllString(value, "authorization: [REDACTED]")
 	return value
 }

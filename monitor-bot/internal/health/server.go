@@ -6,10 +6,15 @@ import (
 )
 
 type ServerStatus struct {
-	OK                       bool   `json:"ok"`
-	AWSSDKConfigured         bool   `json:"awsSdkConfigured"`
-	DiscordPublicKeyProvided bool   `json:"discordPublicKeyProvided"`
-	Version                  string `json:"version,omitempty"`
+	OK                              bool   `json:"ok"`
+	HTTPServer                      bool   `json:"httpServer"`
+	AWSSDKConfigured                bool   `json:"awsSdkConfigured"`
+	DiscordPublicKeyProvided        bool   `json:"discordPublicKeyProvided"`
+	DiscordCommandsRegistered       bool   `json:"discordCommandsRegistered"`
+	DiscordCommandRegistrationError string `json:"discordCommandRegistrationError,omitempty"`
+	DashboardEnabled                bool   `json:"dashboardEnabled"`
+	AlertEnabled                    bool   `json:"alertEnabled"`
+	Version                         string `json:"version,omitempty"`
 }
 
 func Handler(status func() ServerStatus) http.HandlerFunc {

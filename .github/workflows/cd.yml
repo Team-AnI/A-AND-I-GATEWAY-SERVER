@@ -238,7 +238,11 @@ jobs:
               done
 
               echo "ERROR: ${url} did not become healthy" >&2
+              sudo docker compose ps >&2 || true
+              sudo docker ps -a --filter "name=${container_name}" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' >&2 || true
               sudo docker logs --tail=200 "${container_name}" >&2 || true
+              sudo docker inspect "${container_name}" \
+                --format 'OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' >&2 || true
               return 1
             }
 
@@ -475,6 +479,7 @@ jobs:
                   DISCORD_ALLOWED_GUILD_ID: "${DISCORD_ALLOWED_GUILD_ID}"
                   DISCORD_ALLOWED_ROLE_IDS: "${DISCORD_ALLOWED_ROLE_IDS}"
                   DISCORD_REGISTER_COMMANDS: "${DISCORD_REGISTER_COMMANDS}"
+                  STRICT_STARTUP_CHECKS: "false"
                   LOG_GROUP_GATEWAY: "${LOG_GROUP_GATEWAY}"
                   LOG_GROUP_REPORT: "${LOG_GROUP_REPORT}"
                   LOG_GROUP_AUTH: "${LOG_GROUP_AUTH}"

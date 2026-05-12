@@ -284,7 +284,7 @@ Required Vars:
 - `HEALTH_URL_AUTH`
 - `HEALTH_URL_ONLINE_JUDGE`
 - `HEALTH_URL_POST`
-- `DISCORD_REGISTER_COMMANDS=true`
+- `DISCORD_REGISTER_COMMANDS=false`
 - `CLOUDWATCH_QUERY_TIMEOUT_SECONDS=8`
 - `CLOUDWATCH_QUERY_POLL_INTERVAL_MS=500`
 - `CLOUDWATCH_QUERY_LIMIT=20`
@@ -304,6 +304,7 @@ Required Vars:
 Optional Vars:
 
 - `CLOUDWATCH_LOG_RETENTION_DAYS=14`
+- `STRICT_STARTUP_CHECKS=false`
 
 Additional Secrets:
 
@@ -315,8 +316,17 @@ Runtime defaults:
 - `BOT_HTTP_PORT=8088`
 - `AWS_REGION=ap-northeast-2`
 - `DISCORD_REGISTER_COMMANDS=false` when the var is empty
+- Command registration failure does not stop the process unless `STRICT_STARTUP_CHECKS=true`
 
 `BOT_ECR_REPOSITORY`는 사용하지 않는다.
+
+### Discord Command Registration
+
+첫 배포는 `DISCORD_REGISTER_COMMANDS=false`를 권장한다. bot 컨테이너와 `/healthz`가 정상인지 확인한 뒤 `DISCORD_REGISTER_COMMANDS=true`로 바꿔 command registration을 한 번 수행한다. 등록 성공 후에는 다시 `false`로 내려도 이미 등록된 guild slash command는 유지된다.
+
+registration이 HTTP 400으로 실패하면 monitor-bot은 종료하지 않고 `/healthz`의 `discordCommandRegistrationError`와 컨테이너 로그에 Discord response body를 남긴다. HTTP 429가 나오면 `retry_after`를 기록하고 해당 boot에서는 즉시 반복 재시도하지 않는다. Bot token과 Authorization header는 로그에 출력하지 않는다.
+
+`/healthz`는 command registration 실패가 있어도 프로세스 상태를 200 JSON으로 반환한다. 주요 필드는 `ok`, `httpServer`, `awsSdkConfigured`, `discordPublicKeyProvided`, `discordCommandsRegistered`, `discordCommandRegistrationError`, `dashboardEnabled`, `alertEnabled`, `version`이다.
 
 ## CD Deployment
 
@@ -358,6 +368,7 @@ monitor-bot:
     DISCORD_ALLOWED_GUILD_ID: "${DISCORD_ALLOWED_GUILD_ID}"
     DISCORD_ALLOWED_ROLE_IDS: "${DISCORD_ALLOWED_ROLE_IDS}"
     DISCORD_REGISTER_COMMANDS: "${DISCORD_REGISTER_COMMANDS}"
+    STRICT_STARTUP_CHECKS: "false"
     LOG_GROUP_GATEWAY: "/a-and-i/gateway"
     LOG_GROUP_REPORT: "/a-and-i/prod/report"
     LOG_GROUP_AUTH: "/a-and-i/auth"

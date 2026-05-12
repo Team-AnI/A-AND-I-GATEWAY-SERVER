@@ -7,9 +7,9 @@ import (
 )
 
 func TestSanitizeTextMasksSensitiveValues(t *testing.T) {
-	input := `accessToken="abc" refreshToken=def Authorization: Bearer token password=secret`
+	input := `accessToken="abc" refreshToken=def Authorization: Bearer token password=secret {"token":"json-secret"}`
 	got := SanitizeText(input)
-	for _, forbidden := range []string{"abc", "def", "Bearer token", "secret"} {
+	for _, forbidden := range []string{"abc", "def", "Bearer token", "secret", "json-secret"} {
 		if strings.Contains(got, forbidden) {
 			t.Fatalf("sanitized text still contains %q: %s", forbidden, got)
 		}

@@ -17,6 +17,7 @@ type Config struct {
 	DiscordRegisterCommands     bool
 	DiscordCommandScope         string
 	DiscordEphemeralResponses   bool
+	StrictStartupChecks         bool
 	AWSRegion                   string
 	CloudWatchQueryTimeout      time.Duration
 	CloudWatchQueryPollInterval time.Duration
@@ -86,6 +87,7 @@ func Load() Config {
 		DiscordRegisterCommands:     envBool("DISCORD_REGISTER_COMMANDS", false),
 		DiscordCommandScope:         env("DISCORD_COMMAND_SCOPE", "guild"),
 		DiscordEphemeralResponses:   envBool("DISCORD_EPHEMERAL_RESPONSES", true),
+		StrictStartupChecks:         envBool("STRICT_STARTUP_CHECKS", false),
 		AWSRegion:                   env("AWS_REGION", "ap-northeast-2"),
 		CloudWatchQueryTimeout:      time.Duration(envInt("CLOUDWATCH_QUERY_TIMEOUT_SECONDS", 8)) * time.Second,
 		CloudWatchQueryPollInterval: time.Duration(envInt("CLOUDWATCH_QUERY_POLL_INTERVAL_MS", 500)) * time.Millisecond,
