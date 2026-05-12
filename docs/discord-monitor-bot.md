@@ -392,7 +392,7 @@ monitor-bot:
       awslogs-stream: "gateway-discord-bot"
       awslogs-create-group: "true"
   healthcheck:
-    test: ["/monitor-bot", "healthcheck", "--url", "http://127.0.0.1:8088/healthz"]
+    test: ["CMD", "/monitor-bot", "healthcheck", "--url", "http://127.0.0.1:8088/healthz"]
     interval: 30s
     timeout: 3s
     retries: 3
@@ -409,6 +409,10 @@ volumes:
 nginx 예시:
 
 ```nginx
+location ^~ /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+}
+
 location = /discord/interactions {
     proxy_pass http://monitor-bot:8088/interactions;
     proxy_http_version 1.1;
@@ -427,6 +431,11 @@ location = /discord/interactions {
 - Gateway management address는 Docker 내부 network 접근을 위해 compose에서 `MANAGEMENT_SERVER_ADDRESS=0.0.0.0`으로 설정한다.
 - monitor-bot에 Docker socket을 마운트하지 않는다.
 - monitor-bot host port를 publish하지 않는다.
+- bootstrap nginx는 최초 인증서 발급 전용이다.
+- 운영 nginx가 이미 떠 있으면 bootstrap nginx를 실행하지 않는다. 실행하면 80 포트 충돌이 날 수 있다.
+- 운영 배포에서는 nginx container recreate 대신 `nginx -t` 후 `nginx -s reload`를 사용한다.
+- certbot renew는 기존 nginx webroot 기반으로 수행한다.
+- Redis는 monitor-bot 배포와 무관하므로 pull/up/recreate하지 않는다.
 
 ## IAM
 

@@ -237,12 +237,13 @@ jobs:
 
             sudo mkdir -p /opt/aandi/gateway
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
+            sudo docker rm -f aandi-gateway-nginx-bootstrap || true
             sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
             server {
               listen 80;
               server_name ${DOMAIN};
 
-              location /.well-known/acme-challenge/ {
+              location ^~ /.well-known/acme-challenge/ {
                 root /var/www/certbot;
               }
 
@@ -252,7 +253,12 @@ jobs:
             }
             EOF_BOOTSTRAP
 
-            if [ ! -f "/opt/aandi/gateway/certbot/conf/live/${DOMAIN}/fullchain.pem" ]; then
+            if sudo docker ps --format '{{.Names}}' | grep -qx 'aandi-gateway-nginx'; then
+              echo "Existing nginx is running. Skip bootstrap nginx to avoid port 80 conflict."
+            elif [ -f "/opt/aandi/gateway/certbot/conf/live/${DOMAIN}/fullchain.pem" ]; then
+              echo "Certificate already exists. Skip bootstrap nginx."
+            else
+              echo "No nginx and no certificate found. Running first-time bootstrap nginx."
               sudo tee /opt/aandi/gateway/docker-compose.bootstrap.yml >/dev/null <<EOF_BOOTSTRAP_COMPOSE
             services:
               nginx:
@@ -283,13 +289,14 @@ jobs:
               fi
               sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml down
             fi
+            sudo docker rm -f aandi-gateway-nginx-bootstrap || true
 
             sudo tee /opt/aandi/gateway/nginx/gateway.conf >/dev/null <<EOF_NGINX
             server {
               listen 80;
               server_name ${DOMAIN};
 
-              location /.well-known/acme-challenge/ {
+              location ^~ /.well-known/acme-challenge/ {
                 root /var/www/certbot;
               }
 
