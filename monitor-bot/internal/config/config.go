@@ -70,7 +70,7 @@ func Load() Config {
 		"post":         env("LOG_GROUP_POST", "/a-and-i/prod/tech-blog"),
 	}
 	healthURLs := map[string]string{
-		"gateway":      env("HEALTH_URL_GATEWAY", "http://gateway:9090/actuator/health"),
+		"gateway":      env("HEALTH_URL_GATEWAY", "http://gateway:9090/actuator/health/readiness"),
 		"auth":         env("HEALTH_URL_AUTH", ""),
 		"report":       env("HEALTH_URL_REPORT", ""),
 		"online-judge": env("HEALTH_URL_ONLINE_JUDGE", ""),

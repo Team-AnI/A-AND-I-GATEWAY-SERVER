@@ -23,7 +23,7 @@ func TestReportLogGroupOverride(t *testing.T) {
 func TestServiceRegistryAlwaysContainsOperationalServices(t *testing.T) {
 	registry := BuildServiceRegistry(
 		map[string]string{"gateway": "/a-and-i/gateway", "report": "/a-and-i/prod/report"},
-		map[string]string{"gateway": "http://gateway:9090/actuator/health"},
+		map[string]string{"gateway": "http://gateway:9090/actuator/health/readiness"},
 	)
 	want := []string{"gateway", "auth", "report", "online-judge", "post"}
 	if len(registry) != len(want) {

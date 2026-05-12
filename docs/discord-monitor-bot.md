@@ -363,7 +363,7 @@ monitor-bot:
     LOG_GROUP_AUTH: "/a-and-i/auth"
     LOG_GROUP_ONLINE_JUDGE: "/a-and-i/online-judge"
     LOG_GROUP_POST: "/a-and-i/prod/tech-blog"
-    HEALTH_URL_GATEWAY: "http://gateway:9090/actuator/health"
+    HEALTH_URL_GATEWAY: "http://gateway:9090/actuator/health/readiness"
     HEALTH_URL_REPORT: "http://<REPORT_PRIVATE_IP>:8080/actuator/health"
     CLOUDWATCH_QUERY_TIMEOUT_SECONDS: "8"
     CLOUDWATCH_QUERY_POLL_INTERVAL_MS: "500"
@@ -439,7 +439,12 @@ location = /discord/interactions {
 
 ## Gateway Internal Health Check
 
-monitor-bot과 CD health wait는 Docker 내부 network에서만 Gateway actuator health를 조회한다. 외부 nginx의 `/actuator/` deny 정책과 9090 host port 비공개 정책은 유지한다.
+monitor-bot과 CD health wait는 Docker 내부 network에서만 Gateway actuator readiness를 조회한다. 외부 nginx의 `/actuator/` deny 정책과 9090 host port 비공개 정책은 유지한다.
+
+- `8080`: Gateway API port
+- `9090`: Gateway 내부 management/actuator port
+- CD와 monitor-bot의 Gateway 성공 기준: `/actuator/health/readiness`
+- 전체 `/actuator/health`는 Redis 같은 dependency health가 포함되어 503일 수 있으므로 CD 성공 기준으로 쓰지 않는다.
 
 운영 EC2에서 내부 접근을 확인할 때:
 
@@ -449,13 +454,38 @@ cd /opt/aandi/gateway
 NETWORK="$(sudo docker inspect aandi-gateway-server --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
 
 sudo docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 \
-  -i http://gateway:9090/actuator/health
+  -i http://gateway:9090/actuator/health/liveness
 
 sudo docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 \
-  -i -H "Host: api.aandiclub.com" http://gateway:9090/actuator/health
+  -i http://gateway:9090/actuator/health/readiness
+
+sudo docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 \
+  -i -H "Host: api.aandiclub.com" http://gateway:9090/actuator/health/readiness
+
+sudo docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 \
+  -i http://gateway:9090/actuator/health
 ```
 
-두 요청 모두 인증 없이 200 계열이어야 한다. `/actuator/health` 외 actuator endpoint는 public으로 열지 않는다.
+`/actuator/health/liveness`와 `/actuator/health/readiness`는 인증 없이 200 계열이어야 한다. 전체 `/actuator/health`가 Redis component 때문에 503이어도 readiness가 200이면 CD는 Gateway 배포 성공으로 판단한다. `/actuator/health` 외 actuator endpoint는 public으로 열지 않는다.
+
+Redis health가 `NOAUTH Authentication required`로 DOWN이면 Redis password가 설정된 상태일 수 있다. Gateway가 같은 password로 Redis에 접근하는지 확인한다.
+
+```bash
+sudo docker run --rm --network gateway_default redis:7-alpine \
+  redis-cli -h redis -p 6379 ping
+
+sudo docker inspect aandi-gateway-server \
+  --format '{{range .Config.Env}}{{println .}}{{end}}' \
+  | grep -Ei 'REDIS|SPRING_DATA'
+```
+
+필요한 경우 compose 환경 변수에 Redis 인증 정보를 맞춘다. Redis 컨테이너는 monitor-bot 배포와 무관하므로 recreate하지 않는다.
+
+```yaml
+SPRING_DATA_REDIS_HOST: redis
+SPRING_DATA_REDIS_PORT: "6379"
+SPRING_DATA_REDIS_PASSWORD: "${REDIS_PASSWORD}"
+```
 
 ## IAM
 
