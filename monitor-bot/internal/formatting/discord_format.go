@@ -352,18 +352,16 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 }
 
 func HelpText() string {
-	return strings.TrimSpace(`A&I Ops Commands
+	return strings.TrimSpace(`A&I Ops Incident Flow
 
-/ops dashboard
-/ops service service:report
-/ops logs service:report mode:errors
-/ops trace trace_id:<traceId>
-/ops alarms
-/ops storage view:usage
-/ops help
+1. /ops dashboard
+2. /ops logs service:report mode:errors
+3. /ops trace trace_id:<traceId>
+4. /ops service service:report view:copy
 
-Drilldown flow: dashboard -> service -> logs -> trace
-Legacy commands still work as aliases during Phase 1.`)
+Use /ops service for service state.
+Use /ops logs for log analysis.
+Legacy commands still work as Phase 1 aliases.`)
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {

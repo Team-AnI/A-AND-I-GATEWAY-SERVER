@@ -63,11 +63,11 @@ func Definitions() []commandDefinition {
 	countTypeChoices := choices("all", "api", "error", "4xx", "5xx")
 	topByChoices := choices("path", "error", "status")
 	dashboardViewChoices := choices("summary", "errors", "latency")
-	serviceViewChoices := choices("summary", "health", "count", "top", "errors", "slow", "copy")
+	serviceViewChoices := choices("summary", "health", "copy")
 	logModeChoices := choices("recent", "errors", "top", "slow")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
-	return []commandDefinition{
+	definitions := []commandDefinition{
 		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
 			subcommandOption("dashboard", "전체 서비스 운영 대시보드", []commandOption{
 				stringOption("since", "조회 기간", false, sinceChoices),
@@ -77,8 +77,6 @@ func Definitions() []commandDefinition {
 				stringOption("service", "조회할 서비스", true, serviceChoices),
 				stringOption("view", "상세 보기", false, serviceViewChoices),
 				stringOption("since", "조회 기간", false, sinceChoices),
-				integerOption("limit", "출력 개수(5, 10, 20)", false),
-				integerOption("threshold_ms", "최소 latency ms", false),
 			}),
 			subcommandOption("logs", "로그 조회와 집계", []commandOption{
 				stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
@@ -99,6 +97,58 @@ func Definitions() []commandDefinition {
 			}),
 			subcommandOption("help", "운영 명령어 도움말", nil),
 		}},
+	}
+	return append(definitions, legacyDefinitions(serviceChoices, serviceOrAllChoices, sinceChoices, watchIntervalChoices, levelChoices, countTypeChoices, topByChoices)...)
+}
+
+func DefinitionsWithLegacy(includeLegacy bool) []commandDefinition {
+	if includeLegacy {
+		return Definitions()
+	}
+	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
+	serviceOrAllChoices := choices("all", "gateway", "auth", "report", "online-judge", "post")
+	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
+	levelChoices := choices("INFO", "WARN", "ERROR")
+	dashboardViewChoices := choices("summary", "errors", "latency")
+	serviceViewChoices := choices("summary", "health", "copy")
+	logModeChoices := choices("recent", "errors", "top", "slow")
+	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
+	storageViewChoices := choices("usage", "retention")
+	return []commandDefinition{
+		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
+			subcommandOption("dashboard", "전체 서비스 운영 대시보드", []commandOption{
+				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("view", "대시보드 보기", false, dashboardViewChoices),
+			}),
+			subcommandOption("service", "특정 서비스 상세 상태", []commandOption{
+				stringOption("service", "조회할 서비스", true, serviceChoices),
+				stringOption("view", "상세 보기", false, serviceViewChoices),
+				stringOption("since", "조회 기간", false, sinceChoices),
+			}),
+			subcommandOption("logs", "로그 조회와 집계", []commandOption{
+				stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
+				stringOption("mode", "조회 모드", false, logModeChoices),
+				stringOption("level", "로그 레벨", false, levelChoices),
+				stringOption("since", "조회 기간", false, sinceChoices),
+				integerOption("limit", "출력 개수(5, 10, 20)", false),
+			}),
+			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
+				stringOption("trace_id", "조회할 traceId", true, nil),
+			}),
+			subcommandOption("alarms", "CloudWatch alarm 조회", []commandOption{
+				stringOption("state", "alarm 상태", false, alarmStateChoices),
+				stringOption("service", "서비스 필터", false, serviceChoices),
+			}),
+			subcommandOption("storage", "CloudWatch log 사용량과 retention", []commandOption{
+				stringOption("view", "storage 보기", false, storageViewChoices),
+			}),
+			subcommandOption("help", "운영 명령어 도움말", nil),
+		}},
+	}
+}
+
+func legacyDefinitions(serviceChoices, serviceOrAllChoices, sinceChoices, watchIntervalChoices, levelChoices, countTypeChoices, topByChoices []commandChoice) []commandDefinition {
+	return []commandDefinition{
 		{Name: "dashboard", Description: "전체 서비스 운영 대시보드", Options: []commandOption{
 			stringOption("since", "조회 기간", true, sinceChoices),
 		}},
@@ -154,17 +204,21 @@ func Definitions() []commandDefinition {
 }
 
 func RegisterGuildCommands(ctx context.Context, client *http.Client, botToken, applicationID, guildID string) error {
-	return registerGuildCommands(ctx, client, botToken, applicationID, guildID, "https://discord.com/api/v10")
+	return RegisterGuildCommandsWithLegacy(ctx, client, botToken, applicationID, guildID, true)
 }
 
-func registerGuildCommands(ctx context.Context, client *http.Client, botToken, applicationID, guildID, baseURL string) error {
+func RegisterGuildCommandsWithLegacy(ctx context.Context, client *http.Client, botToken, applicationID, guildID string, includeLegacy bool) error {
+	return registerGuildCommands(ctx, client, botToken, applicationID, guildID, "https://discord.com/api/v10", includeLegacy)
+}
+
+func registerGuildCommands(ctx context.Context, client *http.Client, botToken, applicationID, guildID, baseURL string, includeLegacy bool) error {
 	if botToken == "" {
 		return fmt.Errorf("DISCORD_BOT_TOKEN is required to register commands")
 	}
 	if applicationID == "" || guildID == "" {
 		return fmt.Errorf("DISCORD_APPLICATION_ID and DISCORD_ALLOWED_GUILD_ID are required for guild command registration")
 	}
-	payload, err := json.Marshal(Definitions())
+	payload, err := json.Marshal(DefinitionsWithLegacy(includeLegacy))
 	if err != nil {
 		return err
 	}

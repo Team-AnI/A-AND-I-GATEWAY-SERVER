@@ -70,6 +70,41 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 	}
 }
 
+func TestDefinitionsCanExcludeLegacyCommands(t *testing.T) {
+	commands := DefinitionsWithLegacy(false)
+	if len(commands) != 1 || commands[0].Name != "ops" {
+		t.Fatalf("expected only /ops when legacy registration is disabled: %#v", commands)
+	}
+}
+
+func TestOpsServiceViewsStayStateFocused(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	serviceCommand := findSubcommand(t, command, "service")
+	viewOption := findOption(t, serviceCommand.Options, "view")
+	got := choiceValues(viewOption.Choices)
+	want := []string{"summary", "health", "copy"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("/ops service view choices = %#v, want %#v", got, want)
+	}
+}
+
+func TestOpsLogsModesStayLogFocused(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	logsCommand := findSubcommand(t, command, "logs")
+	modeOption := findOption(t, logsCommand.Options, "mode")
+	got := choiceValues(modeOption.Choices)
+	want := []string{"recent", "errors", "top", "slow"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("/ops logs mode choices = %#v, want %#v", got, want)
+	}
+}
+
 func TestLegacyCommandsDelegateToOpsHandlers(t *testing.T) {
 	cases := map[string]string{
 		"dashboard":   "/ops dashboard",
@@ -90,6 +125,21 @@ func TestLegacyCommandsDelegateToOpsHandlers(t *testing.T) {
 	}
 }
 
+func TestAllServiceQueryGuard(t *testing.T) {
+	if !isAllServiceQuery("") || !isAllServiceQuery("all") {
+		t.Fatal("blank or all service should be treated as all-service query")
+	}
+	if !sinceAllowsAllQuery("30m") {
+		t.Fatal("30m should be allowed for service=all")
+	}
+	if sinceAllowsAllQuery("1h") || sinceAllowsAllQuery("3h") {
+		t.Fatal("service=all should be capped at 30m")
+	}
+	if !strings.Contains(allServiceGuardMessage(), "errors/dashboard") {
+		t.Fatalf("all-service guard should explain allowed modes: %s", allServiceGuardMessage())
+	}
+}
+
 func TestRegisterGuildCommandsReturns400BodyWithoutToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bot test-bot-token" {
@@ -100,7 +150,7 @@ func TestRegisterGuildCommandsReturns400BodyWithoutToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := registerGuildCommands(context.Background(), server.Client(), "test-bot-token", "app-id", "guild-id", server.URL)
+	err := registerGuildCommands(context.Background(), server.Client(), "test-bot-token", "app-id", "guild-id", server.URL, true)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -154,7 +204,7 @@ func TestRegisterGuildCommands429DoesNotRetryImmediately(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := registerGuildCommands(context.Background(), server.Client(), "bot-token", "app-id", "guild-id", server.URL)
+	err := registerGuildCommands(context.Background(), server.Client(), "bot-token", "app-id", "guild-id", server.URL, true)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -180,4 +230,34 @@ func findCommand(name string) (commandDefinition, error) {
 		}
 	}
 	return commandDefinition{}, fmt.Errorf("command %q not found", name)
+}
+
+func findSubcommand(t *testing.T, command commandDefinition, name string) commandOption {
+	t.Helper()
+	for _, option := range command.Options {
+		if option.Type == 1 && option.Name == name {
+			return option
+		}
+	}
+	t.Fatalf("subcommand %q not found in %q", name, command.Name)
+	return commandOption{}
+}
+
+func findOption(t *testing.T, options []commandOption, name string) commandOption {
+	t.Helper()
+	for _, option := range options {
+		if option.Name == name {
+			return option
+		}
+	}
+	t.Fatalf("option %q not found", name)
+	return commandOption{}
+}
+
+func choiceValues(choices []commandChoice) []string {
+	values := make([]string, 0, len(choices))
+	for _, choice := range choices {
+		values = append(values, choice.Value)
+	}
+	return values
 }

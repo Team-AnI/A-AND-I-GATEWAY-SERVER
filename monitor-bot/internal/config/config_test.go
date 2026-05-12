@@ -20,6 +20,24 @@ func TestReportLogGroupOverride(t *testing.T) {
 	}
 }
 
+func TestLegacyCommandRegistrationDefaultsToEnabled(t *testing.T) {
+	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "")
+
+	cfg := Load()
+	if !cfg.DiscordRegisterLegacyCommands {
+		t.Fatal("legacy command registration should default to enabled during Phase 1")
+	}
+}
+
+func TestLegacyCommandRegistrationCanBeDisabled(t *testing.T) {
+	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "false")
+
+	cfg := Load()
+	if cfg.DiscordRegisterLegacyCommands {
+		t.Fatal("DISCORD_REGISTER_LEGACY_COMMANDS=false should disable legacy registration")
+	}
+}
+
 func TestServiceRegistryAlwaysContainsOperationalServices(t *testing.T) {
 	registry := BuildServiceRegistry(
 		map[string]string{"gateway": "/a-and-i/gateway", "report": "/a-and-i/prod/report"},

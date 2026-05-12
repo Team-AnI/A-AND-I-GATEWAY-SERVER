@@ -186,7 +186,7 @@ func registerCommandsIfEnabled(ctx context.Context, cfg config.Config, client *h
 		}
 		return nil
 	}
-	if err := discord.RegisterGuildCommands(ctx, client, cfg.DiscordBotToken, cfg.DiscordApplicationID, cfg.DiscordAllowedGuildID); err != nil {
+	if err := discord.RegisterGuildCommandsWithLegacy(ctx, client, cfg.DiscordBotToken, cfg.DiscordApplicationID, cfg.DiscordAllowedGuildID, cfg.DiscordRegisterLegacyCommands); err != nil {
 		status.SetDiscordRegistration(false, err)
 		log.Printf("discord command registration failed: %v", err)
 		if cfg.StrictStartupChecks {

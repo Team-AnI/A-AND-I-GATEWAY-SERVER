@@ -284,33 +284,18 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 	if since == "" {
 		since = "30m"
 	}
-	limit := optionStringFromOptions(subcommand.Options, "limit")
-	if limit == "" {
-		limit = "10"
-	}
 	switch view {
 	case "summary":
 		return h.serviceCommand(ctx, interactionForCommand("service", withDefaultOptions(subcommand.Options, map[string]string{"since": since})))
 	case "health":
-		return formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)})
-	case "count":
-		return h.countCommand(ctx, interactionForCommand("count", withDefaultOptions(subcommand.Options, map[string]string{"since": since, "type": "all"})))
-	case "top":
-		return h.topCommand(ctx, interactionForCommand("top", withDefaultOptions(subcommand.Options, map[string]string{"since": since, "by": "path"})))
-	case "errors":
-		return h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
-			stringInteractionOption("since", since),
-			stringInteractionOption("service", service),
-		}))
-	case "slow":
-		return h.slowCommand(ctx, interactionForCommand("slow", withDefaultOptions(subcommand.Options, map[string]string{"since": since, "limit": limit})))
+		return withNext(formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)}), "/ops logs service:"+service+" mode:errors")
 	case "copy":
 		if service != "report" {
 			return "copy view는 report service에서만 지원합니다."
 		}
-		return h.copyStatusCommand(ctx, interactionForCommand("copy-status", []ApplicationCommandOpt{stringInteractionOption("since", since)}))
+		return withNext(h.copyStatusCommand(ctx, interactionForCommand("copy-status", []ApplicationCommandOpt{stringInteractionOption("since", since)})), "/ops logs service:report mode:errors", "/ops service service:report view:summary")
 	default:
-		return "지원하지 않는 service view입니다."
+		return "지원하지 않는 service view입니다. 상태는 `/ops service view:summary|health|copy`, 로그 분석은 `/ops logs`를 사용하세요."
 	}
 }
 
@@ -338,33 +323,43 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 	switch mode {
 	case "recent":
 		if service == "all" {
-			return "recent mode는 단일 service를 지정해야 합니다."
+			return allServiceGuardMessage()
 		}
-		return h.logsCommand(ctx, interactionForCommand("logs", []ApplicationCommandOpt{
+		return withNext(h.logsCommand(ctx, interactionForCommand("logs", []ApplicationCommandOpt{
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("level", level),
-		}))
+		})), "/ops logs service:"+service+" mode:errors", "/ops service service:"+service)
 	case "errors":
-		return h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
+		if service == "all" && !sinceAllowsAllQuery(since) {
+			return allServiceSinceGuardMessage()
+		}
+		next := []string{"/ops dashboard since:" + since}
+		if service != "all" {
+			next = append(next, "/ops logs service:"+service+" mode:recent level:ERROR", "/ops service service:"+service)
+		}
+		return withNext(h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
 			stringInteractionOption("since", since),
 			stringInteractionOption("service", service),
-		}))
+		})), next...)
 	case "top":
-		return h.topCommand(ctx, interactionForCommand("top", []ApplicationCommandOpt{
+		if service == "all" {
+			return allServiceGuardMessage()
+		}
+		return withNext(h.topCommand(ctx, interactionForCommand("top", []ApplicationCommandOpt{
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("by", "path"),
-		}))
+		})), "/ops logs service:"+service+" mode:errors", "/ops trace trace_id:<traceId>")
 	case "slow":
 		if service == "all" {
-			return "slow mode는 단일 service를 지정해야 합니다."
+			return allServiceGuardMessage()
 		}
-		return h.slowCommand(ctx, interactionForCommand("slow", []ApplicationCommandOpt{
+		return withNext(h.slowCommand(ctx, interactionForCommand("slow", []ApplicationCommandOpt{
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", limit),
-		}))
+		})), "/ops logs service:"+service+" mode:errors", "/ops trace trace_id:<traceId>")
 	default:
 		return "지원하지 않는 logs mode입니다."
 	}
@@ -510,6 +505,9 @@ func (h *Handler) countCommand(ctx context.Context, interaction Interaction) str
 	if !ok {
 		return "지원하지 않는 type 값입니다."
 	}
+	if service == "all" {
+		return allServiceGuardMessage()
+	}
 	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
 	if err != nil {
 		return security.SanitizeText(err.Error())
@@ -538,6 +536,9 @@ func (h *Handler) topCommand(ctx context.Context, interaction Interaction) strin
 	by, ok := security.NormalizeTopBy(optionString(interaction, "by"))
 	if !ok {
 		return "지원하지 않는 by 값입니다."
+	}
+	if service == "all" {
+		return allServiceGuardMessage()
 	}
 	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
 	if err != nil {
@@ -630,15 +631,20 @@ func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) stri
 }
 
 func (h *Handler) errorsCommand(ctx context.Context, interaction Interaction) string {
-	since, ok := security.ParseSince(optionString(interaction, "since"))
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
 	if !ok {
 		return "지원하지 않는 since 값입니다."
 	}
-	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, optionString(interaction, "service"), h.cfg.CloudWatchMaxLogGroups)
+	service := optionString(interaction, "service")
+	if isAllServiceQuery(service) && !sinceAllowsAllQuery(sinceLabel) {
+		return allServiceSinceGuardMessage()
+	}
+	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
-	rows, err := h.logs.Query(ctx, groups, cw.BuildErrorsQuery(optionString(interaction, "service"), h.cfg.CloudWatchQueryLimit), since, security.ClampLimit(h.cfg.CloudWatchQueryLimit, 20, 100))
+	rows, err := h.logs.Query(ctx, groups, cw.BuildErrorsQuery(service, h.cfg.CloudWatchQueryLimit), since, security.ClampLimit(h.cfg.CloudWatchQueryLimit, 20, 100))
 	if err != nil {
 		return "CloudWatch errors 조회 실패: " + security.SanitizeText(err.Error())
 	}
@@ -726,7 +732,7 @@ func optionStringFromOptions(options []ApplicationCommandOpt, name string) strin
 }
 
 func legacyNotice(replacement string) string {
-	return "안내: 이 legacy command는 곧 `" + replacement + "`로 통합됩니다.\n\n"
+	return "Tip: use `" + replacement + "`\n\n"
 }
 
 func legacyNoticeFor(command string) string {
@@ -741,9 +747,9 @@ func legacyOpsReplacement(command string) (string, bool) {
 	replacements := map[string]string{
 		"dashboard":   "/ops dashboard",
 		"service":     "/ops service",
-		"count":       "/ops service view:count 또는 /ops logs mode:recent",
-		"top":         "/ops service view:top 또는 /ops logs mode:top",
-		"slow":        "/ops service view:slow 또는 /ops logs mode:slow",
+		"count":       "/ops logs mode:errors",
+		"top":         "/ops logs mode:top",
+		"slow":        "/ops logs mode:slow",
 		"copy-status": "/ops service service:report view:copy",
 		"status":      "/ops dashboard",
 		"health":      "/ops service view:health",
@@ -756,6 +762,52 @@ func legacyOpsReplacement(command string) (string, bool) {
 	}
 	replacement, ok := replacements[command]
 	return replacement, ok
+}
+
+func withNext(content string, commands ...string) string {
+	visible := make([]string, 0, 3)
+	for _, command := range commands {
+		if trimmed := strings.TrimSpace(command); trimmed != "" {
+			visible = append(visible, trimmed)
+		}
+		if len(visible) == 3 {
+			break
+		}
+	}
+	if len(visible) == 0 {
+		return content
+	}
+	var b strings.Builder
+	b.WriteString(strings.TrimRight(content, "\n"))
+	b.WriteString("\n\nNext:\n")
+	for _, command := range visible {
+		b.WriteString("- `")
+		b.WriteString(command)
+		b.WriteString("`\n")
+	}
+	return formatting.TruncateDiscordMessage(b.String())
+}
+
+func isAllServiceQuery(service string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(service))
+	return normalized == "" || normalized == "all"
+}
+
+func sinceAllowsAllQuery(since string) bool {
+	switch strings.TrimSpace(since) {
+	case "5m", "15m", "30m":
+		return true
+	default:
+		return false
+	}
+}
+
+func allServiceGuardMessage() string {
+	return "service:all은 비용 보호를 위해 errors/dashboard 계열에서만 지원합니다. `/ops logs service:all mode:errors since:30m` 또는 `/ops dashboard`를 사용하세요."
+}
+
+func allServiceSinceGuardMessage() string {
+	return "service:all 조회는 CloudWatch 비용 보호를 위해 since 30m 이하만 허용합니다."
 }
 
 func serviceHasAlarm(service string, alarmNames []string) bool {

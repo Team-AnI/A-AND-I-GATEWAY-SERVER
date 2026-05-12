@@ -17,21 +17,27 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 Primary commands:
 
 - `/ops dashboard since:<5m|15m|30m|1h|3h> view:<summary|errors|latency>`: 전체 서비스 health, log, alarm 요약
-- `/ops service service:<service> view:<summary|health|count|top|errors|slow|copy> since:<duration> limit:<5|10|20>`: 단일 서비스 상세 drilldown
+- `/ops service service:<service> view:<summary|health|copy> since:<duration>`: 단일 서비스 상태와 Report copy API 상태
 - `/ops logs service:<service|all> mode:<recent|errors|top|slow> level:<INFO|WARN|ERROR> since:<duration> limit:<5|10|20>`: 로그 조회와 집계
 - `/ops trace trace_id:<traceId>`: traceId 기준 시간순 조회
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all> service:<optional>`: CloudWatch alarm 조회
 - `/ops storage view:<usage|retention>`: CloudWatch log group stored bytes와 retention 조회
 - `/ops help`: 짧은 운영 명령어 예시
 
-Drilldown flow:
+장애 대응 흐름:
 
 ```text
 /ops dashboard
-/ops service service:report
 /ops logs service:report mode:errors
 /ops trace trace_id:<traceId>
+/ops service service:report view:copy
 ```
+
+역할 분리:
+
+- `/ops service`: 서비스 상태 중심. `summary`, `health`, `copy`만 제공한다.
+- `/ops logs`: 로그 분석 중심. `recent`, `errors`, `top`, `slow`를 제공한다.
+- `service=all`: CloudWatch 비용 보호를 위해 `/ops logs service:all mode:errors since:<5m|15m|30m>`에서만 허용한다. `recent`, `top`, `slow`는 단일 서비스를 지정한다.
 
 Legacy aliases in Phase 1:
 
@@ -39,9 +45,9 @@ Legacy aliases in Phase 1:
 - `/status` -> `/ops dashboard`
 - `/service` -> `/ops service`
 - `/health` -> `/ops service view:health`
-- `/count` -> `/ops service view:count`
-- `/top` -> `/ops service view:top` 또는 `/ops logs mode:top`
-- `/slow` -> `/ops service view:slow` 또는 `/ops logs mode:slow`
+- `/count` -> `/ops logs mode:errors`
+- `/top` -> `/ops logs mode:top`
+- `/slow` -> `/ops logs mode:slow`
 - `/copy-status` -> `/ops service service:report view:copy`
 - `/logs` -> `/ops logs mode:recent`
 - `/errors` -> `/ops logs mode:errors`
@@ -50,7 +56,7 @@ Legacy aliases in Phase 1:
 - `/disk` -> `/ops storage view:usage`
 - `/retention` -> `/ops storage view:retention`
 
-`service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다. 충분히 안정화되면 legacy command registration을 제거하고 Discord에는 `/ops`만 남긴다.
+`service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다. Phase 1에서는 legacy command도 짧은 `Tip: use /ops ...` 안내와 함께 계속 동작한다. 충분히 안정화되면 `DISCORD_REGISTER_LEGACY_COMMANDS=false`로 legacy command registration을 끄고, 최종적으로 Discord에는 `/ops`만 남긴다.
 
 ## Dashboard UX
 
@@ -111,7 +117,7 @@ Top issue: auth 5xx x1
 
 ```text
 /ops service service:report since:30m
-/ops service service:report view:count since:1h
+/ops logs service:report mode:errors since:1h
 /ops logs service:report mode:top since:1h
 /ops logs service:gateway mode:slow since:30m limit:10
 /ops service service:report view:copy since:1h
@@ -323,6 +329,7 @@ Required Vars:
 - `HEALTH_URL_ONLINE_JUDGE`
 - `HEALTH_URL_POST`
 - `DISCORD_REGISTER_COMMANDS=false`
+- `DISCORD_REGISTER_LEGACY_COMMANDS=true`
 - `CLOUDWATCH_QUERY_TIMEOUT_SECONDS=8`
 - `CLOUDWATCH_QUERY_POLL_INTERVAL_MS=500`
 - `CLOUDWATCH_QUERY_LIMIT=20`
@@ -354,6 +361,7 @@ Runtime defaults:
 - `BOT_HTTP_PORT=8088`
 - `AWS_REGION=ap-northeast-2`
 - `DISCORD_REGISTER_COMMANDS=false` when the var is empty
+- `DISCORD_REGISTER_LEGACY_COMMANDS=true` during Phase 1; set `false` later to register only `/ops`
 - Command registration failure does not stop the process unless `STRICT_STARTUP_CHECKS=true`
 
 `BOT_ECR_REPOSITORY`는 사용하지 않는다.
@@ -420,6 +428,7 @@ monitor-bot:
     DISCORD_ALLOWED_GUILD_ID: "${DISCORD_ALLOWED_GUILD_ID}"
     DISCORD_ALLOWED_ROLE_IDS: "${DISCORD_ALLOWED_ROLE_IDS}"
     DISCORD_REGISTER_COMMANDS: "${DISCORD_REGISTER_COMMANDS}"
+    DISCORD_REGISTER_LEGACY_COMMANDS: "${DISCORD_REGISTER_LEGACY_COMMANDS}"
     STRICT_STARTUP_CHECKS: "false"
     LOG_GROUP_GATEWAY: "/a-and-i/gateway"
     LOG_GROUP_REPORT: "/a-and-i/prod/report"
