@@ -103,8 +103,8 @@ func Definitions() []commandDefinition {
 			stringOption("level", "로그 레벨", true, levelChoices),
 		}},
 		{Name: "errors", Description: "CloudWatch 에러 집계", Options: []commandOption{
-			stringOption("service", "조회할 서비스", false, serviceChoices),
 			stringOption("since", "조회 기간", true, sinceChoices),
+			stringOption("service", "조회할 서비스", false, serviceChoices),
 		}},
 		{Name: "trace", Description: "traceId 기준 로그 조회", Options: []commandOption{
 			stringOption("trace_id", "조회할 traceId", true, nil),

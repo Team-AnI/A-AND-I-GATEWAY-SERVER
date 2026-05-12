@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,37 @@ import (
 	"testing"
 	"time"
 )
+
+func TestDefinitionsPlaceRequiredOptionsBeforeOptionalOptions(t *testing.T) {
+	for _, command := range Definitions() {
+		seenOptional := false
+		for _, option := range command.Options {
+			if !option.Required {
+				seenOptional = true
+				continue
+			}
+			if seenOptional {
+				t.Fatalf("command %q has required option %q after an optional option", command.Name, option.Name)
+			}
+		}
+	}
+}
+
+func TestErrorsCommandPlacesSinceBeforeOptionalService(t *testing.T) {
+	command, err := findCommand("errors")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(command.Options) != 2 {
+		t.Fatalf("unexpected errors option count: %d", len(command.Options))
+	}
+	if command.Options[0].Name != "since" || !command.Options[0].Required {
+		t.Fatalf("first errors option must be required since: %#v", command.Options[0])
+	}
+	if command.Options[1].Name != "service" || command.Options[1].Required {
+		t.Fatalf("second errors option must be optional service: %#v", command.Options[1])
+	}
+}
 
 func TestRegisterGuildCommandsReturns400BodyWithoutToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,4 +93,13 @@ func TestRegisterGuildCommands429DoesNotRetryImmediately(t *testing.T) {
 	if registrationErr.RetryAfter != 2*time.Second {
 		t.Fatalf("unexpected retry_after: %s", registrationErr.RetryAfter)
 	}
+}
+
+func findCommand(name string) (commandDefinition, error) {
+	for _, command := range Definitions() {
+		if command.Name == name {
+			return command, nil
+		}
+	}
+	return commandDefinition{}, fmt.Errorf("command %q not found", name)
 }
