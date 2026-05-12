@@ -167,7 +167,7 @@ jobs:
             if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="true"; fi
             if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="https://*"; fi
             if [ -z "$DISCORD_REGISTER_COMMANDS" ]; then DISCORD_REGISTER_COMMANDS="false"; fi
-            if [ -z "$DISCORD_REGISTER_LEGACY_COMMANDS" ]; then DISCORD_REGISTER_LEGACY_COMMANDS="true"; fi
+            if [ -z "$DISCORD_REGISTER_LEGACY_COMMANDS" ]; then DISCORD_REGISTER_LEGACY_COMMANDS="false"; fi
             if [ -z "$LOG_GROUP_GATEWAY" ]; then LOG_GROUP_GATEWAY="/a-and-i/gateway"; fi
             if [ -z "$LOG_GROUP_REPORT" ]; then LOG_GROUP_REPORT="/a-and-i/prod/report"; fi
             if [ -z "$LOG_GROUP_AUTH" ]; then LOG_GROUP_AUTH="/a-and-i/auth"; fi

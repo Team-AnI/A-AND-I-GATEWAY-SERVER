@@ -20,21 +20,21 @@ func TestReportLogGroupOverride(t *testing.T) {
 	}
 }
 
-func TestLegacyCommandRegistrationDefaultsToEnabled(t *testing.T) {
+func TestLegacyCommandRegistrationDefaultsToDisabled(t *testing.T) {
 	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "")
 
 	cfg := Load()
-	if !cfg.DiscordRegisterLegacyCommands {
-		t.Fatal("legacy command registration should default to enabled during Phase 1")
+	if cfg.DiscordRegisterLegacyCommands {
+		t.Fatal("legacy command registration should default to disabled")
 	}
 }
 
-func TestLegacyCommandRegistrationCanBeDisabled(t *testing.T) {
-	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "false")
+func TestLegacyCommandRegistrationCanBeEnabledTemporarily(t *testing.T) {
+	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "true")
 
 	cfg := Load()
-	if cfg.DiscordRegisterLegacyCommands {
-		t.Fatal("DISCORD_REGISTER_LEGACY_COMMANDS=false should disable legacy registration")
+	if !cfg.DiscordRegisterLegacyCommands {
+		t.Fatal("DISCORD_REGISTER_LEGACY_COMMANDS=true should enable temporary legacy registration")
 	}
 }
 

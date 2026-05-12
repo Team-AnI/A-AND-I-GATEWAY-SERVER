@@ -373,7 +373,7 @@ func HelpText() string {
 
 Use /ops service for service state.
 Use /ops logs for log analysis.
-Legacy commands still work as Phase 1 aliases.`)
+If legacy commands remain, treat them as temporary aliases.`)
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {

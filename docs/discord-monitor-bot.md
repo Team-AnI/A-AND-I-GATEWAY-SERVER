@@ -60,7 +60,7 @@ Legacy aliases in Phase 1:
 - `/disk` -> `/ops storage view:usage`
 - `/retention` -> `/ops storage view:retention`
 
-`service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다. `/ops service service:report view:copy`는 호환을 위해 유지하지만, primary copy 확인 명령은 `/ops copy since:30m`이다. Phase 1에서는 legacy command도 짧은 `Tip: use /ops ...` 안내와 함께 계속 동작한다. 충분히 안정화되면 `DISCORD_REGISTER_LEGACY_COMMANDS=false`로 legacy command registration을 끄고, 최종적으로 Discord에는 `/ops`만 남긴다.
+`service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다. `/ops service service:report view:copy`는 호환을 위해 유지하지만, primary copy 확인 명령은 `/ops copy since:30m`이다. 배포 CD는 기본적으로 `DISCORD_REGISTER_LEGACY_COMMANDS=false`를 사용해 Discord에는 `/ops`만 등록한다. 이미 등록된 legacy command를 정리하려면 `DISCORD_REGISTER_COMMANDS=true` 상태로 한 번 배포해 guild command를 bulk overwrite한다.
 
 ## Dashboard UX
 
@@ -335,7 +335,7 @@ Required Vars:
 - `HEALTH_URL_ONLINE_JUDGE`
 - `HEALTH_URL_POST`
 - `DISCORD_REGISTER_COMMANDS=false`
-- `DISCORD_REGISTER_LEGACY_COMMANDS=true`
+- `DISCORD_REGISTER_LEGACY_COMMANDS=false`
 - `CLOUDWATCH_QUERY_TIMEOUT_SECONDS=8`
 - `CLOUDWATCH_QUERY_POLL_INTERVAL_MS=500`
 - `CLOUDWATCH_QUERY_LIMIT=20`
@@ -367,7 +367,7 @@ Runtime defaults:
 - `BOT_HTTP_PORT=8088`
 - `AWS_REGION=ap-northeast-2`
 - `DISCORD_REGISTER_COMMANDS=false` when the var is empty
-- `DISCORD_REGISTER_LEGACY_COMMANDS=true` during Phase 1; set `false` later to register only `/ops`
+- `DISCORD_REGISTER_LEGACY_COMMANDS=false` by default; set `true` only for temporary Phase 1 legacy registration
 - Command registration failure does not stop the process unless `STRICT_STARTUP_CHECKS=true`
 
 `BOT_ECR_REPOSITORY`는 사용하지 않는다.

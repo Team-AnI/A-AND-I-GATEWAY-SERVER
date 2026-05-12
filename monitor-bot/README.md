@@ -16,7 +16,7 @@ Primary 운영 command는 `/ops`입니다.
 - `/ops help`
 
 Phase 1에서는 기존 `/dashboard`, `/service`, `/logs`, `/errors`, `/trace`, `/alarm`, `/disk`, `/retention`, `/help`도 legacy alias로 유지합니다.
-나중에 `DISCORD_REGISTER_LEGACY_COMMANDS=false`로 `/ops`만 등록할 수 있습니다.
+기본 등록은 `/ops`만 대상으로 한다. 임시 호환이 꼭 필요할 때만 `DISCORD_REGISTER_LEGACY_COMMANDS=true`로 legacy command를 함께 등록한다.
 
 ## Runtime
 

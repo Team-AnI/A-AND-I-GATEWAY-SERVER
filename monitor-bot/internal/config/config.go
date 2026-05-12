@@ -86,7 +86,7 @@ func Load() Config {
 		DiscordAllowedGuildID:         env("DISCORD_ALLOWED_GUILD_ID", ""),
 		DiscordAllowedRoleIDs:         splitCSV(env("DISCORD_ALLOWED_ROLE_IDS", "")),
 		DiscordRegisterCommands:       envBool("DISCORD_REGISTER_COMMANDS", false),
-		DiscordRegisterLegacyCommands: envBool("DISCORD_REGISTER_LEGACY_COMMANDS", true),
+		DiscordRegisterLegacyCommands: envBool("DISCORD_REGISTER_LEGACY_COMMANDS", false),
 		DiscordCommandScope:           env("DISCORD_COMMAND_SCOPE", "guild"),
 		DiscordEphemeralResponses:     envBool("DISCORD_EPHEMERAL_RESPONSES", true),
 		StrictStartupChecks:           envBool("STRICT_STARTUP_CHECKS", false),

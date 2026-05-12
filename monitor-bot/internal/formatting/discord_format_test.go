@@ -273,6 +273,7 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops copy since:30m",
 		"Use /ops service for service state.",
 		"Use /ops logs for log analysis.",
+		"If legacy commands remain, treat them as temporary aliases.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)
