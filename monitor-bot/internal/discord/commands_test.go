@@ -15,16 +15,7 @@ import (
 
 func TestDefinitionsPlaceRequiredOptionsBeforeOptionalOptions(t *testing.T) {
 	for _, command := range Definitions() {
-		seenOptional := false
-		for _, option := range command.Options {
-			if !option.Required {
-				seenOptional = true
-				continue
-			}
-			if seenOptional {
-				t.Fatalf("command %q has required option %q after an optional option", command.Name, option.Name)
-			}
-		}
+		assertRequiredOptionsBeforeOptional(t, command.Name, command.Options)
 	}
 }
 
@@ -55,12 +46,46 @@ func TestCommandDefinitionsAreDiscordCompatible(t *testing.T) {
 			t.Fatalf("command %q must be lowercase and Discord-compatible", command.Name)
 		}
 		for _, option := range command.Options {
-			if strings.TrimSpace(option.Name) == "" {
-				t.Fatalf("command %q has an empty option name", command.Name)
-			}
-			if !optionNamePattern.MatchString(option.Name) {
-				t.Fatalf("command %q option %q must be lowercase and Discord-compatible", command.Name, option.Name)
-			}
+			assertOptionNamesAreCompatible(t, command.Name, option, optionNamePattern)
+		}
+	}
+}
+
+func TestOpsCommandSubcommandsRegistered(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make(map[string]bool)
+	for _, option := range command.Options {
+		if option.Type != 1 {
+			t.Fatalf("/ops option %q must be a subcommand, got type=%d", option.Name, option.Type)
+		}
+		got[option.Name] = true
+	}
+	for _, want := range []string{"dashboard", "service", "logs", "trace", "alarms", "storage", "help"} {
+		if !got[want] {
+			t.Fatalf("/ops subcommand %q is not registered", want)
+		}
+	}
+}
+
+func TestLegacyCommandsDelegateToOpsHandlers(t *testing.T) {
+	cases := map[string]string{
+		"dashboard":   "/ops dashboard",
+		"service":     "/ops service",
+		"copy-status": "/ops service service:report view:copy",
+		"logs":        "/ops logs mode:recent",
+		"errors":      "/ops logs mode:errors",
+		"trace":       "/ops trace",
+		"alarm":       "/ops alarms",
+		"disk":        "/ops storage view:usage",
+		"retention":   "/ops storage view:retention",
+	}
+	for legacy, want := range cases {
+		got, ok := legacyOpsReplacement(legacy)
+		if !ok || got != want {
+			t.Fatalf("legacy command %q replacement mismatch: got %q ok=%v want %q", legacy, got, ok, want)
 		}
 	}
 }
@@ -85,6 +110,37 @@ func TestRegisterGuildCommandsReturns400BodyWithoutToken(t *testing.T) {
 	}
 	if strings.Contains(message, "test-bot-token") || strings.Contains(message, "secret-token") {
 		t.Fatalf("sensitive token leaked in error: %s", message)
+	}
+}
+
+func assertRequiredOptionsBeforeOptional(t *testing.T, commandPath string, options []commandOption) {
+	t.Helper()
+	seenOptional := false
+	for _, option := range options {
+		if option.Type == 1 {
+			assertRequiredOptionsBeforeOptional(t, commandPath+" "+option.Name, option.Options)
+			continue
+		}
+		if !option.Required {
+			seenOptional = true
+			continue
+		}
+		if seenOptional {
+			t.Fatalf("command %q has required option %q after an optional option", commandPath, option.Name)
+		}
+	}
+}
+
+func assertOptionNamesAreCompatible(t *testing.T, commandPath string, option commandOption, pattern *regexp.Regexp) {
+	t.Helper()
+	if strings.TrimSpace(option.Name) == "" {
+		t.Fatalf("command %q has an empty option name", commandPath)
+	}
+	if !pattern.MatchString(option.Name) {
+		t.Fatalf("command %q option %q must be lowercase and Discord-compatible", commandPath, option.Name)
+	}
+	for _, child := range option.Options {
+		assertOptionNamesAreCompatible(t, commandPath+" "+option.Name, child, pattern)
 	}
 }
 

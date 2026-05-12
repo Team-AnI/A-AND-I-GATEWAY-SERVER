@@ -203,7 +203,7 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 		b.WriteString(strings.Join(alarmNames, ", "))
 	}
 	b.WriteString("\nTop issue: " + topIssue)
-	b.WriteString("\n\nNext: `/errors service:report since:" + since + "` 또는 `/copy-status since:" + since + "`")
+	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops service service:report view:copy since:" + since + "`")
 	return TruncateDiscordMessage(b.String())
 }
 
@@ -223,7 +223,7 @@ func FormatServiceDetail(input ServiceDetailInput) string {
 	writeTopRows(&b, input.TopRows)
 	b.WriteString("\nRecent error summary:\n")
 	writeTopRows(&b, input.ErrorRows)
-	fmt.Fprintf(&b, "\nNext:\n/errors service:%s since:%s", input.Service, input.Since)
+	fmt.Fprintf(&b, "\nNext:\n/ops logs service:%s mode:errors since:%s", input.Service, input.Since)
 	return TruncateDiscordMessage(b.String())
 }
 
@@ -350,21 +350,18 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 }
 
 func HelpText() string {
-	return strings.TrimSpace(`/dashboard since:<5m|15m|30m|1h|3h> - 전체 운영 대시보드
-/service service:<service> since:<duration> - 서비스 상세 상태
-/count service:<service> since:<duration> type:<all|api|error|4xx|5xx> - 숫자 집계
-/top service:<service> since:<duration> by:<path|error|status> - 상위 문제 항목
-/slow service:<service> since:<duration> limit:<1..20> threshold_ms:<optional> - 느린 API
-/copy-status since:<duration> - Report 과제 복사 API 상태
-/status - 전체 서비스 상태 요약
-/health service:<service> - 특정 서비스 health 조회
-/logs service:<service> since:<5m|15m|30m|1h|3h> level:<INFO|WARN|ERROR> - 최근 로그 조회
-/errors service:<optional> since:<duration> - 에러 집계
-/trace trace_id:<traceId> - traceId 기준 시간순 조회
-/alarm - CloudWatch ALARM 상태 조회
-/disk - CloudWatch log group 사용량 조회
-/retention - CloudWatch log retention 조회
-/help - 명령어 도움말`)
+	return strings.TrimSpace(`A&I Ops Commands
+
+/ops dashboard
+/ops service service:report
+/ops logs service:report mode:errors
+/ops trace trace_id:<traceId>
+/ops alarms
+/ops storage view:usage
+/ops help
+
+Drilldown flow: dashboard -> service -> logs -> trace
+Legacy commands still work as aliases during Phase 1.`)
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {

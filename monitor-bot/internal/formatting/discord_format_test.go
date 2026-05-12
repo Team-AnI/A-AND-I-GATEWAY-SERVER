@@ -206,3 +206,17 @@ func TestFormatRetentionDoesNotExposeDeleteOperationsOrSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpUsesOpsFocusedOutput(t *testing.T) {
+	got := HelpText()
+	for _, want := range []string{"/ops dashboard", "/ops service service:report", "/ops logs service:report mode:errors", "/ops trace trace_id:<traceId>", "/ops alarms", "/ops storage view:usage"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("help text missing %q: %s", want, got)
+		}
+	}
+	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:"} {
+		if strings.Contains(got, legacy) {
+			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
+		}
+	}
+}

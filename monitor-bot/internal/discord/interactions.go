@@ -65,8 +65,10 @@ type ApplicationCommandData struct {
 }
 
 type ApplicationCommandOpt struct {
-	Name  string          `json:"name"`
-	Value json.RawMessage `json:"value,omitempty"`
+	Type    int                     `json:"type,omitempty"`
+	Name    string                  `json:"name"`
+	Value   json.RawMessage         `json:"value,omitempty"`
+	Options []ApplicationCommandOpt `json:"options,omitempty"`
 }
 
 func NewHandler(cfg config.Config, healthClient *health.Client, logsClient *cw.LogsClient, alarmClient *cw.AlarmClient) *Handler {
@@ -155,50 +157,90 @@ func (h *Handler) authorize(interaction Interaction) error {
 
 func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 	switch interaction.Data.Name {
+	case "ops":
+		return h.opsCommand(ctx, interaction)
 	case "dashboard":
-		return h.dashboardCommand(ctx, interaction)
+		return legacyNoticeFor("dashboard") + h.dashboardCommand(ctx, interaction)
 	case "watch":
 		return h.watchCommand(ctx, interaction)
 	case "unwatch":
 		return h.unwatchCommand(ctx, interaction)
 	case "service":
-		return h.serviceCommand(ctx, interaction)
+		return legacyNoticeFor("service") + h.serviceCommand(ctx, interaction)
 	case "count":
-		return h.countCommand(ctx, interaction)
+		return legacyNoticeFor("count") + h.countCommand(ctx, interaction)
 	case "top":
-		return h.topCommand(ctx, interaction)
+		return legacyNoticeFor("top") + h.topCommand(ctx, interaction)
 	case "slow":
-		return h.slowCommand(ctx, interaction)
+		return legacyNoticeFor("slow") + h.slowCommand(ctx, interaction)
 	case "copy-status":
-		return h.copyStatusCommand(ctx, interaction)
+		return legacyNoticeFor("copy-status") + h.copyStatusCommand(ctx, interaction)
 	case "status":
-		return formatting.FormatStatus(h.health.CheckAll(ctx, serviceOrder))
+		return legacyNoticeFor("status") + formatting.FormatStatus(h.health.CheckAll(ctx, serviceOrder))
 	case "health":
+		notice := legacyNoticeFor("health")
 		service, ok := security.NormalizeService(optionString(interaction, "service"))
 		if !ok {
 			return "지원하지 않는 service입니다."
 		}
-		return formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)})
+		return notice + formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)})
 	case "logs":
-		return h.logsCommand(ctx, interaction)
+		return legacyNoticeFor("logs") + h.logsCommand(ctx, interaction)
 	case "errors":
-		return h.errorsCommand(ctx, interaction)
+		return legacyNoticeFor("errors") + h.errorsCommand(ctx, interaction)
 	case "trace":
-		return h.traceCommand(ctx, interaction)
+		return legacyNoticeFor("trace") + h.traceCommand(ctx, interaction)
 	case "alarm":
+		notice := legacyNoticeFor("alarm")
 		names, err := h.alarms.AlarmNames(ctx)
 		if err != nil {
 			return "CloudWatch alarm 조회 실패: " + security.SanitizeText(err.Error())
 		}
-		return formatting.FormatAlarms(names)
+		return notice + formatting.FormatAlarms(names)
 	case "disk":
-		return h.retentionCommand(ctx, "💽 CloudWatch Log Usage")
+		return legacyNoticeFor("disk") + h.retentionCommand(ctx, "💽 CloudWatch Log Usage")
 	case "retention":
-		return h.retentionCommand(ctx, "📦 CloudWatch Log Retention")
+		return legacyNoticeFor("retention") + h.retentionCommand(ctx, "📦 CloudWatch Log Retention")
 	case "help":
 		return formatting.HelpText()
 	default:
-		return "지원하지 않는 명령어입니다. /help 를 확인하세요."
+		return "지원하지 않는 명령어입니다. /ops help 를 확인하세요."
+	}
+}
+
+func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) string {
+	subcommand, ok := opsSubcommand(interaction)
+	if !ok {
+		return formatting.HelpText()
+	}
+	switch subcommand.Name {
+	case "dashboard":
+		return h.dashboardCommand(ctx, interactionForCommand("dashboard", withDefaultOptions(subcommand.Options, map[string]string{"since": "30m", "view": "summary"})))
+	case "service":
+		return h.opsServiceCommand(ctx, subcommand)
+	case "logs":
+		return h.opsLogsCommand(ctx, subcommand)
+	case "trace":
+		return h.traceCommand(ctx, interactionForCommand("trace", subcommand.Options))
+	case "alarms":
+		return h.opsAlarmsCommand(ctx, subcommand)
+	case "storage":
+		view := optionStringFromOptions(subcommand.Options, "view")
+		if view == "" {
+			view = "usage"
+		}
+		switch view {
+		case "usage":
+			return h.retentionCommand(ctx, "💽 CloudWatch Log Usage")
+		case "retention":
+			return h.retentionCommand(ctx, "📦 CloudWatch Log Retention")
+		default:
+			return "지원하지 않는 storage view입니다."
+		}
+	case "help":
+		return formatting.HelpText()
+	default:
+		return "지원하지 않는 /ops subcommand입니다. /ops help 를 확인하세요."
 	}
 }
 
@@ -227,6 +269,125 @@ func (h *Handler) unwatchCommand(ctx context.Context, interaction Interaction) s
 		return "dashboard watch 해제 실패: " + security.SanitizeText(err.Error())
 	}
 	return message
+}
+
+func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	service, ok := security.NormalizeService(optionStringFromOptions(subcommand.Options, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	view := optionStringFromOptions(subcommand.Options, "view")
+	if view == "" {
+		view = "summary"
+	}
+	since := optionStringFromOptions(subcommand.Options, "since")
+	if since == "" {
+		since = "30m"
+	}
+	limit := optionStringFromOptions(subcommand.Options, "limit")
+	if limit == "" {
+		limit = "10"
+	}
+	switch view {
+	case "summary":
+		return h.serviceCommand(ctx, interactionForCommand("service", withDefaultOptions(subcommand.Options, map[string]string{"since": since})))
+	case "health":
+		return formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)})
+	case "count":
+		return h.countCommand(ctx, interactionForCommand("count", withDefaultOptions(subcommand.Options, map[string]string{"since": since, "type": "all"})))
+	case "top":
+		return h.topCommand(ctx, interactionForCommand("top", withDefaultOptions(subcommand.Options, map[string]string{"since": since, "by": "path"})))
+	case "errors":
+		return h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
+			stringInteractionOption("since", since),
+			stringInteractionOption("service", service),
+		}))
+	case "slow":
+		return h.slowCommand(ctx, interactionForCommand("slow", withDefaultOptions(subcommand.Options, map[string]string{"since": since, "limit": limit})))
+	case "copy":
+		if service != "report" {
+			return "copy view는 report service에서만 지원합니다."
+		}
+		return h.copyStatusCommand(ctx, interactionForCommand("copy-status", []ApplicationCommandOpt{stringInteractionOption("since", since)}))
+	default:
+		return "지원하지 않는 service view입니다."
+	}
+}
+
+func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	service, ok := security.NormalizeServiceOrAll(optionStringFromOptions(subcommand.Options, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	mode := optionStringFromOptions(subcommand.Options, "mode")
+	if mode == "" {
+		mode = "recent"
+	}
+	since := optionStringFromOptions(subcommand.Options, "since")
+	if since == "" {
+		since = "30m"
+	}
+	level := optionStringFromOptions(subcommand.Options, "level")
+	if level == "" {
+		level = "ERROR"
+	}
+	limit := optionStringFromOptions(subcommand.Options, "limit")
+	if limit == "" {
+		limit = "20"
+	}
+	switch mode {
+	case "recent":
+		if service == "all" {
+			return "recent mode는 단일 service를 지정해야 합니다."
+		}
+		return h.logsCommand(ctx, interactionForCommand("logs", []ApplicationCommandOpt{
+			stringInteractionOption("service", service),
+			stringInteractionOption("since", since),
+			stringInteractionOption("level", level),
+		}))
+	case "errors":
+		return h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
+			stringInteractionOption("since", since),
+			stringInteractionOption("service", service),
+		}))
+	case "top":
+		return h.topCommand(ctx, interactionForCommand("top", []ApplicationCommandOpt{
+			stringInteractionOption("service", service),
+			stringInteractionOption("since", since),
+			stringInteractionOption("by", "path"),
+		}))
+	case "slow":
+		if service == "all" {
+			return "slow mode는 단일 service를 지정해야 합니다."
+		}
+		return h.slowCommand(ctx, interactionForCommand("slow", []ApplicationCommandOpt{
+			stringInteractionOption("service", service),
+			stringInteractionOption("since", since),
+			stringInteractionOption("limit", limit),
+		}))
+	default:
+		return "지원하지 않는 logs mode입니다."
+	}
+}
+
+func (h *Handler) opsAlarmsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	state := optionStringFromOptions(subcommand.Options, "state")
+	if state == "" {
+		state = "ALARM"
+	}
+	names, err := h.alarms.AlarmNamesByState(ctx, state)
+	if err != nil {
+		return "CloudWatch alarm 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	service := optionStringFromOptions(subcommand.Options, "service")
+	if service != "" {
+		normalized, ok := security.NormalizeService(service)
+		if !ok {
+			return "지원하지 않는 service입니다."
+		}
+		names = filterAlarmNames(normalized, names)
+	}
+	return formatting.FormatAlarms(names)
 }
 
 func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction) string {
@@ -519,13 +680,82 @@ func (h *Handler) retentionCommand(ctx context.Context, title string) string {
 
 func (h *Handler) commandTimeout(command string) time.Duration {
 	switch command {
-	case "dashboard":
+	case "dashboard", "ops":
 		return h.cfg.CloudWatchQueryTimeout*time.Duration(len(serviceOrder)) + 8*time.Second
 	case "service":
 		return h.cfg.CloudWatchQueryTimeout*3 + 5*time.Second
 	default:
 		return h.cfg.CloudWatchQueryTimeout + 3*time.Second
 	}
+}
+
+func opsSubcommand(interaction Interaction) (ApplicationCommandOpt, bool) {
+	if len(interaction.Data.Options) == 0 {
+		return ApplicationCommandOpt{}, false
+	}
+	return interaction.Data.Options[0], true
+}
+
+func interactionForCommand(name string, options []ApplicationCommandOpt) Interaction {
+	return Interaction{Data: ApplicationCommandData{Name: name, Options: options}}
+}
+
+func withDefaultOptions(options []ApplicationCommandOpt, defaults map[string]string) []ApplicationCommandOpt {
+	result := make([]ApplicationCommandOpt, 0, len(options)+len(defaults))
+	seen := make(map[string]struct{}, len(options))
+	for _, option := range options {
+		result = append(result, option)
+		seen[option.Name] = struct{}{}
+	}
+	for name, value := range defaults {
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		result = append(result, stringInteractionOption(name, value))
+	}
+	return result
+}
+
+func stringInteractionOption(name, value string) ApplicationCommandOpt {
+	encoded, _ := json.Marshal(value)
+	return ApplicationCommandOpt{Name: name, Value: encoded}
+}
+
+func optionStringFromOptions(options []ApplicationCommandOpt, name string) string {
+	return optionString(Interaction{Data: ApplicationCommandData{Options: options}}, name)
+}
+
+func legacyNotice(replacement string) string {
+	return "안내: 이 legacy command는 곧 `" + replacement + "`로 통합됩니다.\n\n"
+}
+
+func legacyNoticeFor(command string) string {
+	replacement, ok := legacyOpsReplacement(command)
+	if !ok {
+		return ""
+	}
+	return legacyNotice(replacement)
+}
+
+func legacyOpsReplacement(command string) (string, bool) {
+	replacements := map[string]string{
+		"dashboard":   "/ops dashboard",
+		"service":     "/ops service",
+		"count":       "/ops service view:count 또는 /ops logs mode:recent",
+		"top":         "/ops service view:top 또는 /ops logs mode:top",
+		"slow":        "/ops service view:slow 또는 /ops logs mode:slow",
+		"copy-status": "/ops service service:report view:copy",
+		"status":      "/ops dashboard",
+		"health":      "/ops service view:health",
+		"logs":        "/ops logs mode:recent",
+		"errors":      "/ops logs mode:errors",
+		"trace":       "/ops trace",
+		"alarm":       "/ops alarms",
+		"disk":        "/ops storage view:usage",
+		"retention":   "/ops storage view:retention",
+	}
+	replacement, ok := replacements[command]
+	return replacement, ok
 }
 
 func serviceHasAlarm(service string, alarmNames []string) bool {
@@ -536,6 +766,16 @@ func serviceHasAlarm(service string, alarmNames []string) bool {
 		}
 	}
 	return false
+}
+
+func filterAlarmNames(service string, alarmNames []string) []string {
+	filtered := make([]string, 0, len(alarmNames))
+	for _, name := range alarmNames {
+		if serviceHasAlarm(service, []string{name}) {
+			filtered = append(filtered, name)
+		}
+	}
+	return filtered
 }
 
 func parseWatchInterval(value string) (time.Duration, bool) {

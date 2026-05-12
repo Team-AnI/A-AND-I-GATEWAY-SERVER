@@ -26,6 +26,7 @@ type commandOption struct {
 	Description string          `json:"description"`
 	Required    bool            `json:"required,omitempty"`
 	Choices     []commandChoice `json:"choices,omitempty"`
+	Options     []commandOption `json:"options,omitempty"`
 }
 
 type commandChoice struct {
@@ -61,7 +62,43 @@ func Definitions() []commandDefinition {
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	countTypeChoices := choices("all", "api", "error", "4xx", "5xx")
 	topByChoices := choices("path", "error", "status")
+	dashboardViewChoices := choices("summary", "errors", "latency")
+	serviceViewChoices := choices("summary", "health", "count", "top", "errors", "slow", "copy")
+	logModeChoices := choices("recent", "errors", "top", "slow")
+	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
+	storageViewChoices := choices("usage", "retention")
 	return []commandDefinition{
+		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
+			subcommandOption("dashboard", "전체 서비스 운영 대시보드", []commandOption{
+				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("view", "대시보드 보기", false, dashboardViewChoices),
+			}),
+			subcommandOption("service", "특정 서비스 상세 상태", []commandOption{
+				stringOption("service", "조회할 서비스", true, serviceChoices),
+				stringOption("view", "상세 보기", false, serviceViewChoices),
+				stringOption("since", "조회 기간", false, sinceChoices),
+				integerOption("limit", "출력 개수(5, 10, 20)", false),
+				integerOption("threshold_ms", "최소 latency ms", false),
+			}),
+			subcommandOption("logs", "로그 조회와 집계", []commandOption{
+				stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
+				stringOption("mode", "조회 모드", false, logModeChoices),
+				stringOption("level", "로그 레벨", false, levelChoices),
+				stringOption("since", "조회 기간", false, sinceChoices),
+				integerOption("limit", "출력 개수(5, 10, 20)", false),
+			}),
+			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
+				stringOption("trace_id", "조회할 traceId", true, nil),
+			}),
+			subcommandOption("alarms", "CloudWatch alarm 조회", []commandOption{
+				stringOption("state", "alarm 상태", false, alarmStateChoices),
+				stringOption("service", "서비스 필터", false, serviceChoices),
+			}),
+			subcommandOption("storage", "CloudWatch log 사용량과 retention", []commandOption{
+				stringOption("view", "storage 보기", false, storageViewChoices),
+			}),
+			subcommandOption("help", "운영 명령어 도움말", nil),
+		}},
 		{Name: "dashboard", Description: "전체 서비스 운영 대시보드", Options: []commandOption{
 			stringOption("since", "조회 기간", true, sinceChoices),
 		}},
@@ -180,6 +217,10 @@ func stringOption(name, description string, required bool, choices []commandChoi
 
 func integerOption(name, description string, required bool) commandOption {
 	return commandOption{Type: 4, Name: name, Description: description, Required: required}
+}
+
+func subcommandOption(name, description string, options []commandOption) commandOption {
+	return commandOption{Type: 1, Name: name, Description: description, Options: options}
 }
 
 func channelOption(name, description string, required bool) commandOption {
