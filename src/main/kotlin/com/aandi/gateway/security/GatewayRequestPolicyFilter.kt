@@ -44,6 +44,11 @@ class GatewayRequestPolicyFilter(
         parser.parse("/v2/lectures/{lectureId}")
     )
 
+    private val actuatorHealthPaths: List<PathPattern> = listOf(
+        parser.parse("/actuator/health"),
+        parser.parse("/actuator/health/**")
+    )
+
     private val allowRules: List<AllowRule> = listOf(
         AllowRule(HttpMethod.POST, parser.parse("/v1/auth/login")),
         AllowRule(HttpMethod.POST, parser.parse("/v1/auth/refresh")),
@@ -134,7 +139,6 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/v3/api-docs/**")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health/**")),
-        AllowRule(HttpMethod.GET, parser.parse("/actuator/info")),
         AllowRule(HttpMethod.POST, parser.parse("/internal/v1/cache/invalidation")),
         // v2 routing
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/login")),
@@ -316,6 +320,10 @@ class GatewayRequestPolicyFilter(
             return chain.filter(exchange)
         }
 
+        if (isActuatorHealth(request.method, path)) {
+            return chain.filter(exchange)
+        }
+
         if (policy.enforceHttps && !isHttps(exchange)) {
             log.warn(
                 "Rejecting request due to HTTPS policy: method={}, path={}, host={}, forwardedProto={}, remoteAddress={}",
@@ -391,6 +399,10 @@ class GatewayRequestPolicyFilter(
         }
         val contentType = request.headers.contentType
         return contentType != null && (contentType.isCompatibleWith(MediaType.APPLICATION_JSON) || contentType.subtype.endsWith("+json"))
+    }
+
+    private fun isActuatorHealth(method: HttpMethod?, path: org.springframework.http.server.PathContainer): Boolean {
+        return method == HttpMethod.GET && actuatorHealthPaths.any { it.matches(path) }
     }
 
     private fun reject(exchange: ServerWebExchange, errorCode: GatewayErrorCode): Mono<Void> {

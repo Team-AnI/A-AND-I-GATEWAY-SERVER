@@ -437,6 +437,26 @@ location = /discord/interactions {
 - certbot renew는 기존 nginx webroot 기반으로 수행한다.
 - Redis는 monitor-bot 배포와 무관하므로 pull/up/recreate하지 않는다.
 
+## Gateway Internal Health Check
+
+monitor-bot과 CD health wait는 Docker 내부 network에서만 Gateway actuator health를 조회한다. 외부 nginx의 `/actuator/` deny 정책과 9090 host port 비공개 정책은 유지한다.
+
+운영 EC2에서 내부 접근을 확인할 때:
+
+```bash
+cd /opt/aandi/gateway
+
+NETWORK="$(sudo docker inspect aandi-gateway-server --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
+
+sudo docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 \
+  -i http://gateway:9090/actuator/health
+
+sudo docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 \
+  -i -H "Host: api.aandiclub.com" http://gateway:9090/actuator/health
+```
+
+두 요청 모두 인증 없이 200 계열이어야 한다. `/actuator/health` 외 actuator endpoint는 public으로 열지 않는다.
+
 ## IAM
 
 별도 monitor-bot ECR repository는 만들지 않으므로 ECR repository 권한 추가는 필요 없다. 기존 `aandi-gateway-server` repository push/pull 권한을 그대로 사용한다.

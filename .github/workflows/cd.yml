@@ -211,6 +211,7 @@ jobs:
               local container_name="$1"
               local url="$2"
               local attempts="${3:-30}"
+              local host_header="${4:-}"
               local network
 
               network="$(sudo docker inspect "${container_name}" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || true)"
@@ -221,7 +222,13 @@ jobs:
               fi
 
               for attempt in $(seq 1 "${attempts}"); do
-                if sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
+                if [ -n "${host_header}" ]; then
+                  if sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
+                    -fsS --max-time 3 -H "Host: ${host_header}" "${url}" >/dev/null; then
+                    echo "OK: ${url}"
+                    return 0
+                  fi
+                elif sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
                   -fsS --max-time 3 "${url}" >/dev/null; then
                   echo "OK: ${url}"
                   return 0
@@ -519,7 +526,7 @@ jobs:
             sudo docker compose config -q
             sudo docker compose pull gateway monitor-bot
             sudo docker compose up -d --no-deps gateway
-            wait_for_http "${{ env.CONTAINER_NAME }}" "http://gateway:9090/actuator/health" 30
+            wait_for_http "${{ env.CONTAINER_NAME }}" "http://gateway:9090/actuator/health" 30 "${DOMAIN}"
             sudo docker compose up -d --no-deps monitor-bot
             wait_for_http "${{ env.BOT_CONTAINER_NAME }}" "http://monitor-bot:8088/healthz" 15
             if sudo docker ps --format '{{.Names}}' | grep -qx 'aandi-gateway-nginx'; then

@@ -26,7 +26,6 @@
 - 공개 엔드포인트:
   - `/actuator/health`
   - `/actuator/health/**`
-  - `/actuator/info`
 - 그 외 엔드포인트: 인증 필수
 
 ### 사용자 정보 전달
