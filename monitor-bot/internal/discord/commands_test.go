@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -40,6 +41,27 @@ func TestErrorsCommandPlacesSinceBeforeOptionalService(t *testing.T) {
 	}
 	if command.Options[1].Name != "service" || command.Options[1].Required {
 		t.Fatalf("second errors option must be optional service: %#v", command.Options[1])
+	}
+}
+
+func TestCommandDefinitionsAreDiscordCompatible(t *testing.T) {
+	commandNamePattern := regexp.MustCompile(`^[a-z0-9_-]+$`)
+	optionNamePattern := regexp.MustCompile(`^[a-z0-9_-]+$`)
+	for _, command := range Definitions() {
+		if strings.TrimSpace(command.Name) == "" {
+			t.Fatal("command name must not be empty")
+		}
+		if !commandNamePattern.MatchString(command.Name) {
+			t.Fatalf("command %q must be lowercase and Discord-compatible", command.Name)
+		}
+		for _, option := range command.Options {
+			if strings.TrimSpace(option.Name) == "" {
+				t.Fatalf("command %q has an empty option name", command.Name)
+			}
+			if !optionNamePattern.MatchString(option.Name) {
+				t.Fatalf("command %q option %q must be lowercase and Discord-compatible", command.Name, option.Name)
+			}
+		}
 	}
 }
 

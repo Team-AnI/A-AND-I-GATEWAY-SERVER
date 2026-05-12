@@ -23,7 +23,7 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 - `/status`: gateway, report, auth, online-judge, post health 요약
 - `/health service:<service>`: allowlist service health 조회
 - `/logs service:<service> since:<5m|15m|30m|1h|3h> level:<INFO|WARN|ERROR>`: CloudWatch Logs 조회
-- `/errors service:<optional> since:<duration>`: API_ERROR, WARN/ERROR, 4xx 이상 집계
+- `/errors since:<duration> service:<optional>`: API_ERROR, WARN/ERROR, 4xx 이상 집계
 - `/trace trace_id:<traceId>`: traceId 기준 시간순 조회
 - `/alarm`: ALARM 상태 CloudWatch alarm 출력
 - `/disk`: CloudWatch log group stored bytes와 retention 조회
@@ -324,9 +324,23 @@ Runtime defaults:
 
 첫 배포는 `DISCORD_REGISTER_COMMANDS=false`를 권장한다. bot 컨테이너와 `/healthz`가 정상인지 확인한 뒤 `DISCORD_REGISTER_COMMANDS=true`로 바꿔 command registration을 한 번 수행한다. 등록 성공 후에는 다시 `false`로 내려도 이미 등록된 guild slash command는 유지된다.
 
+Discord slash command option은 `required=true` option이 `required=false` option보다 항상 앞에 있어야 한다. 예를 들어 `/errors`는 `since`가 required이고 `service`가 optional이므로 `since`, `service` 순서로 등록한다.
+
 registration이 HTTP 400으로 실패하면 monitor-bot은 종료하지 않고 `/healthz`의 `discordCommandRegistrationError`와 컨테이너 로그에 Discord response body를 남긴다. HTTP 429가 나오면 `retry_after`를 기록하고 해당 boot에서는 즉시 반복 재시도하지 않는다. Bot token과 Authorization header는 로그에 출력하지 않는다.
 
 `/healthz`는 command registration 실패가 있어도 프로세스 상태를 200 JSON으로 반환한다. 주요 필드는 `ok`, `httpServer`, `awsSdkConfigured`, `discordPublicKeyProvided`, `discordCommandsRegistered`, `discordCommandRegistrationError`, `dashboardEnabled`, `alertEnabled`, `version`이다.
+
+### Discord Interactions Endpoint
+
+`/discord/interactions`는 Discord HTTP Interactions용 POST 전용 endpoint다. 브라우저나 `curl`로 GET 요청을 보내서 `405 Method Not Allowed`가 나오면 정상 가능성이 높다.
+
+Discord Developer Portal의 Interactions Endpoint URL에는 다음 값을 넣는다.
+
+```text
+https://api.aandiclub.com/discord/interactions
+```
+
+Developer Portal 저장 시 Discord가 POST PING interaction을 보내며, monitor-bot은 signature 검증 후 PONG을 반환해야 한다. Discord에서 `/dashboard`, `/help` 등이 보이지 않으면 command registration 성공 여부와 `/healthz`의 `discordCommandsRegistered`, `discordCommandRegistrationError`를 먼저 확인한다.
 
 ## CD Deployment
 
@@ -573,3 +587,14 @@ Discord Developer Portal:
 ```text
 Interactions Endpoint URL: https://api.aandiclub.com/discord/interactions
 ```
+
+## Pre-Deploy Checklist
+
+- `DISCORD_REGISTER_COMMANDS=false`로 monitor-bot을 먼저 배포한다.
+- `GET /discord/interactions`의 405는 POST 전용 endpoint 특성상 정상 가능성이 있다.
+- `/healthz`에서 `httpServer=true`, `discordPublicKeyProvided=true`, `awsSdkConfigured=true`인지 확인한다.
+- Gateway 상태 확인 URL은 `http://gateway:9090/actuator/health/readiness`를 사용한다.
+- 전체 `/actuator/health`는 Redis health DOWN으로 503일 수 있다.
+- 외부 nginx의 `/actuator/` deny와 9090 host port 비공개 정책을 유지한다.
+- command 변경이 있을 때만 `DISCORD_REGISTER_COMMANDS=true`로 1회 등록하고, 성공 후 다시 `false`로 내린다.
+- registration 400이 나면 로그의 sanitized response body에서 어떤 command payload가 거절됐는지 확인한다.
