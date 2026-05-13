@@ -98,6 +98,52 @@ Temporary legacy aliases:
 
 `service=report`는 기본 log group `/a-and-i/prod/report`를 조회한다. 배포 CD는 기본적으로 `DISCORD_REGISTER_LEGACY_COMMANDS=false`를 사용해 Discord에는 `/ops`만 등록한다. 이미 등록된 legacy command를 정리하려면 `DISCORD_REGISTER_COMMANDS=true` 상태로 한 번 배포해 guild command를 bulk overwrite한다.
 
+## Assignment Ops Feed
+
+Assignment Ops Feed는 WEB-SERVER 기존 관리자 API만 사용해 Discord 채널에 과제 운영 상태를 계속 보여주는 기능이다. 운영자가 매번 `/ops assignments`를 호출하지 않아도 특정 채널에서 대시보드와 중요 이벤트를 확인할 수 있게 한다.
+
+채널 정책:
+
+- 새 채널 env는 추가하지 않는다.
+- `DISCORD_ALERT_CHANNEL_ID`를 우선 Assignment Ops 채널로 재사용한다.
+- `DISCORD_ALERT_CHANNEL_ID`가 없으면 `DISCORD_DASHBOARD_CHANNEL_ID`를 사용한다.
+- dashboard message id와 snapshot/fingerprint만 `/var/lib/monitor-bot/state.json`에 저장한다.
+- raw log나 admin API response 원문은 저장하지 않는다.
+
+Dashboard와 feed의 차이:
+
+- dashboard는 한글 단일 메시지이며 poll마다 새 메시지를 만들지 않고 기존 메시지를 edit/update한다.
+- event feed는 중요한 이벤트만 새 메시지로 보낸다.
+- 첫 실행 시에는 baseline만 저장하고 과거 assignment 전체를 발송하지 않는다.
+- event fingerprint로 중복 발송을 막는다.
+
+Course 분류:
+
+- `ACTIVE`: 명확히 종료되지 않은 운영 코스. 자동 assignment/submission 감시 대상이다.
+- `LEGACY`: `CLOSED`, `ARCHIVED`, `ENDED` 같은 종료 status이거나 `endAt`이 지난 코스. 자동 feed에서 제외하고 수동 조회만 허용한다.
+- `UNKNOWN`: status/startAt/endAt 같은 판단 필드가 부족한 코스. dashboard count에만 포함하고 이벤트 발송은 제한한다.
+
+자동 감지 이벤트:
+
+- `ASSIGNMENT_CREATED`: 이전 snapshot에 없던 assignment가 생김
+- `ASSIGNMENT_PUBLISHED`: draft/scheduled/open 이전 상태에서 published/open으로 변경
+- `ASSIGNMENT_UPDATED`: title/status/startAt/endAt/publishedAt/problemId 변경
+- `ASSIGNMENT_PUBLISH_DELAYED`: 공개 예정 시간이 지났는데 미공개
+- `ASSIGNMENT_INVALID_TIME`: startAt/endAt 누락 또는 startAt > endAt
+- `SUBMISSION_COUNT_CHANGED`: 제출 수 증가
+- `GRADING_COMPLETED`: 채점 완료 수 증가
+- `GRADING_FAILED`: 채점 실패 수 증가
+- `WEB_ADMIN_API_*`: 인증/권한/업스트림 오류
+
+기존 `/ops` 명령은 상세 확인용이다.
+
+- `/ops assignments`: 특정 코스 과제 목록 수동 확인
+- `/ops assignments-all`: 전체 코스 수동 요약 확인
+- `/ops assignment`: 특정 과제 상세 확인
+- `/ops assignment-check`: 자동 poller의 검증 로직 수동 실행
+- `/ops submissions`: 제출/채점 상태 상세 확인
+- `/ops logs`, `/ops trace`: 장애 원인 분석
+
 ## Dashboard UX
 
 `/ops dashboard`는 운영자가 Discord에서 첫 화면으로 볼 수 있는 요약이다. health endpoint와 CloudWatch Logs Insights 결과를 slash command 호출 시점에만 조회한다. persistent dashboard가 켜진 경우에도 작은 state만 저장하고 raw log는 저장하지 않는다.

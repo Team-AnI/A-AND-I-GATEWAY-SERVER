@@ -13,6 +13,7 @@ import (
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/discord"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/health"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
@@ -30,9 +31,16 @@ type Service struct {
 	health  *health.Client
 	logs    LogsQueryer
 	alarms  AlarmLister
+	report  ReportAdminAPI
 	store   *state.Store
 	client  *http.Client
 	discord DiscordMessenger
+}
+
+type ReportAdminAPI interface {
+	ListCourses(ctx context.Context) ([]reportadmin.Course, error)
+	ListAssignments(ctx context.Context, courseSlug string) ([]reportadmin.Assignment, error)
+	SubmissionStatuses(ctx context.Context, courseSlug, assignmentID string) (reportadmin.SubmissionSummary, error)
 }
 
 type DiscordMessenger interface {
@@ -51,7 +59,16 @@ func (discordAPI) EditChannelMessage(ctx context.Context, client *http.Client, b
 }
 
 func NewService(cfg config.Config, healthClient *health.Client, logs LogsQueryer, alarms AlarmLister, store *state.Store, client *http.Client) *Service {
-	return &Service{cfg: cfg, health: healthClient, logs: logs, alarms: alarms, store: store, client: client, discord: discordAPI{}}
+	return &Service{
+		cfg:     cfg,
+		health:  healthClient,
+		logs:    logs,
+		alarms:  alarms,
+		report:  reportadmin.NewClient(cfg.ReportServiceURI, cfg.ReportAdminBearerToken, cfg.HealthRequestTimeout),
+		store:   store,
+		client:  client,
+		discord: discordAPI{},
+	}
 }
 
 func (s *Service) Start(ctx context.Context) {
@@ -59,6 +76,7 @@ func (s *Service) Start(ctx context.Context) {
 	if s.cfg.Alert.Enabled {
 		go s.alertLoop(ctx)
 	}
+	go s.assignmentOpsLoop(ctx)
 }
 
 func (s *Service) WatchDashboard(ctx context.Context, channelID string, interval time.Duration) (string, error) {

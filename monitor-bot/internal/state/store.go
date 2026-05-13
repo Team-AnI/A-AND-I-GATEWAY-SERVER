@@ -16,13 +16,49 @@ type Store struct {
 }
 
 type Data struct {
-	DashboardChannelID     string                `json:"dashboardChannelId,omitempty"`
-	DashboardMessageID     string                `json:"dashboardMessageId,omitempty"`
-	DashboardIntervalSec   int                   `json:"dashboardIntervalSeconds,omitempty"`
-	LastDashboardUpdatedAt time.Time             `json:"lastDashboardUpdatedAt,omitempty"`
-	Alerts                 map[string]AlertState `json:"alertFingerprints,omitempty"`
-	HealthDownCounts       map[string]int        `json:"healthDownCounts,omitempty"`
-	LastAlertSentAt        time.Time             `json:"lastAlertSentAt,omitempty"`
+	DashboardChannelID            string                        `json:"dashboardChannelId,omitempty"`
+	DashboardMessageID            string                        `json:"dashboardMessageId,omitempty"`
+	DashboardIntervalSec          int                           `json:"dashboardIntervalSeconds,omitempty"`
+	LastDashboardUpdatedAt        time.Time                     `json:"lastDashboardUpdatedAt,omitempty"`
+	AssignmentOpsMessageID        string                        `json:"assignmentOpsMessageId,omitempty"`
+	LastAssignmentOpsUpdatedAt    time.Time                     `json:"lastAssignmentOpsUpdatedAt,omitempty"`
+	AssignmentBaselineInitialized bool                          `json:"assignmentBaselineInitialized,omitempty"`
+	AssignmentSnapshots           map[string]AssignmentSnapshot `json:"assignmentSnapshots,omitempty"`
+	AssignmentEventFingerprints   map[string]AlertState         `json:"assignmentEventFingerprints,omitempty"`
+	RecentAssignmentEvents        []AssignmentEventState        `json:"recentAssignmentEvents,omitempty"`
+	Alerts                        map[string]AlertState         `json:"alertFingerprints,omitempty"`
+	HealthDownCounts              map[string]int                `json:"healthDownCounts,omitempty"`
+	LastAlertSentAt               time.Time                     `json:"lastAlertSentAt,omitempty"`
+}
+
+type AssignmentSnapshot struct {
+	CourseSlug   string    `json:"courseSlug,omitempty"`
+	CourseClass  string    `json:"courseClass,omitempty"`
+	AssignmentID string    `json:"assignmentId,omitempty"`
+	Title        string    `json:"title,omitempty"`
+	Status       string    `json:"status,omitempty"`
+	PublishedAt  string    `json:"publishedAt,omitempty"`
+	StartAt      string    `json:"startAt,omitempty"`
+	EndAt        string    `json:"endAt,omitempty"`
+	ProblemID    string    `json:"problemId,omitempty"`
+	UpdatedAt    string    `json:"updatedAt,omitempty"`
+	Submitted    int       `json:"submitted,omitempty"`
+	Graded       int       `json:"graded,omitempty"`
+	Pending      int       `json:"pending,omitempty"`
+	Failed       int       `json:"failed,omitempty"`
+	AverageScore string    `json:"averageScore,omitempty"`
+	LastSeenAt   time.Time `json:"lastSeenAt,omitempty"`
+}
+
+type AssignmentEventState struct {
+	Fingerprint  string    `json:"fingerprint,omitempty"`
+	EventType    string    `json:"eventType,omitempty"`
+	Severity     string    `json:"severity,omitempty"`
+	CourseSlug   string    `json:"courseSlug,omitempty"`
+	AssignmentID string    `json:"assignmentId,omitempty"`
+	Title        string    `json:"title,omitempty"`
+	Summary      string    `json:"summary,omitempty"`
+	CreatedAt    time.Time `json:"createdAt,omitempty"`
 }
 
 type AlertState struct {
@@ -87,8 +123,17 @@ func normalize(data Data) Data {
 	if data.Alerts == nil {
 		data.Alerts = make(map[string]AlertState)
 	}
+	if data.AssignmentSnapshots == nil {
+		data.AssignmentSnapshots = make(map[string]AssignmentSnapshot)
+	}
+	if data.AssignmentEventFingerprints == nil {
+		data.AssignmentEventFingerprints = make(map[string]AlertState)
+	}
 	if data.HealthDownCounts == nil {
 		data.HealthDownCounts = make(map[string]int)
+	}
+	if len(data.RecentAssignmentEvents) > 20 {
+		data.RecentAssignmentEvents = data.RecentAssignmentEvents[:20]
 	}
 	return data
 }
@@ -100,6 +145,15 @@ func cloneData(data Data) Data {
 	for key, value := range data.Alerts {
 		cloned.Alerts[key] = value
 	}
+	cloned.AssignmentSnapshots = make(map[string]AssignmentSnapshot, len(data.AssignmentSnapshots))
+	for key, value := range data.AssignmentSnapshots {
+		cloned.AssignmentSnapshots[key] = value
+	}
+	cloned.AssignmentEventFingerprints = make(map[string]AlertState, len(data.AssignmentEventFingerprints))
+	for key, value := range data.AssignmentEventFingerprints {
+		cloned.AssignmentEventFingerprints[key] = value
+	}
+	cloned.RecentAssignmentEvents = append([]AssignmentEventState(nil), data.RecentAssignmentEvents...)
 	cloned.HealthDownCounts = make(map[string]int, len(data.HealthDownCounts))
 	for key, value := range data.HealthDownCounts {
 		cloned.HealthDownCounts[key] = value

@@ -53,8 +53,12 @@ func (e *APIError) Error() string {
 }
 
 type Course struct {
-	Slug  string
-	Title string
+	Slug    string
+	Title   string
+	Status  string
+	StartAt string
+	EndAt   string
+	Raw     map[string]any
 }
 
 type Assignment struct {
@@ -125,8 +129,12 @@ func (c *Client) ListCourses(ctx context.Context) ([]Course, error) {
 			continue
 		}
 		course := Course{
-			Slug:  firstString(object, "courseSlug", "slug", "id", "code"),
-			Title: firstString(object, "title", "name", "courseName"),
+			Slug:    firstString(object, "courseSlug", "slug", "id", "code"),
+			Title:   firstString(object, "title", "name", "courseName"),
+			Status:  firstString(object, "status", "courseStatus", "state"),
+			StartAt: firstString(object, "startAt", "startedAt", "openAt"),
+			EndAt:   firstString(object, "endAt", "endedAt", "closedAt"),
+			Raw:     object,
 		}
 		if course.Slug != "" {
 			courses = append(courses, course)
