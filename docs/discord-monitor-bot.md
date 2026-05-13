@@ -21,11 +21,11 @@ Primary commands:
 - `/ops logs service:<report|all> mode:<recent|errors|slow> level:<INFO|WARN|ERROR> since:<duration> limit:<5|10|20>`: Report 로그 조회와 집계. `limit`은 모든 mode의 결과 개수 제한에 적용한다.
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all> service:<optional>`: CloudWatch alarm 조회
 - `/ops storage view:<usage|retention>`: CloudWatch log group stored bytes와 retention 조회
-- `/ops watch scope:<all|service> service:<optional> interval:<1m|3m|5m|10m|15m>`: 서비스 대시보드 자동 갱신 등록
+- `/ops watch scope:<all|service> channel:<optional> service:<optional> interval:<1m|3m|5m|10m|15m>`: 서비스 대시보드 자동 갱신 등록
 - `/ops unwatch scope:<all|service> service:<optional>`: 서비스 대시보드 자동 갱신 중지
 - `/ops watches`: 등록된 dashboard watch 조회
-- `/ops alert action:<channel|role|role-clear|on|off|status|test>`: 서비스 장애 알림 설정
-- `/ops logs-watch service:report mode:<errors|slow|recent> interval:<3m|5m|10m|15m> since:<15m|30m|1h> limit:<5|10|20>`: report 로그 피드 등록
+- `/ops alert action:<channel|role|role-clear|on|off|status|test> channel:<optional>`: 서비스 장애 알림 설정
+- `/ops logs-watch service:report mode:<errors|slow|recent> channel:<optional> interval:<3m|5m|10m|15m> since:<15m|30m|1h> limit:<5|10|20>`: report 로그 피드 등록
 - `/ops logs-unwatch service:report mode:<errors|slow|recent>`: report 로그 피드 중지
 - `/ops logs-watches`: 등록된 로그 피드 조회
 - `/ops help`: 짧은 운영 명령어 예시
@@ -96,14 +96,14 @@ Service Ops Dashboard는 `/ops dashboard`를 직접 입력하지 않아도 Disco
 설정 예시:
 
 ```text
-/ops watch scope:all interval:5m
-/ops watch scope:service service:report interval:5m
-/ops alert action:channel
+/ops watch scope:all channel:#ops interval:5m
+/ops watch scope:service service:report channel:#report-ops interval:5m
+/ops alert action:channel channel:#ops-alerts
 /ops alert action:role role:@운영팀
 /ops alert action:on
 /ops alert action:test
-/ops logs-watch service:report mode:errors interval:5m since:30m limit:10
-/ops logs-watch service:report mode:slow interval:10m since:30m limit:10
+/ops logs-watch service:report mode:errors channel:#report-logs interval:5m since:30m limit:10
+/ops logs-watch service:report mode:slow channel:#report-logs interval:10m since:30m limit:10
 /ops logs-watches
 ```
 
@@ -260,7 +260,7 @@ Dashboard button UX는 후속 PR에서 붙인다. 버튼 후보는 `Refresh`, `R
 
 `DASHBOARD_ENABLED=true`이면 monitor-bot은 `DISCORD_DASHBOARD_CHANNEL_ID`에 dashboard message를 1개 생성하고 이후 같은 message를 edit한다. 운영 중에는 `/ops watch`로 현재 채널에 dashboard watch를 저장하는 방식을 권장한다. message id는 `/var/lib/monitor-bot/state.json`에 저장한다. 새 메시지를 계속 보내지 않으므로 운영 채널이 도배되지 않는다.
 
-`/ops watch`는 실행한 채널에 dashboard 갱신을 설정한다. `/ops unwatch`는 state에서 dashboard watch를 제거하고 갱신을 중지한다. `/ops watches`로 등록 상태를 확인한다.
+`/ops watch`는 `channel` 옵션으로 지정한 채널에 dashboard 갱신을 설정한다. `channel`을 생략하면 실행한 현재 채널에 고정한다. `/ops unwatch`는 state에서 dashboard watch를 제거하고 갱신을 중지한다. `/ops watches`로 등록 상태를 확인한다.
 
 state file에는 다음 정도의 작은 상태만 저장한다.
 

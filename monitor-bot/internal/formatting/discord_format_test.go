@@ -403,8 +403,8 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops logs service:all mode:errors since:15m limit:10",
 		"/ops logs service:report mode:errors since:30m limit:10",
 		"/ops logs service:report mode:slow since:30m limit:10",
-		"/ops watch scope:all interval:5m",
-		"/ops logs-watch service:report mode:errors interval:5m since:30m limit:10",
+		"/ops watch scope:all channel:#ops interval:5m",
+		"/ops logs-watch service:report mode:errors channel:#report-logs interval:5m since:30m limit:10",
 		"Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.",
 		"Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.",
 	} {

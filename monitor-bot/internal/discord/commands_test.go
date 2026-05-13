@@ -173,9 +173,15 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	if got := choiceValues(findOption(t, watch.Options, "interval").Choices); strings.Join(got, ",") != "1m,3m,5m,10m,15m" {
 		t.Fatalf("watch interval choices = %#v", got)
 	}
+	if channel := findOption(t, watch.Options, "channel"); channel.Type != 7 || channel.Required {
+		t.Fatalf("watch channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
+	}
 	alert := findSubcommand(t, command, "alert")
 	if !findOption(t, alert.Options, "action").Required {
 		t.Fatal("alert action must be required")
+	}
+	if channel := findOption(t, alert.Options, "channel"); channel.Type != 7 || channel.Required {
+		t.Fatalf("alert channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
 	if role := findOption(t, alert.Options, "role"); role.Type != 8 {
 		t.Fatalf("alert role option must be role type, got %d", role.Type)
@@ -183,6 +189,9 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	logsWatch := findSubcommand(t, command, "logs-watch")
 	if !findOption(t, logsWatch.Options, "service").Required || !findOption(t, logsWatch.Options, "mode").Required {
 		t.Fatal("logs-watch service/mode options must be required")
+	}
+	if channel := findOption(t, logsWatch.Options, "channel"); channel.Type != 7 || channel.Required {
+		t.Fatalf("logs-watch channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
 }
 

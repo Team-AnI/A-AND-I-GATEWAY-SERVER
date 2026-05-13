@@ -633,11 +633,11 @@ func HelpText() string {
    /ops logs service:report mode:slow since:30m limit:10
 
 Automation setup
-- /ops watch scope:all interval:5m
-- /ops alert action:channel
+- /ops watch scope:all channel:#ops interval:5m
+- /ops alert action:channel channel:#ops-alerts
 - /ops alert action:role role:@운영팀
 - /ops alert action:on
-- /ops logs-watch service:report mode:errors interval:5m since:30m limit:10
+- /ops logs-watch service:report mode:errors channel:#report-logs interval:5m since:30m limit:10
 - /ops logs-watches
 
 Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.

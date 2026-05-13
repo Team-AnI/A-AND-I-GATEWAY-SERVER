@@ -239,11 +239,12 @@ func (h *Handler) opsWatchCommand(ctx context.Context, interaction Interaction, 
 	}
 	scope := optionStringFromOptions(subcommand.Options, "scope")
 	service := optionStringFromOptions(subcommand.Options, "service")
+	channelID := firstNonEmpty(optionStringFromOptions(subcommand.Options, "channel"), interaction.ChannelID)
 	interval, ok := parseOpsInterval(optionStringFromOptions(subcommand.Options, "interval"), 5*time.Minute)
 	if !ok {
 		return "지원하지 않는 interval입니다. 1m, 3m, 5m, 10m, 15m 중 하나를 사용하세요."
 	}
-	result, err := h.ops.WatchDashboardScope(ctx, interaction.ChannelID, scope, service, interval)
+	result, err := h.ops.WatchDashboardScope(ctx, channelID, scope, service, interval)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -276,7 +277,8 @@ func (h *Handler) opsAlertCommand(ctx context.Context, interaction Interaction, 
 	}
 	action := optionStringFromOptions(subcommand.Options, "action")
 	roleID := optionStringFromOptions(subcommand.Options, "role")
-	result, err := h.ops.ConfigureAlert(ctx, interaction.ChannelID, action, roleID)
+	channelID := firstNonEmpty(optionStringFromOptions(subcommand.Options, "channel"), interaction.ChannelID)
+	result, err := h.ops.ConfigureAlert(ctx, channelID, action, roleID)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -289,6 +291,7 @@ func (h *Handler) opsLogsWatchCommand(ctx context.Context, interaction Interacti
 	}
 	service := optionStringFromOptions(subcommand.Options, "service")
 	mode := optionStringFromOptions(subcommand.Options, "mode")
+	channelID := firstNonEmpty(optionStringFromOptions(subcommand.Options, "channel"), interaction.ChannelID)
 	since := optionStringFromOptions(subcommand.Options, "since")
 	if since == "" {
 		since = "30m"
@@ -298,7 +301,7 @@ func (h *Handler) opsLogsWatchCommand(ctx context.Context, interaction Interacti
 		return "지원하지 않는 interval입니다. 3m, 5m, 10m, 15m 중 하나를 사용하세요."
 	}
 	limit := parseOpsLimit(optionStringFromOptions(subcommand.Options, "limit"), 10)
-	result, err := h.ops.WatchLogFeed(ctx, interaction.ChannelID, service, mode, since, interval, limit)
+	result, err := h.ops.WatchLogFeed(ctx, channelID, service, mode, since, interval, limit)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -1081,6 +1084,15 @@ func firstTraceID(rows []map[string]string) string {
 		}
 		if traceID != "" && security.ValidateTraceID(traceID) {
 			return traceID
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
 		}
 	}
 	return ""
