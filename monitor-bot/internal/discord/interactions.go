@@ -15,6 +15,7 @@ import (
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/config"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/health"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 )
 
@@ -31,6 +32,7 @@ type Handler struct {
 	health       *health.Client
 	logs         *cw.LogsClient
 	alarms       *cw.AlarmClient
+	reportAdmin  *reportadmin.Client
 	httpClient   *http.Client
 	replayWindow time.Duration
 	watcher      Watcher
@@ -77,6 +79,7 @@ func NewHandler(cfg config.Config, healthClient *health.Client, logsClient *cw.L
 		health:       healthClient,
 		logs:         logsClient,
 		alarms:       alarmClient,
+		reportAdmin:  reportadmin.NewClient(cfg.ReportServiceURI, cfg.ReportAdminBearerToken, cfg.HealthRequestTimeout),
 		httpClient:   &http.Client{Timeout: 10 * time.Second},
 		replayWindow: 5 * time.Minute,
 	}
@@ -219,9 +222,15 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 	case "logs":
 		return h.opsLogsCommand(ctx, subcommand)
 	case "assignments":
-		return h.assignmentsCommand(ctx, interactionForCommand("assignments", withDefaultOptions(subcommand.Options, map[string]string{"since": "1h"})))
+		return h.assignmentsCommand(ctx, interactionForCommand("assignments", withDefaultOptions(subcommand.Options, map[string]string{"status": "all"})))
+	case "assignments-all":
+		return h.assignmentsAllCommand(ctx, interactionForCommand("assignments-all", withDefaultOptions(subcommand.Options, map[string]string{"window": "today"})))
 	case "assignment":
 		return h.assignmentCommand(ctx, interactionForCommand("assignment", subcommand.Options))
+	case "assignment-check":
+		return h.assignmentCheckCommand(ctx, interactionForCommand("assignment-check", subcommand.Options))
+	case "submissions":
+		return h.submissionsCommand(ctx, interactionForCommand("submissions", subcommand.Options))
 	case "trace":
 		return h.traceCommand(ctx, interactionForCommand("trace", subcommand.Options))
 	case "alarms":
@@ -600,39 +609,220 @@ func (h *Handler) slowCommand(ctx context.Context, interaction Interaction) stri
 }
 
 func (h *Handler) assignmentsCommand(ctx context.Context, interaction Interaction) string {
-	sinceLabel, since, ok := parseAssignmentSince(optionString(interaction, "since"), time.Now())
+	courseSlug := strings.TrimSpace(optionString(interaction, "course"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, "", "올바르지 않은 courseSlug입니다.")
+	}
+	statusFilter, ok := security.NormalizeAssignmentStatus(optionString(interaction, "status"))
 	if !ok {
-		return "지원하지 않는 since 값입니다. `/ops assignments since:30m|1h|today`를 사용하세요."
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, "", "지원하지 않는 status 값입니다.")
 	}
-	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+	assignments, err := h.reportAdmin.ListAssignments(ctx, courseSlug)
 	if err != nil {
-		return formatting.FormatAssignmentsSummary(sinceLabel, nil, "NOT_CONFIGURED", "CloudWatch log group이 설정되지 않아 조회할 수 없음: "+security.SanitizeText(err.Error()))
+		status := reportadmin.StatusOf(err)
+		if !shouldUseCloudWatchFallback(status) {
+			return formatting.FormatAdminError(status, courseSlug, "", err.Error())
+		}
+		return h.assignmentLogFallback(ctx, "Assignments", courseSlug, "", status, err)
 	}
-	rows, err := h.logs.Query(ctx, groups, cw.BuildAssignmentsQuery(), since, 20)
+	return formatting.FormatAdminAssignments(courseSlug, statusFilter, reportadmin.FilterAssignments(assignments, statusFilter))
+}
+
+func (h *Handler) assignmentsAllCommand(ctx context.Context, interaction Interaction) string {
+	window, ok := security.NormalizeAssignmentWindow(optionString(interaction, "window"))
+	if !ok {
+		return formatting.FormatAdminError(reportadmin.StatusError, "", "", "지원하지 않는 window 값입니다.")
+	}
+	courses, err := h.reportAdmin.ListCourses(ctx)
 	if err != nil {
-		return formatting.FormatAssignmentsSummary(sinceLabel, nil, "ERROR", "CloudWatch assignments 조회 실패: "+security.SanitizeText(err.Error()))
+		status := reportadmin.StatusOf(err)
+		if !shouldUseCloudWatchFallback(status) {
+			return formatting.FormatAdminError(status, "", "", err.Error())
+		}
+		return h.assignmentLogFallback(ctx, "Assignments all", "", "", status, err)
 	}
-	return formatting.FormatAssignmentsSummary(sinceLabel, rows, "", "")
+	summaries := make([]formatting.AdminAssignmentsAllSummary, 0, len(courses))
+	totalShown := 0
+	for _, course := range courses {
+		if len(summaries) >= 8 || totalShown >= 20 {
+			break
+		}
+		assignments, err := h.reportAdmin.ListAssignments(ctx, course.Slug)
+		summary := formatting.AdminAssignmentsAllSummary{CourseSlug: course.Slug}
+		if err != nil {
+			summary.Error = reportadmin.StatusOf(err)
+			summaries = append(summaries, summary)
+			continue
+		}
+		filtered := filterAssignmentsByWindow(assignments, window)
+		counts := assignmentStatusCounts(filtered)
+		summary.Total = len(filtered)
+		summary.Published = counts["published"]
+		summary.Scheduled = counts["scheduled"]
+		summary.Draft = counts["draft"]
+		for _, assignment := range filtered {
+			if len(summary.Shown) >= 3 || totalShown >= 20 {
+				break
+			}
+			summary.Shown = append(summary.Shown, assignment)
+			totalShown++
+		}
+		summaries = append(summaries, summary)
+	}
+	return formatting.FormatAdminAssignmentsAll(window, summaries)
 }
 
 func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction) string {
+	courseSlug := strings.TrimSpace(optionString(interaction, "course"))
 	assignmentID := strings.TrimSpace(optionString(interaction, "id"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+	}
 	if !security.ValidateAssignmentID(assignmentID) {
-		return "status: ERROR\nservice: report\nkey findings: 올바르지 않은 assignmentId입니다."
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
 	}
-	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+	assignment, err := h.reportAdmin.GetAssignment(ctx, courseSlug, assignmentID)
 	if err != nil {
-		return formatting.FormatAssignmentDetail(assignmentID, nil, "NOT_CONFIGURED", "CloudWatch log group이 설정되지 않아 조회할 수 없음: "+security.SanitizeText(err.Error()))
+		status := reportadmin.StatusOf(err)
+		if !shouldUseCloudWatchFallback(status) {
+			finding := err.Error()
+			if status == reportadmin.StatusNoData {
+				finding = "no matching records"
+			}
+			return formatting.FormatAdminError(status, courseSlug, assignmentID, finding)
+		}
+		return h.assignmentLogFallback(ctx, "Assignment", courseSlug, assignmentID, status, err)
 	}
-	query, err := cw.BuildAssignmentQuery(assignmentID)
+	return formatting.FormatAdminAssignment(courseSlug, assignment)
+}
+
+func (h *Handler) assignmentCheckCommand(ctx context.Context, interaction Interaction) string {
+	courseSlug := strings.TrimSpace(optionString(interaction, "course"))
+	assignmentID := strings.TrimSpace(optionString(interaction, "id"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+	}
+	if !security.ValidateAssignmentID(assignmentID) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
+	}
+	assignment, err := h.reportAdmin.GetAssignment(ctx, courseSlug, assignmentID)
 	if err != nil {
-		return "status: ERROR\nservice: report\nassignmentId: " + security.SanitizeText(assignmentID) + "\nkey findings: 올바르지 않은 assignmentId입니다."
+		status := reportadmin.StatusOf(err)
+		if !shouldUseCloudWatchFallback(status) {
+			finding := err.Error()
+			if status == reportadmin.StatusNoData {
+				finding = "no matching records"
+			}
+			return formatting.FormatAdminError(status, courseSlug, assignmentID, finding)
+		}
+		return h.assignmentLogFallback(ctx, "Assignment check", courseSlug, assignmentID, status, err)
 	}
-	rows, err := h.logs.Query(ctx, groups, query, 3*time.Hour, 20)
+	return formatting.FormatAdminAssignmentCheck(courseSlug, assignment, reportadmin.CheckAssignment(assignment))
+}
+
+func (h *Handler) submissionsCommand(ctx context.Context, interaction Interaction) string {
+	courseSlug := strings.TrimSpace(optionString(interaction, "course"))
+	assignmentID := strings.TrimSpace(optionString(interaction, "assignment"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+	}
+	if !security.ValidateAssignmentID(assignmentID) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
+	}
+	summary, err := h.reportAdmin.SubmissionStatuses(ctx, courseSlug, assignmentID)
 	if err != nil {
-		return formatting.FormatAssignmentDetail(assignmentID, nil, "ERROR", "CloudWatch assignment 조회 실패: "+security.SanitizeText(err.Error()))
+		status := reportadmin.StatusOf(err)
+		if !shouldUseCloudWatchFallback(status) {
+			finding := err.Error()
+			if status == reportadmin.StatusNoData {
+				finding = "no matching records"
+			}
+			return formatting.FormatAdminError(status, courseSlug, assignmentID, finding)
+		}
+		return h.assignmentLogFallback(ctx, "Submissions", courseSlug, assignmentID, status, err)
 	}
-	return formatting.FormatAssignmentDetail(assignmentID, rows, "", "")
+	return formatting.FormatAdminSubmissions(courseSlug, assignmentID, summary)
+}
+
+func (h *Handler) assignmentLogFallback(ctx context.Context, title, courseSlug, assignmentID, status string, cause error) string {
+	if assignmentID != "" && security.ValidateAssignmentID(assignmentID) {
+		groups, groupErr := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+		if groupErr == nil {
+			query, queryErr := cw.BuildAssignmentQuery(assignmentID)
+			if queryErr == nil {
+				rows, queryRunErr := h.logs.Query(ctx, groups, query, 3*time.Hour, 20)
+				if queryRunErr == nil {
+					return formatting.FormatCloudWatchFallback(title, rows)
+				}
+			}
+		}
+	}
+	prefix := "WEB_ADMIN_API " + status + ": " + security.SanitizeText(cause.Error()) + ". "
+	return formatting.FormatAdminError(status, courseSlug, assignmentID, prefix+"CloudWatch fallback result, not authoritative; 상세 로그는 `/ops logs service:report mode:errors since:30m limit:10`로 확인하세요.")
+}
+
+func shouldUseCloudWatchFallback(status string) bool {
+	switch status {
+	case reportadmin.StatusUpstreamError, reportadmin.StatusTimeout, reportadmin.StatusInvalidResponse:
+		return true
+	default:
+		return false
+	}
+}
+
+func filterAssignmentsByWindow(assignments []reportadmin.Assignment, window string) []reportadmin.Assignment {
+	normalized := strings.TrimSpace(window)
+	if normalized == "" {
+		return assignments
+	}
+	now := time.Now()
+	var start, end time.Time
+	switch normalized {
+	case "today":
+		kst := time.FixedZone("KST", 9*60*60)
+		nowKST := now.In(kst)
+		start = time.Date(nowKST.Year(), nowKST.Month(), nowKST.Day(), 0, 0, 0, 0, kst)
+		end = start.Add(24 * time.Hour)
+	case "this-week":
+		kst := time.FixedZone("KST", 9*60*60)
+		nowKST := now.In(kst)
+		start = time.Date(nowKST.Year(), nowKST.Month(), nowKST.Day(), 0, 0, 0, 0, kst)
+		end = now.Add(7 * 24 * time.Hour)
+	default:
+		return assignments
+	}
+	filtered := make([]reportadmin.Assignment, 0, len(assignments))
+	for _, assignment := range assignments {
+		for _, candidate := range []string{assignment.StartAt, assignment.EndAt, assignment.PublishedAt, assignment.UpdatedAt} {
+			parsed, ok := parseRFC3339(candidate)
+			if ok && (parsed.Equal(start) || parsed.After(start)) && parsed.Before(end) {
+				filtered = append(filtered, assignment)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+func assignmentStatusCounts(assignments []reportadmin.Assignment) map[string]int {
+	counts := map[string]int{"published": 0, "scheduled": 0, "draft": 0}
+	for _, assignment := range assignments {
+		normalized := strings.ToLower(strings.TrimSpace(assignment.Status))
+		if _, ok := counts[normalized]; ok {
+			counts[normalized]++
+		}
+	}
+	return counts
+}
+
+func parseRFC3339(value string) (time.Time, bool) {
+	trimmed := strings.TrimSpace(value)
+	for _, layout := range []string{time.RFC3339Nano, time.RFC3339} {
+		if parsed, err := time.Parse(layout, trimmed); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) string {
@@ -727,30 +917,6 @@ func (h *Handler) commandTimeout(command string) time.Duration {
 		return h.cfg.CloudWatchQueryTimeout*3 + 5*time.Second
 	default:
 		return h.cfg.CloudWatchQueryTimeout + 3*time.Second
-	}
-}
-
-func parseAssignmentSince(value string, now time.Time) (string, time.Duration, bool) {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		trimmed = "1h"
-	}
-	switch trimmed {
-	case "30m":
-		return trimmed, 30 * time.Minute, true
-	case "1h":
-		return trimmed, time.Hour, true
-	case "today":
-		kst := time.FixedZone("KST", 9*60*60)
-		nowKST := now.In(kst)
-		start := time.Date(nowKST.Year(), nowKST.Month(), nowKST.Day(), 0, 0, 0, 0, kst)
-		duration := nowKST.Sub(start)
-		if duration <= 0 {
-			duration = time.Minute
-		}
-		return trimmed, duration, true
-	default:
-		return "", 0, false
 	}
 }
 

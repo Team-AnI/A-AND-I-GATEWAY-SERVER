@@ -86,8 +86,9 @@ func SanitizeText(value string) string {
 	if value == "" {
 		return ""
 	}
-	value = sensitiveKeyPattern.ReplaceAllString(value, `${1}[REDACTED]`)
+	value = regexp.MustCompile(`(?i)authorization:\s*bearer\s+[^\s,}]+`).ReplaceAllString(value, "authorization: [REDACTED]")
 	value = regexp.MustCompile(`(?i)authorization:\s*[^\s,}]+`).ReplaceAllString(value, "authorization: [REDACTED]")
+	value = sensitiveKeyPattern.ReplaceAllString(value, `${1}[REDACTED]`)
 	return value
 }
 

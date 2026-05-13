@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 )
 
 func TestDefinitionsPlaceRequiredOptionsBeforeOptionalOptions(t *testing.T) {
@@ -63,7 +65,7 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "assignments", "assignment", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "assignments", "assignments-all", "assignment", "assignment-check", "submissions", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
@@ -87,13 +89,31 @@ func TestOpsReportPhaseChoices(t *testing.T) {
 		t.Fatalf("logs service choices = %#v", got)
 	}
 	assignments := findSubcommand(t, command, "assignments")
-	if got := choiceValues(findOption(t, assignments.Options, "since").Choices); strings.Join(got, ",") != "30m,1h,today" {
-		t.Fatalf("assignments since choices = %#v", got)
+	if course := findOption(t, assignments.Options, "course"); !course.Required {
+		t.Fatal("assignments course option must be required")
+	}
+	if got := choiceValues(findOption(t, assignments.Options, "status").Choices); strings.Join(got, ",") != "all,published,draft,scheduled" {
+		t.Fatalf("assignments status choices = %#v", got)
+	}
+	assignmentsAll := findSubcommand(t, command, "assignments-all")
+	if got := choiceValues(findOption(t, assignmentsAll.Options, "window").Choices); strings.Join(got, ",") != "today,this-week" {
+		t.Fatalf("assignments-all window choices = %#v", got)
 	}
 	assignment := findSubcommand(t, command, "assignment")
+	if course := findOption(t, assignment.Options, "course"); !course.Required {
+		t.Fatal("assignment course option must be required")
+	}
 	idOption := findOption(t, assignment.Options, "id")
 	if !idOption.Required {
 		t.Fatal("assignment id option must be required")
+	}
+	assignmentCheck := findSubcommand(t, command, "assignment-check")
+	if !findOption(t, assignmentCheck.Options, "course").Required || !findOption(t, assignmentCheck.Options, "id").Required {
+		t.Fatal("assignment-check course/id options must be required")
+	}
+	submissions := findSubcommand(t, command, "submissions")
+	if !findOption(t, submissions.Options, "course").Required || !findOption(t, submissions.Options, "assignment").Required {
+		t.Fatal("submissions course/assignment options must be required")
 	}
 }
 
@@ -218,22 +238,18 @@ func TestParseOpsLimit(t *testing.T) {
 	}
 }
 
-func TestParseAssignmentSince(t *testing.T) {
-	now := time.Date(2026, 5, 13, 10, 0, 0, 0, time.FixedZone("KST", 9*60*60))
-	cases := map[string]string{
-		"":      "1h",
-		"30m":   "30m",
-		"1h":    "1h",
-		"today": "today",
+func TestFilterAssignmentsByWindow(t *testing.T) {
+	assignments := []reportadmin.Assignment{
+		{ID: "today", StartAt: time.Now().Format(time.RFC3339)},
+		{ID: "future", StartAt: time.Now().Add(48 * time.Hour).Format(time.RFC3339)},
 	}
-	for input, wantLabel := range cases {
-		label, duration, ok := parseAssignmentSince(input, now)
-		if !ok || label != wantLabel || duration <= 0 {
-			t.Fatalf("parseAssignmentSince(%q) = label=%q duration=%s ok=%v, want label=%q positive duration", input, label, duration, ok, wantLabel)
-		}
+	today := filterAssignmentsByWindow(assignments, "today")
+	if len(today) != 1 || today[0].ID != "today" {
+		t.Fatalf("today window mismatch: %#v", today)
 	}
-	if _, _, ok := parseAssignmentSince("15m", now); ok {
-		t.Fatal("15m should not be accepted for assignments phase")
+	week := filterAssignmentsByWindow(assignments, "this-week")
+	if len(week) != 2 {
+		t.Fatalf("this-week window mismatch: %#v", week)
 	}
 }
 

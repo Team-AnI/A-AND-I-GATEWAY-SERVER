@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 )
 
@@ -55,6 +56,16 @@ type LogGroupRetention struct {
 	Name          string
 	RetentionDays *int32
 	StoredBytes   int64
+}
+
+type AdminAssignmentsAllSummary struct {
+	CourseSlug string
+	Total      int
+	Published  int
+	Scheduled  int
+	Draft      int
+	Shown      []reportadmin.Assignment
+	Error      string
 }
 
 func TruncateDiscordMessage(message string) string {
@@ -360,6 +371,178 @@ func FormatAssignmentDetail(assignmentID string, rows []map[string]string, force
 	return TruncateDiscordMessage(b.String())
 }
 
+func FormatAdminAssignments(courseSlug, statusFilter string, assignments []reportadmin.Assignment) string {
+	statusCounts := countAssignmentStatuses(assignments)
+	status := "OK"
+	finding := fmt.Sprintf("%d assignments found", len(assignments))
+	if len(assignments) == 0 {
+		status = "NO_DATA"
+		finding = "matching assignments 없음"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", status)
+	b.WriteString("source: WEB_ADMIN_API\n")
+	fmt.Fprintf(&b, "course: %s\n", security.SanitizeText(courseSlug))
+	fmt.Fprintf(&b, "filter: %s\n", security.SanitizeText(firstNonEmpty(statusFilter, "all")))
+	fmt.Fprintf(&b, "key findings: %s\n", finding)
+	fmt.Fprintf(&b, "%d published, %d scheduled, %d draft\n\n", statusCounts["published"], statusCounts["scheduled"], statusCounts["draft"])
+	if len(assignments) > 0 {
+		b.WriteString("assignments:\n")
+		for i, assignment := range assignments {
+			if i >= 10 {
+				fmt.Fprintf(&b, "- ... %d more\n", len(assignments)-i)
+				break
+			}
+			fmt.Fprintf(&b, "- id=%s status=%s problem=%s start=%s end=%s updated=%s\n",
+				shortValue(assignment.ID),
+				shortValue(assignment.Status),
+				shortValue(assignment.ProblemID),
+				shortValue(assignment.StartAt),
+				shortValue(assignment.EndAt),
+				shortValue(assignment.UpdatedAt),
+			)
+		}
+	}
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:<assignmentId>`\n")
+	b.WriteString("- `/ops submissions course:" + security.SanitizeText(courseSlug) + " assignment:<assignmentId>`\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatAdminAssignmentsAll(window string, summaries []AdminAssignmentsAllSummary) string {
+	status := "OK"
+	finding := fmt.Sprintf("%d courses checked", len(summaries))
+	if len(summaries) == 0 {
+		status = "NO_DATA"
+		finding = "course 목록 또는 과제 목록 없음"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", status)
+	b.WriteString("source: WEB_ADMIN_API\n")
+	fmt.Fprintf(&b, "window: %s\n", security.SanitizeText(window))
+	fmt.Fprintf(&b, "key findings: %s\n\n", finding)
+	for i, summary := range summaries {
+		if i >= 8 {
+			fmt.Fprintf(&b, "- ... %d more courses\n", len(summaries)-i)
+			break
+		}
+		fmt.Fprintf(&b, "- %s total=%d published=%d scheduled=%d draft=%d", security.SanitizeText(summary.CourseSlug), summary.Total, summary.Published, summary.Scheduled, summary.Draft)
+		if summary.Error != "" {
+			fmt.Fprintf(&b, " status=%s", security.SanitizeText(summary.Error))
+		}
+		b.WriteByte('\n')
+		for j, assignment := range summary.Shown {
+			if j >= 3 {
+				break
+			}
+			fmt.Fprintf(&b, "  - id=%s status=%s start=%s end=%s\n", shortValue(assignment.ID), shortValue(assignment.Status), shortValue(assignment.StartAt), shortValue(assignment.EndAt))
+		}
+	}
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops assignments course:<courseSlug> status:all`\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatAdminAssignment(courseSlug string, assignment reportadmin.Assignment) string {
+	status := "OK"
+	if strings.TrimSpace(assignment.ID) == "" {
+		status = "NO_DATA"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", status)
+	b.WriteString("source: WEB_ADMIN_API\n")
+	fmt.Fprintf(&b, "course: %s\n", security.SanitizeText(courseSlug))
+	fmt.Fprintf(&b, "assignmentId: %s\n", shortValue(assignment.ID))
+	fmt.Fprintf(&b, "key findings: assignment detail 조회\n\n")
+	fmt.Fprintf(&b, "title: %s\n", shortValue(assignment.Title))
+	fmt.Fprintf(&b, "assignmentStatus: %s\n", shortValue(assignment.Status))
+	fmt.Fprintf(&b, "publishedAt: %s\n", shortValue(assignment.PublishedAt))
+	fmt.Fprintf(&b, "startAt: %s\n", shortValue(assignment.StartAt))
+	fmt.Fprintf(&b, "endAt: %s\n", shortValue(assignment.EndAt))
+	fmt.Fprintf(&b, "problemId: %s\n", shortValue(assignment.ProblemID))
+	fmt.Fprintf(&b, "updatedAt: %s\n", shortValue(assignment.UpdatedAt))
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops assignment-check course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + "`\n")
+	b.WriteString("- `/ops submissions course:" + security.SanitizeText(courseSlug) + " assignment:" + shortValue(assignment.ID) + "`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatAdminAssignmentCheck(courseSlug string, assignment reportadmin.Assignment, check reportadmin.AssignmentCheck) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", check.Status)
+	b.WriteString("source: WEB_ADMIN_API\n")
+	fmt.Fprintf(&b, "course: %s\n", security.SanitizeText(courseSlug))
+	fmt.Fprintf(&b, "assignmentId: %s\n", shortValue(assignment.ID))
+	b.WriteString("key findings:\n")
+	for _, finding := range check.Findings {
+		fmt.Fprintf(&b, "- %s\n", security.SanitizeText(finding))
+	}
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + "`\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatAdminSubmissions(courseSlug, assignmentID string, summary reportadmin.SubmissionSummary) string {
+	status := "OK"
+	finding := "submission status summary"
+	if summary.UnsupportedShape {
+		status = "WARN"
+		finding = "unsupported response shape; raw count만 확인 가능"
+	}
+	if summary.TotalStudents == 0 && summary.RawCount == 0 && !summary.UnsupportedShape {
+		status = "NO_DATA"
+		finding = "submission records 없음"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", status)
+	b.WriteString("source: WEB_ADMIN_API\n")
+	fmt.Fprintf(&b, "course: %s\n", security.SanitizeText(courseSlug))
+	fmt.Fprintf(&b, "assignmentId: %s\n", security.SanitizeText(assignmentID))
+	fmt.Fprintf(&b, "key findings: %s\n\n", finding)
+	fmt.Fprintf(&b, "total students: %d\n", summary.TotalStudents)
+	fmt.Fprintf(&b, "submitted: %d\n", summary.Submitted)
+	fmt.Fprintf(&b, "not submitted: %d\n", summary.NotSubmitted)
+	fmt.Fprintf(&b, "graded: %d\n", summary.Graded)
+	fmt.Fprintf(&b, "pending: %d\n", summary.Pending)
+	fmt.Fprintf(&b, "failed: %d\n", summary.Failed)
+	fmt.Fprintf(&b, "average score: %s\n", shortValue(summary.AverageScore))
+	fmt.Fprintf(&b, "highest score: %s\n", shortValue(summary.HighestScore))
+	fmt.Fprintf(&b, "lowest score: %s\n", shortValue(summary.LowestScore))
+	fmt.Fprintf(&b, "recent gradedAt: %s\n", shortValue(summary.RecentGradedAt))
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:" + security.SanitizeText(assignmentID) + "`\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatAdminError(status, courseSlug, assignmentID, finding string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", security.SanitizeText(status))
+	b.WriteString("source: WEB_ADMIN_API\n")
+	if courseSlug != "" {
+		fmt.Fprintf(&b, "course: %s\n", security.SanitizeText(courseSlug))
+	}
+	if assignmentID != "" {
+		fmt.Fprintf(&b, "assignmentId: %s\n", security.SanitizeText(assignmentID))
+	}
+	fmt.Fprintf(&b, "key findings: %s\n", security.SanitizeText(finding))
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`\n")
+	b.WriteString("- `/ops trace trace_id:<traceId>`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatCloudWatchFallback(title string, rows []map[string]string) string {
+	content := FormatLogRows(title+" fallback result, not authoritative", rows)
+	if len(rows) == 0 {
+		content = title + "\nsource: CLOUDWATCH_FALLBACK\nkey findings: fallback result, not authoritative; matching logs 없음"
+	}
+	return TruncateDiscordMessage(content + "\n\nsource: CLOUDWATCH_FALLBACK\nnote: fallback result, not authoritative")
+}
+
 func SummarizeRows(rows []map[string]string) LogSummary {
 	var summary LogSummary
 	for _, row := range rows {
@@ -414,11 +597,15 @@ func HelpText() string {
    /ops logs service:report mode:slow since:30m limit:10
 5. trace 추적
    /ops trace trace_id:<traceId>
-6. 과제 이벤트 확인
-   /ops assignments since:1h
+6. 과제 목록 확인
+   /ops assignments course:<courseSlug> status:all
+7. 과제 검증/제출 상태 확인
+   /ops assignment-check course:<courseSlug> id:<assignmentId>
+   /ops submissions course:<courseSlug> assignment:<assignmentId>
 
 Use /ops service for service state.
 Use /ops logs for log analysis.
+Assignments use WEB-SERVER admin API first; CloudWatch is fallback only.
 If legacy commands remain, treat them as temporary aliases.`)
 }
 
@@ -706,6 +893,29 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func shortValue(value string) string {
+	trimmed := strings.TrimSpace(security.SanitizeText(value))
+	if trimmed == "" {
+		return "unknown"
+	}
+	runes := []rune(trimmed)
+	if len(runes) > 80 {
+		return string(runes[:77]) + "..."
+	}
+	return trimmed
+}
+
+func countAssignmentStatuses(assignments []reportadmin.Assignment) map[string]int {
+	counts := map[string]int{"published": 0, "scheduled": 0, "draft": 0}
+	for _, assignment := range assignments {
+		normalized := strings.ToLower(strings.TrimSpace(assignment.Status))
+		if _, ok := counts[normalized]; ok {
+			counts[normalized]++
+		}
+	}
+	return counts
 }
 
 func value(row map[string]string, key, fallback string) string {

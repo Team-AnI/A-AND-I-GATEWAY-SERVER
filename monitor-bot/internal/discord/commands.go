@@ -61,7 +61,8 @@ func Definitions() []commandDefinition {
 	reportOrAllChoices := choices("all", "report")
 	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
 	reportSinceChoices := choices("15m", "30m", "1h")
-	assignmentSinceChoices := choices("30m", "1h", "today")
+	assignmentStatusChoices := choices("all", "published", "draft", "scheduled")
+	assignmentWindowChoices := choices("today", "this-week")
 	watchIntervalChoices := choices("5m", "10m", "15m")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
@@ -89,10 +90,23 @@ func Definitions() []commandDefinition {
 				integerOption("limit", "출력 개수", false, limitChoices),
 			}),
 			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{
-				stringOption("since", "조회 기간", false, assignmentSinceChoices),
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("status", "과제 상태", false, assignmentStatusChoices),
+			}),
+			subcommandOption("assignments-all", "Report 전체 코스 과제 요약", []commandOption{
+				stringOption("window", "조회 창", false, assignmentWindowChoices),
 			}),
 			subcommandOption("assignment", "특정 과제 이벤트 조회", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
 				stringOption("id", "assignmentId", true, nil),
+			}),
+			subcommandOption("assignment-check", "특정 과제 상태 검증", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("id", "assignmentId", true, nil),
+			}),
+			subcommandOption("submissions", "과제 제출/채점 상태 요약", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("assignment", "assignmentId", true, nil),
 			}),
 			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
 				stringOption("trace_id", "조회할 traceId", true, nil),
@@ -118,7 +132,8 @@ func DefinitionsWithLegacy(includeLegacy bool) []commandDefinition {
 	reportServiceChoices := choices("report")
 	reportOrAllChoices := choices("all", "report")
 	reportSinceChoices := choices("15m", "30m", "1h")
-	assignmentSinceChoices := choices("30m", "1h", "today")
+	assignmentStatusChoices := choices("all", "published", "draft", "scheduled")
+	assignmentWindowChoices := choices("today", "this-week")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
 	serviceViewChoices := choices("summary", "health")
@@ -143,10 +158,23 @@ func DefinitionsWithLegacy(includeLegacy bool) []commandDefinition {
 				integerOption("limit", "출력 개수", false, limitChoices),
 			}),
 			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{
-				stringOption("since", "조회 기간", false, assignmentSinceChoices),
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("status", "과제 상태", false, assignmentStatusChoices),
+			}),
+			subcommandOption("assignments-all", "Report 전체 코스 과제 요약", []commandOption{
+				stringOption("window", "조회 창", false, assignmentWindowChoices),
 			}),
 			subcommandOption("assignment", "특정 과제 이벤트 조회", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
 				stringOption("id", "assignmentId", true, nil),
+			}),
+			subcommandOption("assignment-check", "특정 과제 상태 검증", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("id", "assignmentId", true, nil),
+			}),
+			subcommandOption("submissions", "과제 제출/채점 상태 요약", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("assignment", "assignmentId", true, nil),
 			}),
 			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
 				stringOption("trace_id", "조회할 traceId", true, nil),

@@ -25,6 +25,8 @@ type Config struct {
 	CloudWatchQueryLimit          int
 	CloudWatchMaxLogGroups        int
 	HealthRequestTimeout          time.Duration
+	ReportServiceURI              string
+	ReportAdminBearerToken        string
 	LogGroups                     map[string]string
 	HealthURLs                    map[string]string
 	ServiceRegistry               []ServiceDefinition
@@ -96,6 +98,8 @@ func Load() Config {
 		CloudWatchQueryLimit:          envInt("CLOUDWATCH_QUERY_LIMIT", 20),
 		CloudWatchMaxLogGroups:        envInt("CLOUDWATCH_MAX_LOG_GROUPS_PER_QUERY", 5),
 		HealthRequestTimeout:          time.Duration(envInt("HEALTH_REQUEST_TIMEOUT_MS", 2000)) * time.Millisecond,
+		ReportServiceURI:              env("REPORT_SERVICE_URI", ""),
+		ReportAdminBearerToken:        env("REPORT_ADMIN_BEARER_TOKEN", ""),
 		LogGroups:                     logGroups,
 		HealthURLs:                    healthURLs,
 		ServiceRegistry:               BuildServiceRegistry(logGroups, healthURLs),

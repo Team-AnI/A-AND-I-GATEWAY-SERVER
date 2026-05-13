@@ -39,7 +39,18 @@ var (
 		"error":  {},
 		"status": {},
 	}
-	traceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,128}$`)
+	traceIDPattern            = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,128}$`)
+	courseSlugPattern         = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,128}$`)
+	allowedAssignmentStatuses = map[string]struct{}{
+		"all":       {},
+		"published": {},
+		"draft":     {},
+		"scheduled": {},
+	}
+	allowedAssignmentWindows = map[string]struct{}{
+		"today":     {},
+		"this-week": {},
+	}
 )
 
 func NormalizeService(service string) (string, bool) {
@@ -90,6 +101,28 @@ func ValidateTraceID(traceID string) bool {
 
 func ValidateAssignmentID(assignmentID string) bool {
 	return traceIDPattern.MatchString(strings.TrimSpace(assignmentID))
+}
+
+func ValidateCourseSlug(courseSlug string) bool {
+	return courseSlugPattern.MatchString(strings.TrimSpace(courseSlug))
+}
+
+func NormalizeAssignmentStatus(status string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	if normalized == "" {
+		normalized = "all"
+	}
+	_, ok := allowedAssignmentStatuses[normalized]
+	return normalized, ok
+}
+
+func NormalizeAssignmentWindow(window string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(window))
+	if normalized == "" {
+		normalized = "today"
+	}
+	_, ok := allowedAssignmentWindows[normalized]
+	return normalized, ok
 }
 
 func ClampLimit(limit, fallback, max int) int32 {

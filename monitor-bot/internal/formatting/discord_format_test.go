@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 )
 
 func TestTruncateDiscordMessage(t *testing.T) {
@@ -21,6 +23,54 @@ func TestFormatStatus(t *testing.T) {
 	got := FormatStatus([]ServiceStatus{{Service: "gateway", State: "UP", Detail: "UP"}})
 	if !strings.Contains(got, "gateway") || !strings.Contains(got, "UP") {
 		t.Fatalf("unexpected status format: %s", got)
+	}
+}
+
+func TestFormatAdminAssignmentsAndSubmissions(t *testing.T) {
+	assignments := []reportadmin.Assignment{{
+		ID:        "a1",
+		Status:    "published",
+		StartAt:   "2026-05-13T09:00:00+09:00",
+		EndAt:     "2026-05-20T09:00:00+09:00",
+		ProblemID: "p1",
+		UpdatedAt: "2026-05-13T10:00:00+09:00",
+	}}
+	got := FormatAdminAssignments("kotlin-basic", "all", assignments)
+	for _, want := range []string{"status: OK", "source: WEB_ADMIN_API", "course: kotlin-basic", "1 assignments found", "published"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("admin assignments missing %q: %s", want, got)
+		}
+	}
+	check := FormatAdminAssignmentCheck("kotlin-basic", assignments[0], reportadmin.CheckAssignment(assignments[0]))
+	if !strings.Contains(check, "status: OK") || !strings.Contains(check, "source: WEB_ADMIN_API") {
+		t.Fatalf("assignment check output unexpected: %s", check)
+	}
+	submissions := FormatAdminSubmissions("kotlin-basic", "a1", reportadmin.SubmissionSummary{TotalStudents: 2, Submitted: 1, NotSubmitted: 1, Graded: 1, AverageScore: "80"})
+	for _, want := range []string{"total students: 2", "submitted: 1", "average score: 80"} {
+		if !strings.Contains(submissions, want) {
+			t.Fatalf("submission summary missing %q: %s", want, submissions)
+		}
+	}
+}
+
+func TestFormatCloudWatchFallbackMarksNotAuthoritative(t *testing.T) {
+	got := FormatCloudWatchFallback("Assignment", []map[string]string{{"trace.traceId": "abc", "http.path": "/v2/admin/courses/kotlin/assignments"}})
+	if !strings.Contains(got, "CLOUDWATCH_FALLBACK") || !strings.Contains(got, "not authoritative") {
+		t.Fatalf("fallback output must be clearly marked: %s", got)
+	}
+}
+
+func TestAdminFormattingDoesNotLeakToken(t *testing.T) {
+	outputs := []string{
+		FormatAdminError("AUTH_ERROR", "kotlin", "a1", "Authorization: Bearer secret-token token=secret-token"),
+		FormatAdminAssignments("kotlin", "all", []reportadmin.Assignment{{ID: "a1", Title: "token=secret-token", Status: "published"}}),
+	}
+	for _, got := range outputs {
+		for _, forbidden := range []string{"secret-token", "Bearer secret-token"} {
+			if strings.Contains(got, forbidden) {
+				t.Fatalf("admin formatting leaked token %q: %s", forbidden, got)
+			}
+		}
 	}
 }
 
@@ -327,7 +377,10 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops logs service:report mode:errors since:30m limit:10",
 		"/ops logs service:report mode:slow since:30m limit:10",
 		"/ops trace trace_id:<traceId>",
-		"/ops assignments since:1h",
+		"/ops assignments course:<courseSlug> status:all",
+		"/ops assignment-check course:<courseSlug> id:<assignmentId>",
+		"/ops submissions course:<courseSlug> assignment:<assignmentId>",
+		"Assignments use WEB-SERVER admin API first; CloudWatch is fallback only.",
 		"Use /ops service for service state.",
 		"Use /ops logs for log analysis.",
 		"If legacy commands remain, treat them as temporary aliases.",

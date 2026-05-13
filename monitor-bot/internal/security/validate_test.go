@@ -86,3 +86,24 @@ func TestValidateAssignmentID(t *testing.T) {
 		t.Fatal("assignment id with slash must be rejected")
 	}
 }
+
+func TestValidateCourseSlugAndAssignmentFilters(t *testing.T) {
+	if !ValidateCourseSlug("kotlin-basic_1") {
+		t.Fatal("valid course slug rejected")
+	}
+	if ValidateCourseSlug("../secret") {
+		t.Fatal("course slug with slash must be rejected")
+	}
+	if got, ok := NormalizeAssignmentStatus(""); !ok || got != "all" {
+		t.Fatalf("blank status should default to all, got %q ok=%v", got, ok)
+	}
+	if _, ok := NormalizeAssignmentStatus("deleted"); ok {
+		t.Fatal("unsupported assignment status accepted")
+	}
+	if got, ok := NormalizeAssignmentWindow(""); !ok || got != "today" {
+		t.Fatalf("blank window should default to today, got %q ok=%v", got, ok)
+	}
+	if _, ok := NormalizeAssignmentWindow("month"); ok {
+		t.Fatal("unsupported assignment window accepted")
+	}
+}

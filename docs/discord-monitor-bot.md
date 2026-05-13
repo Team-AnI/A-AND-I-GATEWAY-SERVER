@@ -19,8 +19,11 @@ Primary commands:
 - `/ops dashboard since:<15m|30m|1h>`: Report 중심 health, log, alarm 요약. 미연동 서비스는 숨기지 않고 `NOT_CONNECTED`로 표시한다.
 - `/ops service service:report view:<summary|health> since:<duration>`: 단일 서비스 상태
 - `/ops logs service:<report|all> mode:<recent|errors|slow> level:<INFO|WARN|ERROR> since:<duration> limit:<5|10|20>`: Report 로그 조회와 집계. `limit`은 모든 mode의 결과 개수 제한에 적용한다.
-- `/ops assignments since:<30m|1h|today>`: Report 과제 관련 이벤트 요약
-- `/ops assignment id:<assignmentId>`: 특정 assignmentId 관련 로그 조회
+- `/ops assignments course:<courseSlug> status:<all|published|draft|scheduled>`: WEB-SERVER admin API 기반 과제 목록 조회
+- `/ops assignments-all window:<today|this-week>`: 전체 코스 과제 상태 요약
+- `/ops assignment course:<courseSlug> id:<assignmentId>`: 특정 과제 상세 조회
+- `/ops assignment-check course:<courseSlug> id:<assignmentId>`: 특정 과제 생성/복사 후 상태 검증
+- `/ops submissions course:<courseSlug> assignment:<assignmentId>`: 제출/채점 상태 요약
 - `/ops trace trace_id:<traceId>`: traceId 기준 시간순 조회
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all> service:<optional>`: CloudWatch alarm 조회
 - `/ops storage view:<usage|retention>`: CloudWatch log group stored bytes와 retention 조회
@@ -34,7 +37,9 @@ Primary commands:
 /ops logs service:report mode:errors since:30m limit:10
 /ops logs service:report mode:slow since:30m limit:10
 /ops trace trace_id:<traceId>
-/ops assignments since:1h
+/ops assignments course:<courseSlug> status:all
+/ops assignment-check course:<courseSlug> id:<assignmentId>
+/ops submissions course:<courseSlug> assignment:<assignmentId>
 /ops alarms state:ALARM
 ```
 
@@ -44,7 +49,22 @@ Primary commands:
 - `/ops logs`: Report 로그 분석 중심. `recent`, `errors`, `slow`를 제공한다.
 - `service=all`: Phase 1에서는 연결된 Report 로그만 조회하며, CloudWatch 비용 보호를 위해 `/ops logs service:all mode:errors since:<15m|30m>`에서만 허용한다. `recent`, `slow`는 `service=report`를 지정한다.
 - Report copy API 상태는 별도 command 없이 `/ops logs service:report mode:errors`, `/ops logs service:report mode:slow`, `/ops trace` 흐름에서 확인한다.
-- 과제 등록/공개/수정 이벤트는 audit DB가 붙기 전까지 Report V2 JSON log 기반의 safe placeholder 조회로 제공한다.
+- 과제 등록/공개/제출 상태는 WEB-SERVER 기존 관리자 GET API를 authoritative source로 사용한다.
+- CloudWatch는 `/ops logs`, `/ops trace`, admin API 실패 시 fallback 확인 용도로만 사용한다. fallback 응답에는 `fallback result, not authoritative`를 표시한다.
+
+WEB-SERVER admin API 연동:
+
+- 새로 필요한 환경 변수는 `REPORT_ADMIN_BEARER_TOKEN` 하나뿐이다.
+- `REPORT_ADMIN_BEARER_TOKEN`에는 raw token 값만 저장한다.
+- monitor-bot은 요청 시 `Authorization: Bearer <REPORT_ADMIN_BEARER_TOKEN>`를 붙인다.
+- base URL은 기존 `REPORT_SERVICE_URI`를 재사용하며 `REPORT_ADMIN_BASE_URL` 같은 새 env를 만들지 않는다.
+- monitor-bot은 다음 GET API만 호출한다.
+  - `GET /v2/admin/courses`
+  - `GET /v2/admin/courses/{courseSlug}/assignments`
+  - `GET /v2/admin/courses/{courseSlug}/assignments/{assignmentId}`
+  - `GET /v2/admin/courses/{courseSlug}/assignments/{assignmentId}/submission-statuses`
+- `POST /v2/admin/courses`, `POST /v2/admin/courses/{courseSlug}/assignments`, `POST /v2/admin/courses/{targetCourseSlug}/assignments/copy`, PATCH, DELETE는 호출하지 않는다.
+- token 값은 로그, Discord 응답, 테스트 출력에 노출하지 않는다.
 
 현재 연동 상태:
 
@@ -140,8 +160,11 @@ Top issue: auth 5xx x1
 /ops logs service:all mode:errors since:15m limit:10
 /ops logs service:report mode:errors since:30m limit:10
 /ops logs service:report mode:slow since:30m limit:10
-/ops assignments since:1h
-/ops assignment id:<assignmentId>
+/ops assignments course:<courseSlug> status:all
+/ops assignments-all window:today
+/ops assignment course:<courseSlug> id:<assignmentId>
+/ops assignment-check course:<courseSlug> id:<assignmentId>
+/ops submissions course:<courseSlug> assignment:<assignmentId>
 /ops alarms state:ALARM
 ```
 
@@ -327,6 +350,11 @@ Required Secrets:
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_ALLOWED_GUILD_ID`
 - `DISCORD_ALLOWED_ROLE_IDS`
+- `REPORT_ADMIN_BEARER_TOKEN`
+
+Existing service Secret reused by monitor-bot:
+
+- `REPORT_SERVICE_URI`
 
 Required Vars:
 

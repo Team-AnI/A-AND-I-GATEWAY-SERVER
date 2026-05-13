@@ -38,6 +38,19 @@ func TestLegacyCommandRegistrationCanBeEnabledTemporarily(t *testing.T) {
 	}
 }
 
+func TestReportAdminConfigReusesExistingServiceURIAndToken(t *testing.T) {
+	t.Setenv("REPORT_SERVICE_URI", "http://report.internal:8080")
+	t.Setenv("REPORT_ADMIN_BEARER_TOKEN", "admin-token")
+
+	cfg := Load()
+	if cfg.ReportServiceURI != "http://report.internal:8080" {
+		t.Fatalf("REPORT_SERVICE_URI was not loaded: %q", cfg.ReportServiceURI)
+	}
+	if cfg.ReportAdminBearerToken != "admin-token" {
+		t.Fatal("REPORT_ADMIN_BEARER_TOKEN was not loaded")
+	}
+}
+
 func TestServiceRegistryAlwaysContainsOperationalServices(t *testing.T) {
 	registry := BuildServiceRegistry(
 		map[string]string{"gateway": "/a-and-i/gateway", "report": "/a-and-i/prod/report"},
