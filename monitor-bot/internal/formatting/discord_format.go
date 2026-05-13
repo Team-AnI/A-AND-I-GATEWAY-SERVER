@@ -150,7 +150,7 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 			}
 			break
 		}
-		if strings.EqualFold(service.Health.State, "UNKNOWN") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NO_LOGS" || service.LogStatus == "NOT_CONFIGURED" {
+		if strings.EqualFold(service.Health.State, "UNKNOWN") || strings.EqualFold(service.Health.State, "NOT_CONNECTED") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NO_LOGS" || service.LogStatus == "NOT_CONFIGURED" || service.LogStatus == "NOT_CONNECTED" {
 			statusIcon = "🟡"
 		}
 	}
@@ -279,6 +279,87 @@ func FormatSlowSummary(service, since string, rows []map[string]string) string {
 	return TruncateDiscordMessage(b.String())
 }
 
+func FormatAssignmentsSummary(since string, rows []map[string]string, forcedStatus, forcedFinding string) string {
+	status := strings.TrimSpace(forcedStatus)
+	finding := strings.TrimSpace(forcedFinding)
+	if status == "" {
+		switch {
+		case len(rows) == 0:
+			status = "NO_DATA"
+			finding = "과제 관련 로그 없음"
+		case SummarizeRows(rows).FiveXX > 0 || SummarizeRows(rows).Error > 0:
+			status = "ERROR"
+			finding = "과제 관련 ERROR 또는 5xx 로그 확인"
+		case SummarizeRows(rows).FourXX > 0 || SummarizeRows(rows).Warn > 0 || SummarizeRows(rows).APIError > 0:
+			status = "WARN"
+			finding = "과제 관련 WARN/API_ERROR 로그 확인"
+		default:
+			status = "OK"
+			finding = "과제 관련 주요 오류 없음"
+		}
+	}
+	if finding == "" {
+		finding = "과제 관련 이벤트 요약"
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", status)
+	fmt.Fprintf(&b, "service: report\n")
+	fmt.Fprintf(&b, "window: %s\n", since)
+	fmt.Fprintf(&b, "key findings: %s\n\n", security.SanitizeText(finding))
+	if len(rows) > 0 {
+		b.WriteString("top assignment events:\n")
+		writeTopRowsWithLimit(&b, rows, 10)
+	}
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`\n")
+	b.WriteString("- `/ops logs service:report mode:slow since:30m limit:10`\n")
+	b.WriteString("- `/ops trace trace_id:<traceId>`")
+	return TruncateDiscordMessage(b.String())
+}
+
+func FormatAssignmentDetail(assignmentID string, rows []map[string]string, forcedStatus, forcedFinding string) string {
+	status := strings.TrimSpace(forcedStatus)
+	finding := strings.TrimSpace(forcedFinding)
+	if status == "" {
+		if len(rows) == 0 {
+			status = "NO_DATA"
+			finding = "no matching records"
+		} else {
+			summary := SummarizeRows(rows)
+			switch {
+			case summary.FiveXX > 0 || summary.Error > 0:
+				status = "ERROR"
+			case summary.FourXX > 0 || summary.Warn > 0 || summary.APIError > 0:
+				status = "WARN"
+			default:
+				status = "OK"
+			}
+			finding = "assignmentId 관련 로그 확인"
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "status: %s\n", status)
+	fmt.Fprintf(&b, "service: report\n")
+	fmt.Fprintf(&b, "assignmentId: %s\n", security.SanitizeText(assignmentID))
+	fmt.Fprintf(&b, "key findings: %s\n\n", security.SanitizeText(finding))
+	if len(rows) > 0 {
+		b.WriteString("recent records:\n")
+		for i, row := range rows {
+			if i >= 10 {
+				break
+			}
+			fmt.Fprintf(&b, "%d. ", i+1)
+			writeCompactRow(&b, row)
+			b.WriteByte('\n')
+		}
+	}
+	b.WriteString("\nrecommended next commands:\n")
+	b.WriteString("- `/ops logs service:report mode:errors since:30m limit:10`\n")
+	b.WriteString("- `/ops trace trace_id:<traceId>`")
+	return TruncateDiscordMessage(b.String())
+}
+
 func SummarizeRows(rows []map[string]string) LogSummary {
 	var summary LogSummary
 	for _, row := range rows {
@@ -333,6 +414,8 @@ func HelpText() string {
    /ops logs service:report mode:slow since:30m limit:10
 5. trace 추적
    /ops trace trace_id:<traceId>
+6. 과제 이벤트 확인
+   /ops assignments since:1h
 
 Use /ops service for service state.
 Use /ops logs for log analysis.
@@ -412,6 +495,8 @@ func dashboardIcon(healthState, logStatus string, summary LogSummary, alarm bool
 	switch {
 	case logStatus == "NOT_CONFIGURED":
 		return "⚫"
+	case logStatus == "NOT_CONNECTED" || healthState == "NOT_CONNECTED":
+		return "⚫"
 	case alarm || healthState == "DOWN" || logStatus == "LOG_QUERY_FAILED" || summary.FiveXX > 0:
 		return "🔴"
 	case logStatus == "NO_LOGS":
@@ -431,6 +516,8 @@ func formatLogStatusShort(status string) string {
 		return "NOLOG"
 	case "NOT_CONFIGURED":
 		return "NOCFG"
+	case "NOT_CONNECTED":
+		return "NCONN"
 	case "LOG_QUERY_FAILED":
 		return "QFAIL"
 	default:
@@ -450,6 +537,8 @@ func dashboardShortStatus(status string) string {
 		return "NOLOG"
 	case "NOT_CONFIGURED":
 		return "NOCFG"
+	case "NOT_CONNECTED":
+		return "NCONN"
 	case "LOG_QUERY_FAILED":
 		return "QFAIL"
 	default:
@@ -477,14 +566,14 @@ func dashboardServiceName(service, displayName string) string {
 }
 
 func dashboardNumber(value int, logStatus string) string {
-	if logStatus == "NOT_CONFIGURED" || logStatus == "LOG_QUERY_FAILED" {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "LOG_QUERY_FAILED" {
 		return "-"
 	}
 	return strconv.Itoa(value)
 }
 
 func dashboardLastLogShort(value, logStatus string) string {
-	if logStatus == "NOT_CONFIGURED" || logStatus == "NO_LOGS" || logStatus == "LOG_QUERY_FAILED" {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "NO_LOGS" || logStatus == "LOG_QUERY_FAILED" {
 		return "-"
 	}
 	return formatLastLogCompact(value)

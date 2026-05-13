@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	recentFields = `fields @timestamp, level, logType, env, service.name, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
-	traceFields  = `fields @timestamp, level, logType, service.name, service.version, trace.traceId, traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
-	errorFields  = `fields service.name, http.path, http.statusCode, response.error.code, response.error.value, response.error.message`
-	countFields  = `fields service.name, logType, level, http.statusCode`
-	slowFields   = `fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, message`
+	recentFields     = `fields @timestamp, level, logType, env, service.name, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
+	traceFields      = `fields @timestamp, level, logType, service.name, service.version, trace.traceId, traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
+	errorFields      = `fields service.name, http.path, http.statusCode, response.error.code, response.error.value, response.error.message`
+	assignmentFields = `fields service.name, http.method, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, tags`
+	countFields      = `fields service.name, logType, level, http.statusCode`
+	slowFields       = `fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, message`
 )
 
 func LogGroupsForService(logGroups map[string]string, service string) ([]string, error) {
@@ -177,6 +178,28 @@ func BuildSlowQuery(service string, thresholdMs, limit int) (string, error) {
 | limit %d`, slowFields, serviceNameFilter(normalized), thresholdFilter, limit32), nil
 }
 
+func BuildAssignmentsQuery() string {
+	return fmt.Sprintf(`%s
+| filter service.name = "report-service"
+| filter http.path like /\/assignments/ or http.route like /assignments/ or tags like /assignment/
+| stats count(*) as count by http.method, http.path, http.statusCode, response.error.code, response.error.value, response.error.message
+| sort count desc
+| limit 20`, assignmentFields)
+}
+
+func BuildAssignmentQuery(assignmentID string) (string, error) {
+	assignmentID = strings.TrimSpace(assignmentID)
+	if !security.ValidateAssignmentID(assignmentID) {
+		return "", fmt.Errorf("invalid assignment id")
+	}
+	quoted := regexpQuoteForLogsInsights(assignmentID)
+	return fmt.Sprintf(`%s
+| filter service.name = "report-service"
+| filter @message like /%s/
+| sort @timestamp desc
+| limit 20`, recentFields, quoted), nil
+}
+
 func BuildAlertQuery(service string) (string, error) {
 	normalized, err := normalizeQueryService(service)
 	if err != nil {
@@ -187,6 +210,26 @@ func BuildAlertQuery(service string) (string, error) {
 | filter logType = "API_ERROR" or level = "ERROR" or http.statusCode >= 500
 | sort @timestamp desc
 | limit 50`, slowFields, serviceNameFilter(normalized)), nil
+}
+
+func regexpQuoteForLogsInsights(value string) string {
+	replacer := strings.NewReplacer(
+		`\\`, `\\\\`,
+		`.`, `\.`,
+		`+`, `\+`,
+		`*`, `\*`,
+		`?`, `\?`,
+		`^`, `\^`,
+		`$`, `\$`,
+		`(`, `\(`,
+		`)`, `\)`,
+		`[`, `\[`,
+		`]`, `\]`,
+		`{`, `\{`,
+		`}`, `\}`,
+		`|`, `\|`,
+	)
+	return replacer.Replace(value)
 }
 
 func BuildLastLogQuery(service string) (string, error) {

@@ -149,6 +149,25 @@ func TestFormatDashboardShowsUnknownNoLogsAndNotConfigured(t *testing.T) {
 	}
 }
 
+func TestFormatDashboardShowsNotConnected(t *testing.T) {
+	got := FormatDashboard("30m", []DashboardServiceInput{
+		{
+			Service:   "report",
+			Health:    ServiceStatus{Service: "report", State: "UP"},
+			LogStatus: "OK",
+			Rows:      []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}},
+		},
+		{
+			Service:   "auth",
+			Health:    ServiceStatus{Service: "auth", State: "NOT_CONNECTED"},
+			LogStatus: "NOT_CONNECTED",
+		},
+	}, nil)
+	if !strings.Contains(got, "NCONN") || !strings.Contains(got, "auth") {
+		t.Fatalf("dashboard should display not-connected services: %s", got)
+	}
+}
+
 func TestFormatDashboardDoesNotLeakSensitiveRawFields(t *testing.T) {
 	got := FormatDashboard("30m", []DashboardServiceInput{{
 		Service:   "report",
@@ -208,6 +227,26 @@ func TestFormatTopSummaryHonorsLimit(t *testing.T) {
 	}
 }
 
+func TestFormatAssignmentsSummaryAndDetail(t *testing.T) {
+	empty := FormatAssignmentsSummary("1h", nil, "", "")
+	for _, want := range []string{"status: NO_DATA", "service: report", "과제 관련 로그 없음", "/ops logs service:report mode:errors"} {
+		if !strings.Contains(empty, want) {
+			t.Fatalf("assignment summary missing %q: %s", want, empty)
+		}
+	}
+	detail := FormatAssignmentDetail("assignment-123", nil, "", "")
+	for _, want := range []string{"status: NO_DATA", "assignmentId: assignment-123", "no matching records"} {
+		if !strings.Contains(detail, want) {
+			t.Fatalf("assignment detail missing %q: %s", want, detail)
+		}
+	}
+	rows := []map[string]string{{"count": "2", "http.path": "/v2/admin/courses/java/assignments", "http.statusCode": "500", "response.error.code": "49000"}}
+	warn := FormatAssignmentsSummary("30m", rows, "", "")
+	if !strings.Contains(warn, "status: ERROR") || !strings.Contains(warn, "49000") {
+		t.Fatalf("assignment summary should surface report errors: %s", warn)
+	}
+}
+
 func TestFormatNewCommandsDoNotLeakSensitiveRawFields(t *testing.T) {
 	rows := []map[string]string{{
 		"count":                  "2",
@@ -228,6 +267,8 @@ func TestFormatNewCommandsDoNotLeakSensitiveRawFields(t *testing.T) {
 		FormatCountSummary("report", "1h", "error", rows),
 		FormatTopSummary("report", "1h", "error", rows),
 		FormatSlowSummary("report", "1h", rows),
+		FormatAssignmentsSummary("1h", rows, "", ""),
+		FormatAssignmentDetail("abc123", rows, "", ""),
 		FormatServiceDetail(ServiceDetailInput{
 			Service:   "report",
 			LogGroup:  "/a-and-i/prod/report",
@@ -286,6 +327,7 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops logs service:report mode:errors since:30m limit:10",
 		"/ops logs service:report mode:slow since:30m limit:10",
 		"/ops trace trace_id:<traceId>",
+		"/ops assignments since:1h",
 		"Use /ops service for service state.",
 		"Use /ops logs for log analysis.",
 		"If legacy commands remain, treat them as temporary aliases.",

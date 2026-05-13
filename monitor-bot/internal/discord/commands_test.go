@@ -63,13 +63,37 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "assignments", "assignment", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
 	}
 	if got["copy"] {
 		t.Fatal("copy subcommand should not be registered")
+	}
+}
+
+func TestOpsReportPhaseChoices(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dashboard := findSubcommand(t, command, "dashboard")
+	if got := choiceValues(findOption(t, dashboard.Options, "since").Choices); strings.Join(got, ",") != "15m,30m,1h" {
+		t.Fatalf("dashboard since choices = %#v", got)
+	}
+	logs := findSubcommand(t, command, "logs")
+	if got := choiceValues(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,report" {
+		t.Fatalf("logs service choices = %#v", got)
+	}
+	assignments := findSubcommand(t, command, "assignments")
+	if got := choiceValues(findOption(t, assignments.Options, "since").Choices); strings.Join(got, ",") != "30m,1h,today" {
+		t.Fatalf("assignments since choices = %#v", got)
+	}
+	assignment := findSubcommand(t, command, "assignment")
+	idOption := findOption(t, assignment.Options, "id")
+	if !idOption.Required {
+		t.Fatal("assignment id option must be required")
 	}
 }
 
@@ -127,7 +151,7 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 	logsCommand := findSubcommand(t, command, "logs")
 	modeOption := findOption(t, logsCommand.Options, "mode")
 	got := choiceValues(modeOption.Choices)
-	want := []string{"recent", "errors", "top", "slow"}
+	want := []string{"recent", "errors", "slow"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops logs mode choices = %#v, want %#v", got, want)
 	}
@@ -191,6 +215,25 @@ func TestParseOpsLimit(t *testing.T) {
 	}
 	if got := parseOpsLimit("", 10); got != 10 {
 		t.Fatalf("parseOpsLimit should keep safe fallback choice, got %d", got)
+	}
+}
+
+func TestParseAssignmentSince(t *testing.T) {
+	now := time.Date(2026, 5, 13, 10, 0, 0, 0, time.FixedZone("KST", 9*60*60))
+	cases := map[string]string{
+		"":      "1h",
+		"30m":   "30m",
+		"1h":    "1h",
+		"today": "today",
+	}
+	for input, wantLabel := range cases {
+		label, duration, ok := parseAssignmentSince(input, now)
+		if !ok || label != wantLabel || duration <= 0 {
+			t.Fatalf("parseAssignmentSince(%q) = label=%q duration=%s ok=%v, want label=%q positive duration", input, label, duration, ok, wantLabel)
+		}
+	}
+	if _, _, ok := parseAssignmentSince("15m", now); ok {
+		t.Fatal("15m should not be accepted for assignments phase")
 	}
 }
 

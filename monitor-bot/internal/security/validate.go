@@ -88,6 +88,10 @@ func ValidateTraceID(traceID string) bool {
 	return traceIDPattern.MatchString(strings.TrimSpace(traceID))
 }
 
+func ValidateAssignmentID(assignmentID string) bool {
+	return traceIDPattern.MatchString(strings.TrimSpace(assignmentID))
+}
+
 func ClampLimit(limit, fallback, max int) int32 {
 	if limit <= 0 {
 		limit = fallback

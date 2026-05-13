@@ -77,3 +77,12 @@ func TestValidateTraceID(t *testing.T) {
 		t.Fatal("overly long trace id must be rejected")
 	}
 }
+
+func TestValidateAssignmentID(t *testing.T) {
+	if !ValidateAssignmentID("8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111") {
+		t.Fatal("valid assignment id rejected")
+	}
+	if ValidateAssignmentID("abc/../../secret") {
+		t.Fatal("assignment id with slash must be rejected")
+	}
+}

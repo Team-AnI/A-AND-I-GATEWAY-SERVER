@@ -218,6 +218,10 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 		return h.opsServiceCommand(ctx, subcommand)
 	case "logs":
 		return h.opsLogsCommand(ctx, subcommand)
+	case "assignments":
+		return h.assignmentsCommand(ctx, interactionForCommand("assignments", withDefaultOptions(subcommand.Options, map[string]string{"since": "1h"})))
+	case "assignment":
+		return h.assignmentCommand(ctx, interactionForCommand("assignment", subcommand.Options))
 	case "trace":
 		return h.traceCommand(ctx, interactionForCommand("trace", subcommand.Options))
 	case "alarms":
@@ -274,6 +278,9 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
+	if service != "report" {
+		return "status: NOT_CONFIGURED\nservice: " + service + "\nkey findings: 이번 단계에서는 report/web 서버만 실제 연동되어 있습니다.\nrecommended next commands:\n- `/ops dashboard since:30m`"
+	}
 	view := optionStringFromOptions(subcommand.Options, "view")
 	if view == "" {
 		view = "summary"
@@ -296,6 +303,9 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 	service, ok := security.NormalizeServiceOrAll(optionStringFromOptions(subcommand.Options, "service"))
 	if !ok {
 		return "지원하지 않는 service입니다."
+	}
+	if service != "report" && service != "all" {
+		return "status: NOT_CONFIGURED\nservice: " + service + "\nkey findings: 이번 단계에서는 report/web 서버 로그만 조회합니다.\nrecommended next commands:\n- `/ops logs service:report mode:errors since:30m limit:10`"
 	}
 	mode := optionStringFromOptions(subcommand.Options, "mode")
 	if mode == "" {
@@ -325,13 +335,17 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 		if service == "all" && !sinceAllowsAllQuery(since) {
 			return allServiceSinceGuardMessage()
 		}
+		queryService := service
+		if service == "all" {
+			queryService = "report"
+		}
 		next := []string{"/ops dashboard since:" + since}
 		if service != "all" {
 			next = append(next, "/ops logs service:"+service+" mode:recent level:ERROR", "/ops service service:"+service)
 		}
 		return withNext(h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
 			stringInteractionOption("since", since),
-			stringInteractionOption("service", service),
+			stringInteractionOption("service", queryService),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
 		})), next...)
 	case "top":
@@ -404,6 +418,12 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 			DisplayName: service.DisplayName,
 			Health:      healthByService[service.Name],
 			Alarm:       serviceHasAlarm(service.Name, alarmNames),
+		}
+		if service.Name != "report" {
+			input.Health = formatting.ServiceStatus{Service: service.Name, State: "NOT_CONNECTED", Detail: "not connected in Phase 1"}
+			input.LogStatus = "NOT_CONNECTED"
+			inputs = append(inputs, input)
+			continue
 		}
 		if !service.Enabled {
 			input.Health = formatting.ServiceStatus{Service: service.Name, State: "NOT_CONFIGURED", Detail: "health URL and log group are not configured"}
@@ -579,6 +599,42 @@ func (h *Handler) slowCommand(ctx context.Context, interaction Interaction) stri
 	return formatting.FormatSlowSummary(service, sinceLabel, rows)
 }
 
+func (h *Handler) assignmentsCommand(ctx context.Context, interaction Interaction) string {
+	sinceLabel, since, ok := parseAssignmentSince(optionString(interaction, "since"), time.Now())
+	if !ok {
+		return "지원하지 않는 since 값입니다. `/ops assignments since:30m|1h|today`를 사용하세요."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+	if err != nil {
+		return formatting.FormatAssignmentsSummary(sinceLabel, nil, "NOT_CONFIGURED", "CloudWatch log group이 설정되지 않아 조회할 수 없음: "+security.SanitizeText(err.Error()))
+	}
+	rows, err := h.logs.Query(ctx, groups, cw.BuildAssignmentsQuery(), since, 20)
+	if err != nil {
+		return formatting.FormatAssignmentsSummary(sinceLabel, nil, "ERROR", "CloudWatch assignments 조회 실패: "+security.SanitizeText(err.Error()))
+	}
+	return formatting.FormatAssignmentsSummary(sinceLabel, rows, "", "")
+}
+
+func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction) string {
+	assignmentID := strings.TrimSpace(optionString(interaction, "id"))
+	if !security.ValidateAssignmentID(assignmentID) {
+		return "status: ERROR\nservice: report\nkey findings: 올바르지 않은 assignmentId입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+	if err != nil {
+		return formatting.FormatAssignmentDetail(assignmentID, nil, "NOT_CONFIGURED", "CloudWatch log group이 설정되지 않아 조회할 수 없음: "+security.SanitizeText(err.Error()))
+	}
+	query, err := cw.BuildAssignmentQuery(assignmentID)
+	if err != nil {
+		return "status: ERROR\nservice: report\nassignmentId: " + security.SanitizeText(assignmentID) + "\nkey findings: 올바르지 않은 assignmentId입니다."
+	}
+	rows, err := h.logs.Query(ctx, groups, query, 3*time.Hour, 20)
+	if err != nil {
+		return formatting.FormatAssignmentDetail(assignmentID, nil, "ERROR", "CloudWatch assignment 조회 실패: "+security.SanitizeText(err.Error()))
+	}
+	return formatting.FormatAssignmentDetail(assignmentID, rows, "", "")
+}
+
 func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) string {
 	service, ok := security.NormalizeService(optionString(interaction, "service"))
 	if !ok {
@@ -674,6 +730,30 @@ func (h *Handler) commandTimeout(command string) time.Duration {
 	}
 }
 
+func parseAssignmentSince(value string, now time.Time) (string, time.Duration, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		trimmed = "1h"
+	}
+	switch trimmed {
+	case "30m":
+		return trimmed, 30 * time.Minute, true
+	case "1h":
+		return trimmed, time.Hour, true
+	case "today":
+		kst := time.FixedZone("KST", 9*60*60)
+		nowKST := now.In(kst)
+		start := time.Date(nowKST.Year(), nowKST.Month(), nowKST.Day(), 0, 0, 0, 0, kst)
+		duration := nowKST.Sub(start)
+		if duration <= 0 {
+			duration = time.Minute
+		}
+		return trimmed, duration, true
+	default:
+		return "", 0, false
+	}
+}
+
 func opsSubcommand(interaction Interaction) (ApplicationCommandOpt, bool) {
 	if len(interaction.Data.Options) == 0 {
 		return ApplicationCommandOpt{}, false
@@ -727,7 +807,7 @@ func legacyOpsReplacement(command string) (string, bool) {
 		"dashboard": "/ops dashboard",
 		"service":   "/ops service",
 		"count":     "/ops logs mode:errors",
-		"top":       "/ops logs mode:top",
+		"top":       "/ops logs mode:errors",
 		"slow":      "/ops logs mode:slow",
 		"status":    "/ops dashboard",
 		"health":    "/ops service view:health",

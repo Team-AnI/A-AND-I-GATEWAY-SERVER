@@ -57,32 +57,42 @@ func (e *RegistrationError) Error() string {
 func Definitions() []commandDefinition {
 	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
 	serviceOrAllChoices := choices("all", "gateway", "auth", "report", "online-judge", "post")
+	reportServiceChoices := choices("report")
+	reportOrAllChoices := choices("all", "report")
 	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
+	reportSinceChoices := choices("15m", "30m", "1h")
+	assignmentSinceChoices := choices("30m", "1h", "today")
 	watchIntervalChoices := choices("5m", "10m", "15m")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
 	countTypeChoices := choices("all", "api", "error", "4xx", "5xx")
 	topByChoices := choices("path", "error", "status")
 	serviceViewChoices := choices("summary", "health")
-	logModeChoices := choices("recent", "errors", "top", "slow")
+	logModeChoices := choices("recent", "errors", "slow")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
 	definitions := []commandDefinition{
 		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
 			subcommandOption("dashboard", "전체 서비스 운영 대시보드", []commandOption{
-				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("service", "특정 서비스 상세 상태", []commandOption{
-				stringOption("service", "조회할 서비스", true, serviceChoices),
+				stringOption("service", "조회할 서비스", true, reportServiceChoices),
 				stringOption("view", "상세 보기", false, serviceViewChoices),
-				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("logs", "로그 조회와 집계", []commandOption{
-				stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
+				stringOption("service", "조회할 서비스", true, reportOrAllChoices),
 				stringOption("mode", "조회 모드", false, logModeChoices),
 				stringOption("level", "로그 레벨", false, levelChoices),
-				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
+			}),
+			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{
+				stringOption("since", "조회 기간", false, assignmentSinceChoices),
+			}),
+			subcommandOption("assignment", "특정 과제 이벤트 조회", []commandOption{
+				stringOption("id", "assignmentId", true, nil),
 			}),
 			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
 				stringOption("trace_id", "조회할 traceId", true, nil),
@@ -105,30 +115,38 @@ func DefinitionsWithLegacy(includeLegacy bool) []commandDefinition {
 		return Definitions()
 	}
 	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
-	serviceOrAllChoices := choices("all", "gateway", "auth", "report", "online-judge", "post")
-	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
+	reportServiceChoices := choices("report")
+	reportOrAllChoices := choices("all", "report")
+	reportSinceChoices := choices("15m", "30m", "1h")
+	assignmentSinceChoices := choices("30m", "1h", "today")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
 	serviceViewChoices := choices("summary", "health")
-	logModeChoices := choices("recent", "errors", "top", "slow")
+	logModeChoices := choices("recent", "errors", "slow")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
 	return []commandDefinition{
 		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
 			subcommandOption("dashboard", "전체 서비스 운영 대시보드", []commandOption{
-				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("service", "특정 서비스 상세 상태", []commandOption{
-				stringOption("service", "조회할 서비스", true, serviceChoices),
+				stringOption("service", "조회할 서비스", true, reportServiceChoices),
 				stringOption("view", "상세 보기", false, serviceViewChoices),
-				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("logs", "로그 조회와 집계", []commandOption{
-				stringOption("service", "조회할 서비스", true, serviceOrAllChoices),
+				stringOption("service", "조회할 서비스", true, reportOrAllChoices),
 				stringOption("mode", "조회 모드", false, logModeChoices),
 				stringOption("level", "로그 레벨", false, levelChoices),
-				stringOption("since", "조회 기간", false, sinceChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
+			}),
+			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{
+				stringOption("since", "조회 기간", false, assignmentSinceChoices),
+			}),
+			subcommandOption("assignment", "특정 과제 이벤트 조회", []commandOption{
+				stringOption("id", "assignmentId", true, nil),
 			}),
 			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
 				stringOption("trace_id", "조회할 traceId", true, nil),

@@ -16,9 +16,11 @@ CD workflow는 Gateway 이미지와 monitor-bot 이미지를 같은 ECR reposito
 
 Primary commands:
 
-- `/ops dashboard since:<5m|15m|30m|1h|3h>`: 전체 서비스 health, log, alarm 요약
-- `/ops service service:<service> view:<summary|health> since:<duration>`: 단일 서비스 상태
-- `/ops logs service:<service|all> mode:<recent|errors|top|slow> level:<INFO|WARN|ERROR> since:<duration> limit:<5|10|20>`: 로그 조회와 집계. `limit`은 모든 mode의 결과 개수 제한에 적용한다.
+- `/ops dashboard since:<15m|30m|1h>`: Report 중심 health, log, alarm 요약. 미연동 서비스는 숨기지 않고 `NOT_CONNECTED`로 표시한다.
+- `/ops service service:report view:<summary|health> since:<duration>`: 단일 서비스 상태
+- `/ops logs service:<report|all> mode:<recent|errors|slow> level:<INFO|WARN|ERROR> since:<duration> limit:<5|10|20>`: Report 로그 조회와 집계. `limit`은 모든 mode의 결과 개수 제한에 적용한다.
+- `/ops assignments since:<30m|1h|today>`: Report 과제 관련 이벤트 요약
+- `/ops assignment id:<assignmentId>`: 특정 assignmentId 관련 로그 조회
 - `/ops trace trace_id:<traceId>`: traceId 기준 시간순 조회
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all> service:<optional>`: CloudWatch alarm 조회
 - `/ops storage view:<usage|retention>`: CloudWatch log group stored bytes와 retention 조회
@@ -32,15 +34,31 @@ Primary commands:
 /ops logs service:report mode:errors since:30m limit:10
 /ops logs service:report mode:slow since:30m limit:10
 /ops trace trace_id:<traceId>
+/ops assignments since:1h
 /ops alarms state:ALARM
 ```
 
 역할 분리:
 
-- `/ops service`: 서비스 상태 중심. `summary`, `health`만 제공한다.
-- `/ops logs`: 로그 분석 중심. `recent`, `errors`, `top`, `slow`를 제공한다.
-- `service=all`: CloudWatch 비용 보호를 위해 `/ops logs service:all mode:errors since:<5m|15m|30m>`에서만 허용한다. `recent`, `top`, `slow`는 단일 서비스를 지정한다.
+- `/ops service`: Report 서비스 상태 중심. `summary`, `health`만 제공한다.
+- `/ops logs`: Report 로그 분석 중심. `recent`, `errors`, `slow`를 제공한다.
+- `service=all`: Phase 1에서는 연결된 Report 로그만 조회하며, CloudWatch 비용 보호를 위해 `/ops logs service:all mode:errors since:<15m|30m>`에서만 허용한다. `recent`, `slow`는 `service=report`를 지정한다.
 - Report copy API 상태는 별도 command 없이 `/ops logs service:report mode:errors`, `/ops logs service:report mode:slow`, `/ops trace` 흐름에서 확인한다.
+- 과제 등록/공개/수정 이벤트는 audit DB가 붙기 전까지 Report V2 JSON log 기반의 safe placeholder 조회로 제공한다.
+
+현재 연동 상태:
+
+- `report/web`: `CONNECTED`
+- `auth`: `NOT_CONNECTED`
+- `online-judge`: `NOT_CONNECTED`
+- `tech-blog`: `NOT_CONNECTED`
+- `gateway`: `NOT_CONNECTED`
+
+확장 원칙:
+
+- 각 서비스가 CloudWatch log group, health URL, `service.name` 로그 필드, traceId 정책을 갖추면 다음 task에서 순차 연동한다.
+- 다음 연동 우선순위는 `online-judge` -> `auth` -> `gateway` -> `tech-blog` 순서다.
+- 이번 단계에서는 web/report 외 서비스의 실제 로그 조회나 알림 구현을 추가하지 않는다.
 
 Temporary legacy aliases:
 
@@ -49,7 +67,7 @@ Temporary legacy aliases:
 - `/service` -> `/ops service`
 - `/health` -> `/ops service view:health`
 - `/count` -> `/ops logs mode:errors`
-- `/top` -> `/ops logs mode:top`
+- `/top` -> `/ops logs mode:errors`
 - `/slow` -> `/ops logs mode:slow`
 - `/logs` -> `/ops logs mode:recent`
 - `/errors` -> `/ops logs mode:errors`
@@ -121,8 +139,9 @@ Top issue: auth 5xx x1
 /ops dashboard since:30m
 /ops logs service:all mode:errors since:15m limit:10
 /ops logs service:report mode:errors since:30m limit:10
-/ops logs service:report mode:top since:1h limit:10
-/ops logs service:gateway mode:slow since:30m limit:10
+/ops logs service:report mode:slow since:30m limit:10
+/ops assignments since:1h
+/ops assignment id:<assignmentId>
 /ops alarms state:ALARM
 ```
 

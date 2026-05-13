@@ -130,6 +130,32 @@ func TestBuildDashboardQueriesUseSafeV2Fields(t *testing.T) {
 	}
 }
 
+func TestBuildAssignmentQueriesUseSafeReportFields(t *testing.T) {
+	query := BuildAssignmentsQuery()
+	for _, forbidden := range []string{"request.body", "response.data"} {
+		if strings.Contains(query, forbidden) {
+			t.Fatalf("assignments query selected forbidden field %s: %s", forbidden, query)
+		}
+	}
+	if !strings.Contains(query, `service.name = "report-service"`) || !strings.Contains(query, "/assignments") {
+		t.Fatalf("assignments query should target report assignment events: %s", query)
+	}
+	if !strings.Contains(query, "http.method") {
+		t.Fatalf("assignments query should keep method for operator context: %s", query)
+	}
+
+	detailQuery, err := BuildAssignmentQuery("8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(detailQuery, `service.name = "report-service"`) || !strings.Contains(detailQuery, "8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111") {
+		t.Fatalf("assignment query should target validated assignment id: %s", detailQuery)
+	}
+	if _, err := BuildAssignmentQuery("bad/id"); err == nil {
+		t.Fatal("unsafe assignment id accepted")
+	}
+}
+
 func TestBuildAggregationQueriesAllowAllWithoutRawInput(t *testing.T) {
 	countQuery, err := BuildCountQuery("all", "error")
 	if err != nil {
