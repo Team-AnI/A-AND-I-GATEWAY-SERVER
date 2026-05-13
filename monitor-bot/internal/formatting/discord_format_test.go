@@ -74,6 +74,16 @@ func TestAdminFormattingDoesNotLeakToken(t *testing.T) {
 	}
 }
 
+func TestWithAdminNoticePrependsLegacyNotice(t *testing.T) {
+	got := WithAdminNotice("status: OK", "참고: 이 코스는 레거시/종료 코스로 보입니다.")
+	if !strings.HasPrefix(got, "참고: 이 코스는 레거시/종료 코스로 보입니다.") || !strings.Contains(got, "status: OK") {
+		t.Fatalf("notice should be prepended: %s", got)
+	}
+	if len([]rune(got)) > DiscordMessageLimit {
+		t.Fatal("notice output exceeds Discord limit")
+	}
+}
+
 func TestFormatErrorsAndTraceOmitSensitiveFields(t *testing.T) {
 	rows := []map[string]string{{
 		"@timestamp":           "now",
@@ -144,7 +154,7 @@ func TestFormatDashboardAndAggregations(t *testing.T) {
 		Health:  ServiceStatus{Service: "report", State: "UP", Detail: "UP"},
 		Rows:    rows,
 	}}, nil)
-	for _, expected := range []string{"A&I Service Dashboard", "```txt", "Service", "Health", "Logs", "Err", "report", "OK", "3"} {
+	for _, expected := range []string{"A&I 서비스 운영 대시보드", "```txt", "Service", "Health", "Logs", "Err", "report", "OK", "3", "최근 장애 알림", "상세 확인"} {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("dashboard missing %q: %s", expected, got)
 		}
@@ -199,7 +209,7 @@ func TestFormatDashboardShowsUnknownNoLogsAndNotConfigured(t *testing.T) {
 	}
 }
 
-func TestFormatDashboardShowsNotConnected(t *testing.T) {
+func TestFormatDashboardShowsUnconnectedAsUnknownNoLogs(t *testing.T) {
 	got := FormatDashboard("30m", []DashboardServiceInput{
 		{
 			Service:   "report",
@@ -209,12 +219,29 @@ func TestFormatDashboardShowsNotConnected(t *testing.T) {
 		},
 		{
 			Service:   "auth",
-			Health:    ServiceStatus{Service: "auth", State: "NOT_CONNECTED"},
-			LogStatus: "NOT_CONNECTED",
+			Health:    ServiceStatus{Service: "auth", State: "UNKNOWN", Detail: "not connected in service ops phase"},
+			LogStatus: "NO_LOGS",
 		},
 	}, nil)
-	if !strings.Contains(got, "NCONN") || !strings.Contains(got, "auth") {
-		t.Fatalf("dashboard should display not-connected services: %s", got)
+	if !strings.Contains(got, "auth") || !strings.Contains(got, "UNK") || !strings.Contains(got, "NOLOG") {
+		t.Fatalf("dashboard should display unconnected services as UNK/NOLOG: %s", got)
+	}
+	if !strings.Contains(got, "전체 상태: 🟢 정상") {
+		t.Fatalf("unconnected services alone should not make dashboard warning: %s", got)
+	}
+}
+
+func TestFormatDashboardShowsRecentServiceAlerts(t *testing.T) {
+	got := FormatDashboardWithMetaAndAlerts("30m", []DashboardServiceInput{{
+		Service:   "report",
+		Health:    ServiceStatus{Service: "report", State: "UP"},
+		LogStatus: "OK",
+		Rows:      []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}},
+	}}, nil, time.Date(2026, 5, 13, 17, 10, 0, 0, time.FixedZone("KST", 9*60*60)), 3*time.Minute, []string{"report/web 장애 - 최근 5분 5xx 임계치 초과"})
+	for _, want := range []string{"마지막 업데이트", "업데이트 주기: 3m", "최근 장애 알림", "report/web 장애"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("dashboard missing %q: %s", want, got)
+		}
 	}
 }
 
@@ -383,7 +410,6 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"Assignments use WEB-SERVER admin API first; CloudWatch is fallback only.",
 		"Use /ops service for service state.",
 		"Use /ops logs for log analysis.",
-		"If legacy commands remain, treat them as temporary aliases.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)

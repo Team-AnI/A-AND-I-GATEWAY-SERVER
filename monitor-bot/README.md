@@ -19,13 +19,47 @@ Primary 운영 command는 `/ops`입니다.
 - `/ops storage view:<usage|retention>`
 - `/ops help`
 
-기본 등록은 `/ops`만 대상으로 합니다. 임시 호환이 꼭 필요할 때만 `DISCORD_REGISTER_LEGACY_COMMANDS=true`로 기존 `/dashboard`, `/service`, `/logs`, `/errors`, `/trace`, `/alarm`, `/disk`, `/retention`, `/help` alias를 함께 등록합니다.
+Discord command registration은 `/ops`만 등록합니다. 기존 `/dashboard`, `/service`, `/logs`, `/errors`, `/trace`, `/alarm`, `/disk`, `/retention`, `/help` 같은 top-level legacy command는 제거했습니다.
 
-Phase 1은 web/report server only입니다. `auth`, `online-judge`, `tech-blog`, `gateway`는 아직 실제 조회/알림 연동 대상이 아니며 dashboard에서 `NOT_CONNECTED` 또는 `NOT_CONFIGURED`로 표시합니다.
+Phase 1은 web/report server only입니다. `auth`, `online-judge`, `tech-blog`, `gateway`는 아직 실제 조회/알림 연동 대상이 아니며 dashboard에서 `UNK`/`NOLOG`로 표시합니다.
 
-과제 운영 조회는 WEB-SERVER 기존 관리자 GET API를 우선 사용합니다. 새로 필요한 환경 변수는 `REPORT_ADMIN_BEARER_TOKEN` 하나뿐이며, base URL은 기존 `REPORT_SERVICE_URI`를 재사용합니다. token 값은 raw token만 저장하고, 요청 시 monitor-bot이 `Authorization: Bearer <token>` 형태로 붙입니다. POST/PATCH/DELETE 관리자 API는 호출하지 않습니다.
+과제 운영 조회는 WEB-SERVER 기존 관리자 GET API를 우선 사용합니다. admin 인증 환경 변수는 `OPS_ADMIN_REFRESH_TOKEN` 하나만 사용하며, base URL은 기존 `REPORT_SERVICE_URI`를 재사용합니다. refresh token 값은 raw token만 저장하고, monitor-bot이 `/v2/auth/refresh`만 POST로 호출해 access token을 메모리에서 발급/갱신합니다. 관리자 GET API 요청 시에는 메모리 access token으로 `Authorization: Bearer <accessToken>`와 `Authenticate: Bearer <accessToken>`을 함께 붙입니다. `deviceOS`, `timestamp`는 V2 API 호환용으로 자동 생성하고, `salt`는 현재 관리자 조회에 필요하지 않아 보내지 않습니다. 관리자 POST/PATCH/DELETE API는 호출하지 않습니다.
 
 CloudWatch Logs는 `/ops logs`, `/ops trace`, admin API 실패 시 fallback 확인 용도로만 사용합니다. fallback 응답은 `fallback result, not authoritative`로 표시되며, 과제 존재/공개/제출 상태의 authoritative source는 WEB-SERVER admin API입니다.
+
+## Service Ops Dashboard
+
+Service Ops Dashboard는 명령어를 매번 입력하지 않아도 Discord 운영 채널에서 서비스 상태를 확인하기 위한 자동 대시보드입니다.
+
+- dashboard는 한 메시지만 유지하고, 주기마다 기존 메시지를 edit/update합니다.
+- 정상 상태에서는 새 메시지를 보내지 않습니다.
+- 장애, 5xx 증가, ERROR 로그 증가, health 연속 실패 같은 중요한 상황에서만 새 alert 메시지를 보냅니다.
+- alert는 기존 `DISCORD_ALERT_CHANNEL_ID`로 전송합니다.
+- dashboard는 기존 `DISCORD_DASHBOARD_CHANNEL_ID`를 사용하고, `/watch`로 채널/interval을 덮어쓸 수 있습니다.
+- interval은 기존 `DASHBOARD_REFRESH_INTERVAL_SECONDS`를 재사용합니다.
+- alert cooldown은 기존 `ALERT_COOLDOWN_SECONDS`를 재사용합니다.
+- 중요한 alert에는 `DISCORD_ALLOWED_ROLE_IDS`의 첫 번째 role을 운영자 mention으로 사용합니다. role 값이 없으면 mention 없이 전송합니다.
+
+compact table 형식은 유지합니다.
+
+```text
+Service   Health  Logs    4xx  5xx  Err Last
+gateway   ⚪ UNK   NOLOG     0    0    0 -
+auth      ⚪ UNK   NOLOG     0    0    0 -
+report    🟢 UP    OK        2    0    0 1m
+judge     ⚪ UNK   NOLOG     0    0    0 -
+post      ⚪ UNK   NOLOG     0    0    0 -
+```
+
+현재 실제 자동 감시 대상은 `report/web`입니다. `gateway`, `auth`, `online-judge`, `post`는 service catalog에는 항상 표시하지만, 아직 미연동 상태이므로 `UNK`/`NOLOG`로 표시하고 자동 장애 알림 대상에서 제외합니다. 각 서비스의 CloudWatch log group, health URL, `service.name`, traceId 정책이 준비되면 별도 task/PR에서 순차 연동합니다.
+
+상세 분석은 자동 alert에 raw log를 싣지 않고 slash command로 진행합니다.
+
+```text
+/ops logs service:report mode:errors since:30m limit:10
+/ops logs service:report mode:slow since:30m limit:10
+/ops trace trace_id:<traceId>
+```
 
 ## Assignment Ops Feed
 

@@ -35,12 +35,6 @@ type Handler struct {
 	reportAdmin  *reportadmin.Client
 	httpClient   *http.Client
 	replayWindow time.Duration
-	watcher      Watcher
-}
-
-type Watcher interface {
-	WatchDashboard(ctx context.Context, channelID string, interval time.Duration) (string, error)
-	UnwatchDashboard(ctx context.Context) (string, error)
 }
 
 type Interaction struct {
@@ -51,10 +45,6 @@ type Interaction struct {
 	GuildID       string                 `json:"guild_id"`
 	Member        *Member                `json:"member,omitempty"`
 	Data          ApplicationCommandData `json:"data"`
-}
-
-func (h *Handler) SetWatcher(watcher Watcher) {
-	h.watcher = watcher
 }
 
 type Member struct {
@@ -79,7 +69,7 @@ func NewHandler(cfg config.Config, healthClient *health.Client, logsClient *cw.L
 		health:       healthClient,
 		logs:         logsClient,
 		alarms:       alarmClient,
-		reportAdmin:  reportadmin.NewClient(cfg.ReportServiceURI, cfg.ReportAdminBearerToken, cfg.HealthRequestTimeout),
+		reportAdmin:  reportadmin.NewClientWithRefresh(cfg.ReportServiceURI, cfg.AuthServiceURI, cfg.OpsAdminRefreshToken, cfg.HealthRequestTimeout),
 		httpClient:   &http.Client{Timeout: 10 * time.Second},
 		replayWindow: 5 * time.Minute,
 	}
@@ -162,48 +152,6 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 	switch interaction.Data.Name {
 	case "ops":
 		return h.opsCommand(ctx, interaction)
-	case "dashboard":
-		return legacyNoticeFor("dashboard") + h.dashboardCommand(ctx, interaction)
-	case "watch":
-		return h.watchCommand(ctx, interaction)
-	case "unwatch":
-		return h.unwatchCommand(ctx, interaction)
-	case "service":
-		return legacyNoticeFor("service") + h.serviceCommand(ctx, interaction)
-	case "count":
-		return legacyNoticeFor("count") + h.countCommand(ctx, interaction)
-	case "top":
-		return legacyNoticeFor("top") + h.topCommand(ctx, interaction)
-	case "slow":
-		return legacyNoticeFor("slow") + h.slowCommand(ctx, interaction)
-	case "status":
-		return legacyNoticeFor("status") + formatting.FormatStatus(h.health.CheckAll(ctx, serviceOrder))
-	case "health":
-		notice := legacyNoticeFor("health")
-		service, ok := security.NormalizeService(optionString(interaction, "service"))
-		if !ok {
-			return "지원하지 않는 service입니다."
-		}
-		return notice + formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)})
-	case "logs":
-		return legacyNoticeFor("logs") + h.logsCommand(ctx, interaction)
-	case "errors":
-		return legacyNoticeFor("errors") + h.errorsCommand(ctx, interaction)
-	case "trace":
-		return legacyNoticeFor("trace") + h.traceCommand(ctx, interaction)
-	case "alarm":
-		notice := legacyNoticeFor("alarm")
-		names, err := h.alarms.AlarmNames(ctx)
-		if err != nil {
-			return "CloudWatch alarm 조회 실패: " + security.SanitizeText(err.Error())
-		}
-		return notice + formatting.FormatAlarms(names)
-	case "disk":
-		return legacyNoticeFor("disk") + h.retentionCommand(ctx, "💽 CloudWatch Log Usage")
-	case "retention":
-		return legacyNoticeFor("retention") + h.retentionCommand(ctx, "📦 CloudWatch Log Retention")
-	case "help":
-		return formatting.HelpText()
 	default:
 		return "지원하지 않는 명령어입니다. /ops help 를 확인하세요."
 	}
@@ -253,33 +201,6 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 	default:
 		return "지원하지 않는 /ops subcommand입니다. /ops help 를 확인하세요."
 	}
-}
-
-func (h *Handler) watchCommand(ctx context.Context, interaction Interaction) string {
-	if h.watcher == nil {
-		return "dashboard watcher가 설정되어 있지 않습니다."
-	}
-	channelID := optionString(interaction, "channel")
-	interval, ok := parseWatchInterval(optionString(interaction, "interval"))
-	if !ok {
-		return "지원하지 않는 interval 값입니다."
-	}
-	message, err := h.watcher.WatchDashboard(ctx, channelID, interval)
-	if err != nil {
-		return "dashboard watch 설정 실패: " + security.SanitizeText(err.Error())
-	}
-	return message
-}
-
-func (h *Handler) unwatchCommand(ctx context.Context, interaction Interaction) string {
-	if h.watcher == nil {
-		return "dashboard watcher가 설정되어 있지 않습니다."
-	}
-	message, err := h.watcher.UnwatchDashboard(ctx)
-	if err != nil {
-		return "dashboard watch 해제 실패: " + security.SanitizeText(err.Error())
-	}
-	return message
 }
 
 func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
@@ -407,11 +328,6 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 	if !ok {
 		return "지원하지 않는 since 값입니다."
 	}
-	healthRows := h.health.CheckAll(ctx, serviceOrder)
-	healthByService := make(map[string]formatting.ServiceStatus, len(healthRows))
-	for _, row := range healthRows {
-		healthByService[row.Service] = row
-	}
 	alarmNames, err := h.alarms.AlarmNames(ctx)
 	if err != nil {
 		alarmNames = nil
@@ -425,15 +341,16 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 		input := formatting.DashboardServiceInput{
 			Service:     service.Name,
 			DisplayName: service.DisplayName,
-			Health:      healthByService[service.Name],
+			Health:      formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected in service ops phase"},
 			Alarm:       serviceHasAlarm(service.Name, alarmNames),
 		}
 		if service.Name != "report" {
-			input.Health = formatting.ServiceStatus{Service: service.Name, State: "NOT_CONNECTED", Detail: "not connected in Phase 1"}
-			input.LogStatus = "NOT_CONNECTED"
+			input.Health = formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected in Phase 1"}
+			input.LogStatus = "NO_LOGS"
 			inputs = append(inputs, input)
 			continue
 		}
+		input.Health = h.health.Check(ctx, service.Name)
 		if !service.Enabled {
 			input.Health = formatting.ServiceStatus{Service: service.Name, State: "NOT_CONFIGURED", Detail: "health URL and log group are not configured"}
 			input.LogStatus = "NOT_CONFIGURED"
@@ -617,15 +534,16 @@ func (h *Handler) assignmentsCommand(ctx context.Context, interaction Interactio
 	if !ok {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, "", "지원하지 않는 status 값입니다.")
 	}
+	notice := h.courseManualNotice(ctx, courseSlug)
 	assignments, err := h.reportAdmin.ListAssignments(ctx, courseSlug)
 	if err != nil {
 		status := reportadmin.StatusOf(err)
 		if !shouldUseCloudWatchFallback(status) {
-			return formatting.FormatAdminError(status, courseSlug, "", err.Error())
+			return formatting.WithAdminNotice(formatting.FormatAdminError(status, courseSlug, "", err.Error()), notice)
 		}
 		return h.assignmentLogFallback(ctx, "Assignments", courseSlug, "", status, err)
 	}
-	return formatting.FormatAdminAssignments(courseSlug, statusFilter, reportadmin.FilterAssignments(assignments, statusFilter))
+	return formatting.WithAdminNotice(formatting.FormatAdminAssignments(courseSlug, statusFilter, reportadmin.FilterAssignments(assignments, statusFilter)), notice)
 }
 
 func (h *Handler) assignmentsAllCommand(ctx context.Context, interaction Interaction) string {
@@ -681,6 +599,7 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 	if !security.ValidateAssignmentID(assignmentID) {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
 	}
+	notice := h.courseManualNotice(ctx, courseSlug)
 	assignment, err := h.reportAdmin.GetAssignment(ctx, courseSlug, assignmentID)
 	if err != nil {
 		status := reportadmin.StatusOf(err)
@@ -689,11 +608,11 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 			if status == reportadmin.StatusNoData {
 				finding = "no matching records"
 			}
-			return formatting.FormatAdminError(status, courseSlug, assignmentID, finding)
+			return formatting.WithAdminNotice(formatting.FormatAdminError(status, courseSlug, assignmentID, finding), notice)
 		}
 		return h.assignmentLogFallback(ctx, "Assignment", courseSlug, assignmentID, status, err)
 	}
-	return formatting.FormatAdminAssignment(courseSlug, assignment)
+	return formatting.WithAdminNotice(formatting.FormatAdminAssignment(courseSlug, assignment), notice)
 }
 
 func (h *Handler) assignmentCheckCommand(ctx context.Context, interaction Interaction) string {
@@ -705,6 +624,7 @@ func (h *Handler) assignmentCheckCommand(ctx context.Context, interaction Intera
 	if !security.ValidateAssignmentID(assignmentID) {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
 	}
+	notice := h.courseManualNotice(ctx, courseSlug)
 	assignment, err := h.reportAdmin.GetAssignment(ctx, courseSlug, assignmentID)
 	if err != nil {
 		status := reportadmin.StatusOf(err)
@@ -713,11 +633,11 @@ func (h *Handler) assignmentCheckCommand(ctx context.Context, interaction Intera
 			if status == reportadmin.StatusNoData {
 				finding = "no matching records"
 			}
-			return formatting.FormatAdminError(status, courseSlug, assignmentID, finding)
+			return formatting.WithAdminNotice(formatting.FormatAdminError(status, courseSlug, assignmentID, finding), notice)
 		}
 		return h.assignmentLogFallback(ctx, "Assignment check", courseSlug, assignmentID, status, err)
 	}
-	return formatting.FormatAdminAssignmentCheck(courseSlug, assignment, reportadmin.CheckAssignment(assignment))
+	return formatting.WithAdminNotice(formatting.FormatAdminAssignmentCheck(courseSlug, assignment, reportadmin.CheckAssignment(assignment)), notice)
 }
 
 func (h *Handler) submissionsCommand(ctx context.Context, interaction Interaction) string {
@@ -729,6 +649,7 @@ func (h *Handler) submissionsCommand(ctx context.Context, interaction Interactio
 	if !security.ValidateAssignmentID(assignmentID) {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
 	}
+	notice := h.courseManualNotice(ctx, courseSlug)
 	summary, err := h.reportAdmin.SubmissionStatuses(ctx, courseSlug, assignmentID)
 	if err != nil {
 		status := reportadmin.StatusOf(err)
@@ -737,11 +658,11 @@ func (h *Handler) submissionsCommand(ctx context.Context, interaction Interactio
 			if status == reportadmin.StatusNoData {
 				finding = "no matching records"
 			}
-			return formatting.FormatAdminError(status, courseSlug, assignmentID, finding)
+			return formatting.WithAdminNotice(formatting.FormatAdminError(status, courseSlug, assignmentID, finding), notice)
 		}
 		return h.assignmentLogFallback(ctx, "Submissions", courseSlug, assignmentID, status, err)
 	}
-	return formatting.FormatAdminSubmissions(courseSlug, assignmentID, summary)
+	return formatting.WithAdminNotice(formatting.FormatAdminSubmissions(courseSlug, assignmentID, summary), notice)
 }
 
 func (h *Handler) assignmentLogFallback(ctx context.Context, title, courseSlug, assignmentID, status string, cause error) string {
@@ -768,6 +689,43 @@ func shouldUseCloudWatchFallback(status string) bool {
 	default:
 		return false
 	}
+}
+
+func (h *Handler) courseManualNotice(ctx context.Context, courseSlug string) string {
+	courses, err := h.reportAdmin.ListCourses(ctx)
+	if err != nil {
+		return ""
+	}
+	now := time.Now()
+	for _, course := range courses {
+		if course.Slug != courseSlug {
+			continue
+		}
+		switch classifyManualCourse(course, now) {
+		case "LEGACY":
+			return "참고: 이 코스는 레거시/종료 코스로 보입니다. 자동 feed 대상은 아니며 수동 조회 결과입니다."
+		case "UNKNOWN":
+			return "참고: 이 코스는 운영 상태 판단 필드가 부족해 UNKNOWN으로 보입니다. 자동 이벤트 발송은 제한됩니다."
+		default:
+			return ""
+		}
+	}
+	return ""
+}
+
+func classifyManualCourse(course reportadmin.Course, now time.Time) string {
+	status := strings.ToUpper(strings.TrimSpace(course.Status))
+	switch status {
+	case "CLOSED", "ARCHIVED", "ENDED", "LEGACY", "INACTIVE":
+		return "LEGACY"
+	}
+	if end, ok := parseRFC3339(course.EndAt); ok && now.After(end) {
+		return "LEGACY"
+	}
+	if strings.TrimSpace(course.Status) == "" && strings.TrimSpace(course.StartAt) == "" && strings.TrimSpace(course.EndAt) == "" {
+		return "UNKNOWN"
+	}
+	return "ACTIVE"
 }
 
 func filterAssignmentsByWindow(assignments []reportadmin.Assignment, window string) []reportadmin.Assignment {
@@ -956,38 +914,6 @@ func optionStringFromOptions(options []ApplicationCommandOpt, name string) strin
 	return optionString(Interaction{Data: ApplicationCommandData{Options: options}}, name)
 }
 
-func legacyNotice(replacement string) string {
-	return "Tip: use `" + replacement + "`\n\n"
-}
-
-func legacyNoticeFor(command string) string {
-	replacement, ok := legacyOpsReplacement(command)
-	if !ok {
-		return ""
-	}
-	return legacyNotice(replacement)
-}
-
-func legacyOpsReplacement(command string) (string, bool) {
-	replacements := map[string]string{
-		"dashboard": "/ops dashboard",
-		"service":   "/ops service",
-		"count":     "/ops logs mode:errors",
-		"top":       "/ops logs mode:errors",
-		"slow":      "/ops logs mode:slow",
-		"status":    "/ops dashboard",
-		"health":    "/ops service view:health",
-		"logs":      "/ops logs mode:recent",
-		"errors":    "/ops logs mode:errors",
-		"trace":     "/ops trace",
-		"alarm":     "/ops alarms",
-		"disk":      "/ops storage view:usage",
-		"retention": "/ops storage view:retention",
-	}
-	replacement, ok := replacements[command]
-	return replacement, ok
-}
-
 func withNext(content string, commands ...string) string {
 	visible := make([]string, 0, 3)
 	for _, command := range commands {
@@ -1072,19 +998,6 @@ func filterAlarmNames(service string, alarmNames []string) []string {
 		}
 	}
 	return filtered
-}
-
-func parseWatchInterval(value string) (time.Duration, bool) {
-	switch strings.TrimSpace(value) {
-	case "5m":
-		return 5 * time.Minute, true
-	case "10m":
-		return 10 * time.Minute, true
-	case "15m":
-		return 15 * time.Minute, true
-	default:
-		return 0, false
-	}
 }
 
 func optionString(interaction Interaction, name string) string {

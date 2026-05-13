@@ -149,13 +149,23 @@ func FormatDashboard(since string, services []DashboardServiceInput, alarmNames 
 }
 
 func FormatDashboardWithMeta(since string, services []DashboardServiceInput, alarmNames []string, updatedAt time.Time, nextRefresh time.Duration) string {
+	return FormatDashboardWithMetaAndAlerts(since, services, alarmNames, updatedAt, nextRefresh, nil)
+}
+
+func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceInput, alarmNames []string, updatedAt time.Time, nextRefresh time.Duration, recentAlerts []string) string {
 	var b strings.Builder
 	statusIcon := "🟢"
+	overall := "정상"
 	topIssue := "none"
 	for _, service := range services {
+		if isUnconnectedDashboardInput(service) {
+			continue
+		}
 		summary := SummarizeRows(service.Rows)
-		if service.Alarm || strings.EqualFold(service.Health.State, "DOWN") || summary.FiveXX > 0 || service.LogStatus == "LOG_QUERY_FAILED" {
+		logStatus := strings.ToUpper(strings.TrimSpace(service.LogStatus))
+		if service.Alarm || strings.EqualFold(service.Health.State, "DOWN") || summary.FiveXX > 0 || isDashboardLogFailure(logStatus) {
 			statusIcon = "🔴"
+			overall = "장애"
 			if topIssue == "none" {
 				topIssue = fmt.Sprintf("%s 5xx x%d", service.Service, summary.FiveXX)
 			}
@@ -163,18 +173,18 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 		}
 		if strings.EqualFold(service.Health.State, "UNKNOWN") || strings.EqualFold(service.Health.State, "NOT_CONNECTED") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NO_LOGS" || service.LogStatus == "NOT_CONFIGURED" || service.LogStatus == "NOT_CONNECTED" {
 			statusIcon = "🟡"
+			overall = "주의"
 		}
 	}
-	fmt.Fprintf(&b, "%s A&I Service Dashboard - last %s\n\n", statusIcon, since)
+	fmt.Fprintf(&b, "📌 A&I 서비스 운영 대시보드\n\n")
 	if !updatedAt.IsZero() {
-		fmt.Fprintf(&b, "Last updated: %s KST\n", updatedAt.In(time.FixedZone("KST", 9*60*60)).Format("2006-01-02 15:04:05"))
+		fmt.Fprintf(&b, "마지막 업데이트: %s KST\n", updatedAt.In(time.FixedZone("KST", 9*60*60)).Format("2006-01-02 15:04:05"))
 	}
+	fmt.Fprintf(&b, "전체 상태: %s %s\n", statusIcon, overall)
 	if nextRefresh > 0 {
-		fmt.Fprintf(&b, "Next refresh: %s\n", formatDurationCompact(nextRefresh))
+		fmt.Fprintf(&b, "업데이트 주기: %s\n", formatDurationCompact(nextRefresh))
 	}
-	if !updatedAt.IsZero() || nextRefresh > 0 {
-		b.WriteByte('\n')
-	}
+	fmt.Fprintf(&b, "조회 범위: 최근 %s\n\n", since)
 	b.WriteString("```txt\n")
 	b.WriteString(dashboardTableHeader())
 	for _, service := range services {
@@ -205,15 +215,33 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 		)
 	}
 	b.WriteString("```")
-	b.WriteString("\nAlarms: ")
+	b.WriteString("\nCloudWatch 알람: ")
 	if len(alarmNames) == 0 {
 		b.WriteString("none")
 	} else {
 		b.WriteString(strings.Join(alarmNames, ", "))
 	}
 	b.WriteString("\nTop issue: " + topIssue)
-	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops logs service:report mode:slow since:" + since + "`")
+	b.WriteString("\n\n최근 장애 알림\n")
+	if len(recentAlerts) == 0 {
+		b.WriteString("1. 없음\n")
+	} else {
+		for i, alert := range recentAlerts {
+			if i >= 5 {
+				break
+			}
+			fmt.Fprintf(&b, "%d. %s\n", i+1, security.SanitizeText(alert))
+		}
+	}
+	b.WriteString("\n상세 확인\n")
+	b.WriteString("/ops logs service:report mode:errors since:" + since + " limit:10\n")
+	b.WriteString("/ops logs service:report mode:slow since:" + since + " limit:10\n")
+	b.WriteString("/ops trace trace_id:<traceId>")
 	return TruncateDiscordMessage(b.String())
+}
+
+func isUnconnectedDashboardInput(service DashboardServiceInput) bool {
+	return strings.Contains(strings.ToLower(service.Health.Detail), "not connected") && strings.EqualFold(service.LogStatus, "NO_LOGS")
 }
 
 func dashboardTableHeader() string {
@@ -535,6 +563,14 @@ func FormatAdminError(status, courseSlug, assignmentID, finding string) string {
 	return TruncateDiscordMessage(b.String())
 }
 
+func WithAdminNotice(content, notice string) string {
+	trimmed := strings.TrimSpace(security.SanitizeText(notice))
+	if trimmed == "" {
+		return content
+	}
+	return TruncateDiscordMessage(trimmed + "\n\n" + content)
+}
+
 func FormatCloudWatchFallback(title string, rows []map[string]string) string {
 	content := FormatLogRows(title+" fallback result, not authoritative", rows)
 	if len(rows) == 0 {
@@ -605,8 +641,7 @@ func HelpText() string {
 
 Use /ops service for service state.
 Use /ops logs for log analysis.
-Assignments use WEB-SERVER admin API first; CloudWatch is fallback only.
-If legacy commands remain, treat them as temporary aliases.`)
+Assignments use WEB-SERVER admin API first; CloudWatch is fallback only.`)
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {
@@ -684,7 +719,7 @@ func dashboardIcon(healthState, logStatus string, summary LogSummary, alarm bool
 		return "⚫"
 	case logStatus == "NOT_CONNECTED" || healthState == "NOT_CONNECTED":
 		return "⚫"
-	case alarm || healthState == "DOWN" || logStatus == "LOG_QUERY_FAILED" || summary.FiveXX > 0:
+	case alarm || healthState == "DOWN" || isDashboardLogFailure(logStatus) || summary.FiveXX > 0:
 		return "🔴"
 	case logStatus == "NO_LOGS":
 		return "⚪"
@@ -707,8 +742,23 @@ func formatLogStatusShort(status string) string {
 		return "NCONN"
 	case "LOG_QUERY_FAILED":
 		return "QFAIL"
+	case "ERR":
+		return "ERR"
+	case "AUTH":
+		return "AUTH"
+	case "TIMEOUT":
+		return "TOUT"
 	default:
 		return "UNK"
+	}
+}
+
+func isDashboardLogFailure(status string) bool {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "LOG_QUERY_FAILED", "ERR", "AUTH", "TIMEOUT":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -753,14 +803,14 @@ func dashboardServiceName(service, displayName string) string {
 }
 
 func dashboardNumber(value int, logStatus string) string {
-	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "LOG_QUERY_FAILED" {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || isDashboardLogFailure(logStatus) {
 		return "-"
 	}
 	return strconv.Itoa(value)
 }
 
 func dashboardLastLogShort(value, logStatus string) string {
-	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "NO_LOGS" || logStatus == "LOG_QUERY_FAILED" {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "NO_LOGS" || isDashboardLogFailure(logStatus) {
 		return "-"
 	}
 	return formatLastLogCompact(value)

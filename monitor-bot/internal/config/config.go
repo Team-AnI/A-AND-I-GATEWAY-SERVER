@@ -8,31 +8,31 @@ import (
 )
 
 type Config struct {
-	HTTPPort                      string
-	DiscordApplicationID          string
-	DiscordPublicKey              string
-	DiscordBotToken               string
-	DiscordAllowedGuildID         string
-	DiscordAllowedRoleIDs         []string
-	DiscordRegisterCommands       bool
-	DiscordRegisterLegacyCommands bool
-	DiscordCommandScope           string
-	DiscordEphemeralResponses     bool
-	StrictStartupChecks           bool
-	AWSRegion                     string
-	CloudWatchQueryTimeout        time.Duration
-	CloudWatchQueryPollInterval   time.Duration
-	CloudWatchQueryLimit          int
-	CloudWatchMaxLogGroups        int
-	HealthRequestTimeout          time.Duration
-	ReportServiceURI              string
-	ReportAdminBearerToken        string
-	LogGroups                     map[string]string
-	HealthURLs                    map[string]string
-	ServiceRegistry               []ServiceDefinition
-	StatePath                     string
-	Dashboard                     DashboardConfig
-	Alert                         AlertConfig
+	HTTPPort                    string
+	DiscordApplicationID        string
+	DiscordPublicKey            string
+	DiscordBotToken             string
+	DiscordAllowedGuildID       string
+	DiscordAllowedRoleIDs       []string
+	DiscordRegisterCommands     bool
+	DiscordCommandScope         string
+	DiscordEphemeralResponses   bool
+	StrictStartupChecks         bool
+	AWSRegion                   string
+	CloudWatchQueryTimeout      time.Duration
+	CloudWatchQueryPollInterval time.Duration
+	CloudWatchQueryLimit        int
+	CloudWatchMaxLogGroups      int
+	HealthRequestTimeout        time.Duration
+	AuthServiceURI              string
+	ReportServiceURI            string
+	OpsAdminRefreshToken        string
+	LogGroups                   map[string]string
+	HealthURLs                  map[string]string
+	ServiceRegistry             []ServiceDefinition
+	StatePath                   string
+	Dashboard                   DashboardConfig
+	Alert                       AlertConfig
 }
 
 type ServiceDefinition struct {
@@ -81,29 +81,29 @@ func Load() Config {
 		"post":         env("HEALTH_URL_POST", ""),
 	}
 	return Config{
-		HTTPPort:                      env("BOT_HTTP_PORT", "8088"),
-		DiscordApplicationID:          env("DISCORD_APPLICATION_ID", ""),
-		DiscordPublicKey:              env("DISCORD_PUBLIC_KEY", ""),
-		DiscordBotToken:               env("DISCORD_BOT_TOKEN", ""),
-		DiscordAllowedGuildID:         env("DISCORD_ALLOWED_GUILD_ID", ""),
-		DiscordAllowedRoleIDs:         splitCSV(env("DISCORD_ALLOWED_ROLE_IDS", "")),
-		DiscordRegisterCommands:       envBool("DISCORD_REGISTER_COMMANDS", false),
-		DiscordRegisterLegacyCommands: envBool("DISCORD_REGISTER_LEGACY_COMMANDS", false),
-		DiscordCommandScope:           env("DISCORD_COMMAND_SCOPE", "guild"),
-		DiscordEphemeralResponses:     envBool("DISCORD_EPHEMERAL_RESPONSES", true),
-		StrictStartupChecks:           envBool("STRICT_STARTUP_CHECKS", false),
-		AWSRegion:                     env("AWS_REGION", "ap-northeast-2"),
-		CloudWatchQueryTimeout:        time.Duration(envInt("CLOUDWATCH_QUERY_TIMEOUT_SECONDS", 8)) * time.Second,
-		CloudWatchQueryPollInterval:   time.Duration(envInt("CLOUDWATCH_QUERY_POLL_INTERVAL_MS", 500)) * time.Millisecond,
-		CloudWatchQueryLimit:          envInt("CLOUDWATCH_QUERY_LIMIT", 20),
-		CloudWatchMaxLogGroups:        envInt("CLOUDWATCH_MAX_LOG_GROUPS_PER_QUERY", 5),
-		HealthRequestTimeout:          time.Duration(envInt("HEALTH_REQUEST_TIMEOUT_MS", 2000)) * time.Millisecond,
-		ReportServiceURI:              env("REPORT_SERVICE_URI", ""),
-		ReportAdminBearerToken:        env("REPORT_ADMIN_BEARER_TOKEN", ""),
-		LogGroups:                     logGroups,
-		HealthURLs:                    healthURLs,
-		ServiceRegistry:               BuildServiceRegistry(logGroups, healthURLs),
-		StatePath:                     env("MONITOR_BOT_STATE_PATH", "/var/lib/monitor-bot/state.json"),
+		HTTPPort:                    env("BOT_HTTP_PORT", "8088"),
+		DiscordApplicationID:        env("DISCORD_APPLICATION_ID", ""),
+		DiscordPublicKey:            env("DISCORD_PUBLIC_KEY", ""),
+		DiscordBotToken:             env("DISCORD_BOT_TOKEN", ""),
+		DiscordAllowedGuildID:       env("DISCORD_ALLOWED_GUILD_ID", ""),
+		DiscordAllowedRoleIDs:       splitCSV(env("DISCORD_ALLOWED_ROLE_IDS", "")),
+		DiscordRegisterCommands:     envBool("DISCORD_REGISTER_COMMANDS", false),
+		DiscordCommandScope:         env("DISCORD_COMMAND_SCOPE", "guild"),
+		DiscordEphemeralResponses:   envBool("DISCORD_EPHEMERAL_RESPONSES", true),
+		StrictStartupChecks:         envBool("STRICT_STARTUP_CHECKS", false),
+		AWSRegion:                   env("AWS_REGION", "ap-northeast-2"),
+		CloudWatchQueryTimeout:      time.Duration(envInt("CLOUDWATCH_QUERY_TIMEOUT_SECONDS", 8)) * time.Second,
+		CloudWatchQueryPollInterval: time.Duration(envInt("CLOUDWATCH_QUERY_POLL_INTERVAL_MS", 500)) * time.Millisecond,
+		CloudWatchQueryLimit:        envInt("CLOUDWATCH_QUERY_LIMIT", 20),
+		CloudWatchMaxLogGroups:      envInt("CLOUDWATCH_MAX_LOG_GROUPS_PER_QUERY", 5),
+		HealthRequestTimeout:        time.Duration(envInt("HEALTH_REQUEST_TIMEOUT_MS", 2000)) * time.Millisecond,
+		AuthServiceURI:              env("AUTH_SERVICE_URI", ""),
+		ReportServiceURI:            env("REPORT_SERVICE_URI", ""),
+		OpsAdminRefreshToken:        env("OPS_ADMIN_REFRESH_TOKEN", ""),
+		LogGroups:                   logGroups,
+		HealthURLs:                  healthURLs,
+		ServiceRegistry:             BuildServiceRegistry(logGroups, healthURLs),
+		StatePath:                   env("MONITOR_BOT_STATE_PATH", "/var/lib/monitor-bot/state.json"),
 		Dashboard: DashboardConfig{
 			Enabled:              envBool("DASHBOARD_ENABLED", false),
 			ChannelID:            env("DISCORD_DASHBOARD_CHANNEL_ID", ""),
@@ -160,6 +160,15 @@ func env(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func envFirst(keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func envBool(key string, fallback bool) bool {

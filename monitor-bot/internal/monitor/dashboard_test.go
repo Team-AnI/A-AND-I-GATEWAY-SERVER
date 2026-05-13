@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,17 +33,21 @@ func (f fakeAlarms) AlarmNames(context.Context) ([]string, error) {
 }
 
 type fakeDiscord struct {
-	sends int
-	edits int
+	sends        int
+	edits        int
+	sentContents []string
+	editContents []string
 }
 
-func (f *fakeDiscord) SendChannelMessage(context.Context, *http.Client, string, string, string) (discord.Message, error) {
+func (f *fakeDiscord) SendChannelMessage(_ context.Context, _ *http.Client, _ string, _ string, content string) (discord.Message, error) {
 	f.sends++
+	f.sentContents = append(f.sentContents, content)
 	return discord.Message{ID: "created-message"}, nil
 }
 
-func (f *fakeDiscord) EditChannelMessage(context.Context, *http.Client, string, string, string, string) error {
+func (f *fakeDiscord) EditChannelMessage(_ context.Context, _ *http.Client, _ string, _ string, _ string, content string) error {
 	f.edits++
+	f.editContents = append(f.editContents, content)
 	return nil
 }
 
@@ -68,9 +73,12 @@ func TestRefreshDashboardEditsExistingMessage(t *testing.T) {
 	if fakeDiscord.edits != 1 || fakeDiscord.sends != 0 {
 		t.Fatalf("expected edit only, edits=%d sends=%d", fakeDiscord.edits, fakeDiscord.sends)
 	}
+	if !strings.Contains(fakeDiscord.editContents[0], "A&I 서비스 운영 대시보드") || !strings.Contains(fakeDiscord.editContents[0], "```txt") {
+		t.Fatalf("dashboard should use Korean compact table: %s", fakeDiscord.editContents[0])
+	}
 }
 
-func TestDashboardRespectsMaxCloudWatchQueriesPerTick(t *testing.T) {
+func TestDashboardQueriesOnlyConnectedServiceInPhaseOne(t *testing.T) {
 	logs := &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}}}
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {
@@ -81,8 +89,8 @@ func TestDashboardRespectsMaxCloudWatchQueriesPerTick(t *testing.T) {
 
 	_ = service.RenderDashboard(context.Background(), "30m", 5*time.Minute)
 
-	if logs.calls != 2 {
-		t.Fatalf("expected 2 CloudWatch queries, got %d", logs.calls)
+	if logs.calls != 1 {
+		t.Fatalf("expected only report CloudWatch query, got %d", logs.calls)
 	}
 }
 

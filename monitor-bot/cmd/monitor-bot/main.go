@@ -92,7 +92,6 @@ func main() {
 	}
 	monitorService := monitor.NewService(cfg, healthClient, logsClient, alarmClient, stateStore, httpClient)
 	readyInteractionHandler := discord.NewHandler(cfg, healthClient, logsClient, alarmClient)
-	readyInteractionHandler.SetWatcher(monitorService)
 	interactionHandler.Set(readyInteractionHandler)
 	monitorService.Start(context.Background())
 
@@ -186,7 +185,7 @@ func registerCommandsIfEnabled(ctx context.Context, cfg config.Config, client *h
 		}
 		return nil
 	}
-	if err := discord.RegisterGuildCommandsWithLegacy(ctx, client, cfg.DiscordBotToken, cfg.DiscordApplicationID, cfg.DiscordAllowedGuildID, cfg.DiscordRegisterLegacyCommands); err != nil {
+	if err := discord.RegisterGuildCommands(ctx, client, cfg.DiscordBotToken, cfg.DiscordApplicationID, cfg.DiscordAllowedGuildID); err != nil {
 		status.SetDiscordRegistration(false, err)
 		log.Printf("discord command registration failed: %v", err)
 		if cfg.StrictStartupChecks {

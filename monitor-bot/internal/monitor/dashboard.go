@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -64,7 +65,7 @@ func NewService(cfg config.Config, healthClient *health.Client, logs LogsQueryer
 		health:  healthClient,
 		logs:    logs,
 		alarms:  alarms,
-		report:  reportadmin.NewClient(cfg.ReportServiceURI, cfg.ReportAdminBearerToken, cfg.HealthRequestTimeout),
+		report:  reportadmin.NewClientWithRefresh(cfg.ReportServiceURI, cfg.AuthServiceURI, cfg.OpsAdminRefreshToken, cfg.HealthRequestTimeout),
 		store:   store,
 		client:  client,
 		discord: discordAPI{},
@@ -110,6 +111,7 @@ func (s *Service) UnwatchDashboard(ctx context.Context) (string, error) {
 }
 
 func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interval time.Duration) string {
+	snapshot := s.store.Snapshot()
 	since, ok := security.ParseSince(sinceLabel)
 	if !ok {
 		sinceLabel = "30m"
@@ -120,7 +122,7 @@ func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interv
 		alarmNames = nil
 	}
 	inputs := s.dashboardInputs(ctx, since, alarmNames, s.cfg.Dashboard.MaxCloudWatchQueries)
-	return formatting.FormatDashboardWithMeta(sinceLabel, inputs, alarmNames, time.Now(), interval)
+	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, time.Now(), interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5))
 }
 
 func (s *Service) RefreshDashboard(ctx context.Context) error {
@@ -177,24 +179,22 @@ func (s *Service) dashboardInputs(ctx context.Context, since time.Duration, alar
 	if len(registry) == 0 {
 		registry = config.BuildServiceRegistry(s.cfg.LogGroups, s.cfg.HealthURLs)
 	}
-	serviceNames := make([]string, 0, len(registry))
-	for _, service := range registry {
-		serviceNames = append(serviceNames, service.Name)
-	}
-	healthRows := s.health.CheckAll(ctx, serviceNames)
-	healthByService := make(map[string]formatting.ServiceStatus, len(healthRows))
-	for _, row := range healthRows {
-		healthByService[row.Service] = row
-	}
 	queries := newQueryBudget(maxQueries)
 	inputs := make([]formatting.DashboardServiceInput, 0, len(registry))
 	for _, service := range registry {
 		input := formatting.DashboardServiceInput{
 			Service:     service.Name,
 			DisplayName: service.DisplayName,
-			Health:      healthByService[service.Name],
+			Health:      formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected in service ops phase"},
 			Alarm:       serviceHasAlarm(service.Name, alarmNames),
 		}
+		if !isServiceOpsConnected(service) {
+			input.LogStatus = "NO_LOGS"
+			input.Alarm = false
+			inputs = append(inputs, input)
+			continue
+		}
+		input.Health = s.health.Check(ctx, service.Name)
 		if !service.Enabled {
 			input.Health = formatting.ServiceStatus{Service: service.Name, State: "NOT_CONFIGURED", Detail: "health URL and log group are not configured"}
 			input.LogStatus = "NOT_CONFIGURED"
@@ -219,7 +219,7 @@ func (s *Service) dashboardInputs(ctx context.Context, since time.Duration, alar
 		}
 		rows, err := s.logs.Query(ctx, []string{service.LogGroup}, query, since, 100)
 		if err != nil {
-			input.LogStatus = "LOG_QUERY_FAILED"
+			input.LogStatus = logStatusFromQueryError(err)
 			inputs = append(inputs, input)
 			continue
 		}
@@ -232,6 +232,49 @@ func (s *Service) dashboardInputs(ctx context.Context, since time.Duration, alar
 		inputs = append(inputs, input)
 	}
 	return inputs
+}
+
+func isServiceOpsConnected(service config.ServiceDefinition) bool {
+	return service.Name == "report"
+}
+
+func logStatusFromQueryError(err error) string {
+	if err == nil {
+		return "OK"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "TIMEOUT"
+	}
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "accessdenied"), strings.Contains(message, "unauthorized"), strings.Contains(message, "forbidden"), strings.Contains(message, "unrecognizedclient"), strings.Contains(message, "expiredtoken"):
+		return "AUTH"
+	case strings.Contains(message, "timeout"), strings.Contains(message, "deadline exceeded"):
+		return "TIMEOUT"
+	default:
+		return "ERR"
+	}
+}
+
+func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int) []string {
+	if limit <= 0 {
+		limit = 5
+	}
+	lines := make([]string, 0, limit)
+	for _, event := range events {
+		if len(lines) >= limit {
+			break
+		}
+		summary := strings.TrimSpace(event.Summary)
+		if summary == "" {
+			summary = strings.TrimSpace(event.Service + " " + event.AlertType)
+		}
+		if !event.CreatedAt.IsZero() {
+			summary = fmt.Sprintf("%s (%s)", summary, event.CreatedAt.In(time.FixedZone("KST", 9*60*60)).Format("15:04"))
+		}
+		lines = append(lines, summary)
+	}
+	return lines
 }
 
 func (s *Service) dashboardInterval(snapshot state.Data) time.Duration {

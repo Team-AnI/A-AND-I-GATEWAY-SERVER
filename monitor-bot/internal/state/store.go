@@ -27,6 +27,7 @@ type Data struct {
 	AssignmentEventFingerprints   map[string]AlertState         `json:"assignmentEventFingerprints,omitempty"`
 	RecentAssignmentEvents        []AssignmentEventState        `json:"recentAssignmentEvents,omitempty"`
 	Alerts                        map[string]AlertState         `json:"alertFingerprints,omitempty"`
+	RecentServiceAlerts           []ServiceAlertEventState      `json:"recentServiceAlerts,omitempty"`
 	HealthDownCounts              map[string]int                `json:"healthDownCounts,omitempty"`
 	LastAlertSentAt               time.Time                     `json:"lastAlertSentAt,omitempty"`
 }
@@ -65,6 +66,15 @@ type AlertState struct {
 	Active     bool      `json:"active"`
 	LastSentAt time.Time `json:"lastSentAt,omitempty"`
 	ResolvedAt time.Time `json:"resolvedAt,omitempty"`
+}
+
+type ServiceAlertEventState struct {
+	Fingerprint string    `json:"fingerprint,omitempty"`
+	Severity    string    `json:"severity,omitempty"`
+	Service     string    `json:"service,omitempty"`
+	AlertType   string    `json:"alertType,omitempty"`
+	Summary     string    `json:"summary,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
 }
 
 func NewStore(path string) *Store {
@@ -135,6 +145,9 @@ func normalize(data Data) Data {
 	if len(data.RecentAssignmentEvents) > 20 {
 		data.RecentAssignmentEvents = data.RecentAssignmentEvents[:20]
 	}
+	if len(data.RecentServiceAlerts) > 20 {
+		data.RecentServiceAlerts = data.RecentServiceAlerts[:20]
+	}
 	return data
 }
 
@@ -154,6 +167,7 @@ func cloneData(data Data) Data {
 		cloned.AssignmentEventFingerprints[key] = value
 	}
 	cloned.RecentAssignmentEvents = append([]AssignmentEventState(nil), data.RecentAssignmentEvents...)
+	cloned.RecentServiceAlerts = append([]ServiceAlertEventState(nil), data.RecentServiceAlerts...)
 	cloned.HealthDownCounts = make(map[string]int, len(data.HealthDownCounts))
 	for key, value := range data.HealthDownCounts {
 		cloned.HealthDownCounts[key] = value

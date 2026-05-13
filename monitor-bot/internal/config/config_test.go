@@ -20,34 +20,29 @@ func TestReportLogGroupOverride(t *testing.T) {
 	}
 }
 
-func TestLegacyCommandRegistrationDefaultsToDisabled(t *testing.T) {
-	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "")
-
-	cfg := Load()
-	if cfg.DiscordRegisterLegacyCommands {
-		t.Fatal("legacy command registration should default to disabled")
-	}
-}
-
-func TestLegacyCommandRegistrationCanBeEnabledTemporarily(t *testing.T) {
-	t.Setenv("DISCORD_REGISTER_LEGACY_COMMANDS", "true")
-
-	cfg := Load()
-	if !cfg.DiscordRegisterLegacyCommands {
-		t.Fatal("DISCORD_REGISTER_LEGACY_COMMANDS=true should enable temporary legacy registration")
-	}
-}
-
-func TestReportAdminConfigReusesExistingServiceURIAndToken(t *testing.T) {
+func TestOpsAdminConfigReusesExistingServiceURIAndToken(t *testing.T) {
+	t.Setenv("AUTH_SERVICE_URI", "http://auth.internal:8080")
 	t.Setenv("REPORT_SERVICE_URI", "http://report.internal:8080")
-	t.Setenv("REPORT_ADMIN_BEARER_TOKEN", "admin-token")
+	t.Setenv("OPS_ADMIN_REFRESH_TOKEN", "refresh-token")
 
 	cfg := Load()
+	if cfg.AuthServiceURI != "http://auth.internal:8080" {
+		t.Fatalf("AUTH_SERVICE_URI was not loaded: %q", cfg.AuthServiceURI)
+	}
 	if cfg.ReportServiceURI != "http://report.internal:8080" {
 		t.Fatalf("REPORT_SERVICE_URI was not loaded: %q", cfg.ReportServiceURI)
 	}
-	if cfg.ReportAdminBearerToken != "admin-token" {
-		t.Fatal("REPORT_ADMIN_BEARER_TOKEN was not loaded")
+	if cfg.OpsAdminRefreshToken != "refresh-token" {
+		t.Fatal("OPS_ADMIN_REFRESH_TOKEN was not loaded")
+	}
+}
+
+func TestOpsAdminConfigUsesRefreshTokenOnly(t *testing.T) {
+	t.Setenv("OPS_ADMIN_REFRESH_TOKEN", "refresh-token")
+
+	cfg := Load()
+	if cfg.OpsAdminRefreshToken != "refresh-token" {
+		t.Fatal("OPS_ADMIN_REFRESH_TOKEN was not preferred")
 	}
 }
 

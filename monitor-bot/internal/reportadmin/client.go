@@ -1,6 +1,7 @@
 package reportadmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
@@ -30,10 +32,15 @@ const (
 	StatusInvalidResponse = "INVALID_RESPONSE"
 )
 
+var kst = time.FixedZone("KST", 9*60*60)
+
 type Client struct {
-	baseURL    string
-	token      string
-	httpClient *http.Client
+	baseURL      string
+	authURL      string
+	token        string
+	refreshToken string
+	httpClient   *http.Client
+	mu           sync.Mutex
 }
 
 type APIError struct {
@@ -93,24 +100,38 @@ type AssignmentCheck struct {
 	Findings []string
 }
 
-func NewClient(baseURL, token string, timeout time.Duration) *Client {
+func NewClient(baseURL, refreshToken string, timeout time.Duration) *Client {
+	return NewClientWithRefresh(baseURL, "", refreshToken, timeout)
+}
+
+func NewClientWithRefresh(baseURL, authURL, refreshToken string, timeout time.Duration) *Client {
 	if timeout <= 0 {
 		timeout = 2 * time.Second
 	}
 	return &Client{
-		baseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
-		token:   strings.TrimSpace(token),
+		baseURL:      strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		authURL:      strings.TrimRight(strings.TrimSpace(authURL), "/"),
+		refreshToken: strings.TrimSpace(refreshToken),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
 	}
 }
 
-func NewClientWithHTTP(baseURL, token string, client *http.Client) *Client {
+func NewClientWithHTTP(baseURL, refreshToken string, client *http.Client) *Client {
+	return NewClientWithRefreshAndHTTP(baseURL, "", refreshToken, client)
+}
+
+func NewClientWithRefreshAndHTTP(baseURL, authURL, refreshToken string, client *http.Client) *Client {
 	if client == nil {
 		client = &http.Client{Timeout: 2 * time.Second}
 	}
-	return &Client{baseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"), token: strings.TrimSpace(token), httpClient: client}
+	return &Client{
+		baseURL:      strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		authURL:      strings.TrimRight(strings.TrimSpace(authURL), "/"),
+		refreshToken: strings.TrimSpace(refreshToken),
+		httpClient:   client,
+	}
 }
 
 func (c *Client) ListCourses(ctx context.Context) ([]Course, error) {
@@ -234,17 +255,33 @@ func FilterAssignments(assignments []Assignment, status string) []Assignment {
 }
 
 func (c *Client) get(ctx context.Context, endpoint string) (any, error) {
-	if c.token == "" {
-		return nil, apiError(StatusConfigError, 0, "REPORT_ADMIN_BEARER_TOKEN is required")
+	if c.currentRefreshToken() == "" {
+		return nil, apiError(StatusConfigError, 0, "OPS_ADMIN_REFRESH_TOKEN is required")
 	}
 	if c.baseURL == "" {
 		return nil, apiError(StatusConfigError, 0, "REPORT_SERVICE_URI is required")
 	}
+	if c.accessToken() == "" {
+		if err := c.refreshAccessToken(ctx); err != nil {
+			return nil, err
+		}
+	}
+	decoded, err := c.doGet(ctx, endpoint)
+	if StatusOf(err) == StatusAuthError && c.currentRefreshToken() != "" {
+		if refreshErr := c.refreshAccessToken(ctx); refreshErr != nil {
+			return nil, refreshErr
+		}
+		return c.doGet(ctx, endpoint)
+	}
+	return decoded, err
+}
+
+func (c *Client) doGet(ctx context.Context, endpoint string) (any, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+endpoint, nil)
 	if err != nil {
 		return nil, apiError(StatusConfigError, 0, err.Error())
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	c.applyV2Headers(req)
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -280,8 +317,116 @@ func (c *Client) get(ctx context.Context, endpoint string) (any, error) {
 	return decoded, nil
 }
 
+func (c *Client) applyV2Headers(req *http.Request) {
+	token := c.accessToken()
+	bearer := "Bearer " + token
+	timestamp := time.Now().In(kst).Format(time.RFC3339)
+
+	req.Header.Set("Authorization", bearer)
+	req.Header.Set("Authenticate", bearer)
+	req.Header.Set("deviceOS", "monitor-bot")
+	req.Header.Set("timestamp", timestamp)
+}
+
+func (c *Client) accessToken() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.token
+}
+
+func (c *Client) currentRefreshToken() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.refreshToken
+}
+
+func (c *Client) refreshAccessToken(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.refreshToken == "" {
+		return apiError(StatusConfigError, 0, "OPS_ADMIN_REFRESH_TOKEN is required for token refresh")
+	}
+	if c.authURL == "" {
+		return apiError(StatusConfigError, 0, "AUTH_SERVICE_URI is required for token refresh")
+	}
+	body, err := json.Marshal(map[string]string{"refreshToken": c.refreshToken})
+	if err != nil {
+		return apiError(StatusInvalidResponse, 0, err.Error())
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.authURL+"/v2/auth/refresh", bytes.NewReader(body))
+	if err != nil {
+		return apiError(StatusConfigError, 0, err.Error())
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("deviceOS", "monitor-bot")
+	req.Header.Set("timestamp", time.Now().In(kst).Format(time.RFC3339))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if isTimeout(err) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return apiError(StatusTimeout, 0, "token refresh timeout")
+		}
+		return apiError(StatusUpstreamError, 0, err.Error())
+	}
+	defer resp.Body.Close()
+	responseBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+	if readErr != nil {
+		return apiError(StatusInvalidResponse, resp.StatusCode, readErr.Error())
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return apiError(StatusAuthError, resp.StatusCode, "token refresh unauthorized")
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return apiError(StatusForbidden, resp.StatusCode, "token refresh forbidden")
+	}
+	if resp.StatusCode >= 500 {
+		return apiError(StatusUpstreamError, resp.StatusCode, "token refresh returned 5xx")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return apiError(StatusUpstreamError, resp.StatusCode, "token refresh returned non-success")
+	}
+	var decoded any
+	if err := json.Unmarshal(responseBody, &decoded); err != nil {
+		return apiError(StatusInvalidResponse, resp.StatusCode, "invalid token refresh JSON response")
+	}
+	accessToken := findStringByKey(decoded, "accessToken")
+	if accessToken == "" {
+		return apiError(StatusInvalidResponse, resp.StatusCode, "token refresh response missing accessToken")
+	}
+	c.token = accessToken
+	if nextRefresh := findStringByKey(decoded, "refreshToken"); nextRefresh != "" {
+		c.refreshToken = nextRefresh
+	}
+	return nil
+}
+
 func apiError(status string, statusCode int, message string) *APIError {
 	return &APIError{Status: status, StatusCode: statusCode, Message: security.SanitizeText(message)}
+}
+
+func findStringByKey(value any, key string) string {
+	switch typed := value.(type) {
+	case map[string]any:
+		for candidateKey, candidateValue := range typed {
+			if strings.EqualFold(candidateKey, key) {
+				if text, ok := candidateValue.(string); ok {
+					return strings.TrimSpace(text)
+				}
+			}
+			if found := findStringByKey(candidateValue, key); found != "" {
+				return found
+			}
+		}
+	case []any:
+		for _, item := range typed {
+			if found := findStringByKey(item, key); found != "" {
+				return found
+			}
+		}
+	}
+	return ""
 }
 
 func StatusOf(err error) string {

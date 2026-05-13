@@ -21,22 +21,6 @@ func TestDefinitionsPlaceRequiredOptionsBeforeOptionalOptions(t *testing.T) {
 	}
 }
 
-func TestErrorsCommandPlacesSinceBeforeOptionalService(t *testing.T) {
-	command, err := findCommand("errors")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(command.Options) != 2 {
-		t.Fatalf("unexpected errors option count: %d", len(command.Options))
-	}
-	if command.Options[0].Name != "since" || !command.Options[0].Required {
-		t.Fatalf("first errors option must be required since: %#v", command.Options[0])
-	}
-	if command.Options[1].Name != "service" || command.Options[1].Required {
-		t.Fatalf("second errors option must be optional service: %#v", command.Options[1])
-	}
-}
-
 func TestCommandDefinitionsAreDiscordCompatible(t *testing.T) {
 	commandNamePattern := regexp.MustCompile(`^[a-z0-9_-]+$`)
 	optionNamePattern := regexp.MustCompile(`^[a-z0-9_-]+$`)
@@ -142,10 +126,10 @@ func TestOpsLogsLimitChoices(t *testing.T) {
 	}
 }
 
-func TestDefinitionsCanExcludeLegacyCommands(t *testing.T) {
-	commands := DefinitionsWithLegacy(false)
+func TestDefinitionsOnlyRegisterOpsCommand(t *testing.T) {
+	commands := Definitions()
 	if len(commands) != 1 || commands[0].Name != "ops" {
-		t.Fatalf("expected only /ops when legacy registration is disabled: %#v", commands)
+		t.Fatalf("expected only /ops to be registered: %#v", commands)
 	}
 }
 
@@ -174,34 +158,6 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 	want := []string{"recent", "errors", "slow"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops logs mode choices = %#v, want %#v", got, want)
-	}
-}
-
-func TestLegacyCommandsDelegateToOpsHandlers(t *testing.T) {
-	cases := map[string]string{
-		"dashboard": "/ops dashboard",
-		"service":   "/ops service",
-		"logs":      "/ops logs mode:recent",
-		"errors":    "/ops logs mode:errors",
-		"trace":     "/ops trace",
-		"alarm":     "/ops alarms",
-		"disk":      "/ops storage view:usage",
-		"retention": "/ops storage view:retention",
-	}
-	for legacy, want := range cases {
-		got, ok := legacyOpsReplacement(legacy)
-		if !ok || got != want {
-			t.Fatalf("legacy command %q replacement mismatch: got %q ok=%v want %q", legacy, got, ok, want)
-		}
-	}
-}
-
-func TestLegacyCopyStatusIsNotRegistered(t *testing.T) {
-	if _, err := findCommand("copy-status"); err == nil {
-		t.Fatal("legacy /copy-status should not be registered")
-	}
-	if replacement, ok := legacyOpsReplacement("copy-status"); ok {
-		t.Fatalf("legacy copy-status should not have an ops replacement, got %q", replacement)
 	}
 }
 
@@ -253,6 +209,19 @@ func TestFilterAssignmentsByWindow(t *testing.T) {
 	}
 }
 
+func TestClassifyManualCourseNoticeStates(t *testing.T) {
+	now := time.Date(2026, 5, 13, 12, 0, 0, 0, time.UTC)
+	if got := classifyManualCourse(reportadmin.Course{Status: "ARCHIVED"}, now); got != "LEGACY" {
+		t.Fatalf("archived manual course = %s", got)
+	}
+	if got := classifyManualCourse(reportadmin.Course{}, now); got != "UNKNOWN" {
+		t.Fatalf("empty manual course = %s", got)
+	}
+	if got := classifyManualCourse(reportadmin.Course{Status: "OPEN"}, now); got != "ACTIVE" {
+		t.Fatalf("open manual course = %s", got)
+	}
+}
+
 func TestRegisterGuildCommandsReturns400BodyWithoutToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bot test-bot-token" {
@@ -263,7 +232,7 @@ func TestRegisterGuildCommandsReturns400BodyWithoutToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := registerGuildCommands(context.Background(), server.Client(), "test-bot-token", "app-id", "guild-id", server.URL, true)
+	err := registerGuildCommands(context.Background(), server.Client(), "test-bot-token", "app-id", "guild-id", server.URL)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -317,7 +286,7 @@ func TestRegisterGuildCommands429DoesNotRetryImmediately(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := registerGuildCommands(context.Background(), server.Client(), "bot-token", "app-id", "guild-id", server.URL, true)
+	err := registerGuildCommands(context.Background(), server.Client(), "bot-token", "app-id", "guild-id", server.URL)
 	if err == nil {
 		t.Fatal("expected error")
 	}
