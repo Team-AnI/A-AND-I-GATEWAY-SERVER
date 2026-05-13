@@ -78,6 +78,57 @@ func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 	}
 }
 
+func TestConfigureAlertUsesStateRoleAndBlocksUnsafeRole(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "role", "everyone"); err == nil {
+		t.Fatal("@everyone-like role should be rejected")
+	}
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "channel", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "role", "1234567890"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "on", ""); err != nil {
+		t.Fatal(err)
+	}
+	status := service.FormatAlertStatus()
+	for _, want := range []string{"enabled: true", "<#channel-1>", "<@&1234567890>"} {
+		if !strings.Contains(status, want) {
+			t.Fatalf("alert status missing %q: %s", want, status)
+		}
+	}
+	if got := service.alertRoleMention(); !strings.Contains(got, "<@&1234567890>") {
+		t.Fatalf("state role should be used for mention: %q", got)
+	}
+}
+
+func TestAlertTestSendsWithoutConfiguredRole(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.DiscordAllowedRoleIDs = nil
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "test", ""); err != nil {
+		t.Fatal(err)
+	}
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("expected one test alert, got %d", fakeDiscord.sends)
+	}
+	if strings.Contains(fakeDiscord.sentContents[0], "@everyone") || strings.Contains(fakeDiscord.sentContents[0], "@here") {
+		t.Fatalf("unsafe mention leaked: %s", fakeDiscord.sentContents[0])
+	}
+}
+
 func TestResolvedAlertStateTransition(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {

@@ -33,13 +33,25 @@ type Handler struct {
 	logs         *cw.LogsClient
 	alarms       *cw.AlarmClient
 	reportAdmin  *reportadmin.Client
+	ops          OpsController
 	httpClient   *http.Client
 	replayWindow time.Duration
+}
+
+type OpsController interface {
+	WatchDashboardScope(ctx context.Context, channelID, scope, service string, interval time.Duration) (string, error)
+	UnwatchDashboardScope(ctx context.Context, scope, service string) (string, error)
+	ListDashboardWatches(ctx context.Context) string
+	ConfigureAlert(ctx context.Context, channelID, action, roleID string) (string, error)
+	WatchLogFeed(ctx context.Context, channelID, service, mode, since string, interval time.Duration, limit int) (string, error)
+	UnwatchLogFeed(ctx context.Context, service, mode string) (string, error)
+	ListLogFeeds(ctx context.Context) string
 }
 
 type Interaction struct {
 	ID            string                 `json:"id"`
 	ApplicationID string                 `json:"application_id"`
+	ChannelID     string                 `json:"channel_id"`
 	Type          int                    `json:"type"`
 	Token         string                 `json:"token"`
 	GuildID       string                 `json:"guild_id"`
@@ -73,6 +85,10 @@ func NewHandler(cfg config.Config, healthClient *health.Client, logsClient *cw.L
 		httpClient:   &http.Client{Timeout: 10 * time.Second},
 		replayWindow: 5 * time.Minute,
 	}
+}
+
+func (h *Handler) SetOpsController(controller OpsController) {
+	h.ops = controller
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +185,20 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 		return h.opsServiceCommand(ctx, subcommand)
 	case "logs":
 		return h.opsLogsCommand(ctx, subcommand)
+	case "watch":
+		return h.opsWatchCommand(ctx, interaction, subcommand)
+	case "unwatch":
+		return h.opsUnwatchCommand(ctx, subcommand)
+	case "watches":
+		return h.opsWatchesCommand(ctx)
+	case "alert":
+		return h.opsAlertCommand(ctx, interaction, subcommand)
+	case "logs-watch":
+		return h.opsLogsWatchCommand(ctx, interaction, subcommand)
+	case "logs-unwatch":
+		return h.opsLogsUnwatchCommand(ctx, subcommand)
+	case "logs-watches":
+		return h.opsLogsWatchesCommand(ctx)
 	case "assignments":
 		return h.assignmentsCommand(ctx, interactionForCommand("assignments", withDefaultOptions(subcommand.Options, map[string]string{"status": "all"})))
 	case "assignments-all":
@@ -201,6 +231,98 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 	default:
 		return "지원하지 않는 /ops subcommand입니다. /ops help 를 확인하세요."
 	}
+}
+
+func (h *Handler) opsWatchCommand(ctx context.Context, interaction Interaction, subcommand ApplicationCommandOpt) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	scope := optionStringFromOptions(subcommand.Options, "scope")
+	service := optionStringFromOptions(subcommand.Options, "service")
+	interval, ok := parseOpsInterval(optionStringFromOptions(subcommand.Options, "interval"), 5*time.Minute)
+	if !ok {
+		return "지원하지 않는 interval입니다. 1m, 3m, 5m, 10m, 15m 중 하나를 사용하세요."
+	}
+	result, err := h.ops.WatchDashboardScope(ctx, interaction.ChannelID, scope, service, interval)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
+}
+
+func (h *Handler) opsUnwatchCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	scope := optionStringFromOptions(subcommand.Options, "scope")
+	service := optionStringFromOptions(subcommand.Options, "service")
+	result, err := h.ops.UnwatchDashboardScope(ctx, scope, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
+}
+
+func (h *Handler) opsWatchesCommand(ctx context.Context) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	return h.ops.ListDashboardWatches(ctx)
+}
+
+func (h *Handler) opsAlertCommand(ctx context.Context, interaction Interaction, subcommand ApplicationCommandOpt) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	action := optionStringFromOptions(subcommand.Options, "action")
+	roleID := optionStringFromOptions(subcommand.Options, "role")
+	result, err := h.ops.ConfigureAlert(ctx, interaction.ChannelID, action, roleID)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
+}
+
+func (h *Handler) opsLogsWatchCommand(ctx context.Context, interaction Interaction, subcommand ApplicationCommandOpt) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	service := optionStringFromOptions(subcommand.Options, "service")
+	mode := optionStringFromOptions(subcommand.Options, "mode")
+	since := optionStringFromOptions(subcommand.Options, "since")
+	if since == "" {
+		since = "30m"
+	}
+	interval, ok := parseOpsInterval(optionStringFromOptions(subcommand.Options, "interval"), 5*time.Minute)
+	if !ok {
+		return "지원하지 않는 interval입니다. 3m, 5m, 10m, 15m 중 하나를 사용하세요."
+	}
+	limit := parseOpsLimit(optionStringFromOptions(subcommand.Options, "limit"), 10)
+	result, err := h.ops.WatchLogFeed(ctx, interaction.ChannelID, service, mode, since, interval, limit)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
+}
+
+func (h *Handler) opsLogsUnwatchCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	service := optionStringFromOptions(subcommand.Options, "service")
+	mode := optionStringFromOptions(subcommand.Options, "mode")
+	result, err := h.ops.UnwatchLogFeed(ctx, service, mode)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
+}
+
+func (h *Handler) opsLogsWatchesCommand(ctx context.Context) string {
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	return h.ops.ListLogFeeds(ctx)
 }
 
 func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
@@ -522,7 +644,7 @@ func (h *Handler) slowCommand(ctx context.Context, interaction Interaction) stri
 	if err != nil {
 		return "CloudWatch slow 조회 실패: " + security.SanitizeText(err.Error())
 	}
-	return formatting.FormatSlowSummary(service, sinceLabel, rows)
+	return appendTraceNext(formatting.FormatSlowSummary(service, sinceLabel, rows), rows)
 }
 
 func (h *Handler) assignmentsCommand(ctx context.Context, interaction Interaction) string {
@@ -809,7 +931,7 @@ func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) stri
 	if err != nil {
 		return "CloudWatch logs 조회 실패: " + security.SanitizeText(err.Error())
 	}
-	return formatting.FormatLogRows("최근 로그", rows)
+	return appendTraceNext(formatting.FormatLogRows("최근 로그", rows), rows)
 }
 
 func (h *Handler) errorsCommand(ctx context.Context, interaction Interaction) string {
@@ -831,7 +953,7 @@ func (h *Handler) errorsCommand(ctx context.Context, interaction Interaction) st
 	if err != nil {
 		return "CloudWatch errors 조회 실패: " + security.SanitizeText(err.Error())
 	}
-	return formatting.FormatErrors(rows)
+	return appendTraceNext(formatting.FormatErrors(rows), rows)
 }
 
 func (h *Handler) traceCommand(ctx context.Context, interaction Interaction) string {
@@ -928,14 +1050,40 @@ func withNext(content string, commands ...string) string {
 		return content
 	}
 	var b strings.Builder
-	b.WriteString(strings.TrimRight(content, "\n"))
-	b.WriteString("\n\nNext:\n")
+	trimmed := strings.TrimRight(content, "\n")
+	b.WriteString(trimmed)
+	if strings.Contains(trimmed, "\n\nNext:\n") {
+		b.WriteByte('\n')
+	} else {
+		b.WriteString("\n\nNext:\n")
+	}
 	for _, command := range visible {
 		b.WriteString("- `")
 		b.WriteString(command)
 		b.WriteString("`\n")
 	}
 	return formatting.TruncateDiscordMessage(b.String())
+}
+
+func appendTraceNext(content string, rows []map[string]string) string {
+	traceID := firstTraceID(rows)
+	if traceID == "" {
+		return content
+	}
+	return withNext(content, "/ops trace trace_id:"+traceID)
+}
+
+func firstTraceID(rows []map[string]string) string {
+	for _, row := range rows {
+		traceID := strings.TrimSpace(row["trace.traceId"])
+		if traceID == "" {
+			traceID = strings.TrimSpace(row["traceId"])
+		}
+		if traceID != "" && security.ValidateTraceID(traceID) {
+			return traceID
+		}
+	}
+	return ""
 }
 
 func parseOpsLimit(value string, fallback int) int {
@@ -955,6 +1103,28 @@ func parseOpsLimit(value string, fallback int) int {
 		}
 	default:
 		return 20
+	}
+}
+
+func parseOpsInterval(value string, fallback time.Duration) (time.Duration, bool) {
+	switch strings.TrimSpace(value) {
+	case "":
+		if fallback <= 0 {
+			return 5 * time.Minute, true
+		}
+		return fallback, true
+	case "1m":
+		return time.Minute, true
+	case "3m":
+		return 3 * time.Minute, true
+	case "5m":
+		return 5 * time.Minute, true
+	case "10m":
+		return 10 * time.Minute, true
+	case "15m":
+		return 15 * time.Minute, true
+	default:
+		return 0, false
 	}
 }
 

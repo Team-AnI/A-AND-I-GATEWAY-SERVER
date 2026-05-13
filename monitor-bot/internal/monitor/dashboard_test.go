@@ -94,6 +94,50 @@ func TestDashboardQueriesOnlyConnectedServiceInPhaseOne(t *testing.T) {
 	}
 }
 
+func TestWatchDashboardScopeStoresServiceWatch(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	fakeDiscord := &fakeDiscord{}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API"}}})
+	service.discord = fakeDiscord
+
+	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "report", 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result, "서비스 대시보드 등록 완료") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+	snapshot := store.Snapshot()
+	watch := snapshot.ServiceDashboards["service:report"]
+	if watch.ChannelID != "channel-1" || watch.MessageID == "" || watch.IntervalSec != 300 {
+		t.Fatalf("service watch was not stored: %#v", watch)
+	}
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("expected dashboard message creation, got sends=%d", fakeDiscord.sends)
+	}
+}
+
+func TestWatchDashboardRejectsUnconnectedService(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "auth", 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result, "NOT_CONNECTED") {
+		t.Fatalf("expected NOT_CONNECTED guidance: %s", result)
+	}
+	if _, ok := store.Snapshot().ServiceDashboards["service:auth"]; ok {
+		t.Fatal("unconnected service watch should not be stored")
+	}
+}
+
 func newTestService(store *state.Store, logs *fakeLogs) *Service {
 	logGroups := map[string]string{
 		"gateway":      "/gateway",

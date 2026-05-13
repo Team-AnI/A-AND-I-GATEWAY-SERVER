@@ -49,7 +49,11 @@ func (s *Service) alertLoop(ctx context.Context) {
 }
 
 func (s *Service) PollAlerts(ctx context.Context) error {
-	if strings.TrimSpace(s.cfg.Alert.ChannelID) == "" {
+	if !s.alertsEnabled() {
+		return nil
+	}
+	channelID := s.alertChannelID()
+	if strings.TrimSpace(channelID) == "" {
 		return nil
 	}
 	active := make(map[string]Alert)
@@ -180,7 +184,7 @@ func makeAlert(service, alertType string, rows []map[string]string, summary form
 func (s *Service) shouldSendAlert(fingerprint string, now time.Time) bool {
 	snapshot := s.store.Snapshot()
 	existing := snapshot.Alerts[fingerprint]
-	cooldown := s.cfg.Alert.Cooldown
+	cooldown := s.alertCooldown(snapshot)
 	if cooldown <= 0 {
 		cooldown = 15 * time.Minute
 	}
@@ -195,6 +199,7 @@ func (s *Service) markAlertSent(alert Alert, active bool) error {
 		if !active {
 			stateAlert.ResolvedAt = time.Now()
 		} else {
+			data.ServiceAlerts.LastSent[alert.Fingerprint] = time.Now()
 			data.RecentServiceAlerts = append([]state.ServiceAlertEventState{{
 				Fingerprint: alert.Fingerprint,
 				Severity:    alert.Severity,
@@ -219,7 +224,7 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 			continue
 		}
 		content := fmt.Sprintf("🟢 [PROD] alert resolved\n\nFingerprint: `%s`", fingerprint)
-		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.cfg.Alert.ChannelID, content); err != nil {
+		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content); err != nil {
 			log.Printf("send resolved alert failed: %v", err)
 			continue
 		}
@@ -229,11 +234,16 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 
 func (s *Service) sendAlert(ctx context.Context, alert Alert) error {
 	content := formatAlert(alert, s.alertRoleMention())
-	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.cfg.Alert.ChannelID, content)
+	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content)
 	return err
 }
 
 func (s *Service) alertRoleMention() string {
+	if roleID := strings.TrimSpace(s.store.Snapshot().ServiceAlerts.RoleID); roleID != "" {
+		if validRoleID(roleID) {
+			return "<@&" + roleID + ">\n"
+		}
+	}
 	if len(s.cfg.DiscordAllowedRoleIDs) == 0 {
 		return ""
 	}
@@ -242,6 +252,142 @@ func (s *Service) alertRoleMention() string {
 		return ""
 	}
 	return "<@&" + roleID + ">\n"
+}
+
+func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID string) (string, error) {
+	action = strings.TrimSpace(action)
+	switch action {
+	case "channel":
+		if strings.TrimSpace(channelID) == "" {
+			return "", fmt.Errorf("channel id is required")
+		}
+		if err := s.store.Update(func(data *state.Data) {
+			data.ServiceAlerts.ChannelID = strings.TrimSpace(channelID)
+		}); err != nil {
+			return "", err
+		}
+		return "✅ 서비스 알림 채널을 현재 채널로 설정했습니다.", nil
+	case "role":
+		roleID = normalizeRoleID(roleID)
+		if !validRoleID(roleID) {
+			return "", fmt.Errorf("올바른 role을 선택하세요. @everyone, @here는 허용하지 않습니다")
+		}
+		if err := s.store.Update(func(data *state.Data) {
+			data.ServiceAlerts.RoleID = roleID
+		}); err != nil {
+			return "", err
+		}
+		return "✅ 서비스 알림 role을 <@&" + roleID + "> 로 설정했습니다.", nil
+	case "role-clear":
+		if err := s.store.Update(func(data *state.Data) {
+			data.ServiceAlerts.RoleID = ""
+		}); err != nil {
+			return "", err
+		}
+		return "✅ 서비스 알림 role mention을 제거했습니다.", nil
+	case "on":
+		if err := s.store.Update(func(data *state.Data) {
+			data.ServiceAlerts.Enabled = true
+			if data.ServiceAlerts.CooldownSec <= 0 {
+				data.ServiceAlerts.CooldownSec = int(s.defaultAlertCooldown().Seconds())
+			}
+		}); err != nil {
+			return "", err
+		}
+		return "✅ 서비스 알림을 켰습니다.", nil
+	case "off":
+		if err := s.store.Update(func(data *state.Data) {
+			data.ServiceAlerts.Enabled = false
+		}); err != nil {
+			return "", err
+		}
+		return "✅ 서비스 알림을 껐습니다.", nil
+	case "status":
+		return s.FormatAlertStatus(), nil
+	case "test":
+		target := s.alertChannelID()
+		if target == "" {
+			target = strings.TrimSpace(channelID)
+		}
+		if target == "" {
+			return "", fmt.Errorf("alert channel이 설정되지 않았습니다. 먼저 /ops alert action:channel 을 실행하세요")
+		}
+		content := s.alertRoleMention() + "✅ 서비스 알림 테스트\n\n서비스 운영 알림 채널 설정이 정상입니다.\n이 메시지는 테스트입니다."
+		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, target, content); err != nil {
+			return "", err
+		}
+		return "✅ 테스트 알림을 전송했습니다.", nil
+	default:
+		return "", fmt.Errorf("지원하지 않는 alert action입니다")
+	}
+}
+
+func (s *Service) FormatAlertStatus() string {
+	snapshot := s.store.Snapshot()
+	enabled := s.alertsEnabled()
+	channelID := s.alertChannelID()
+	roleID := strings.TrimSpace(snapshot.ServiceAlerts.RoleID)
+	cooldown := s.alertCooldown(snapshot)
+	var b strings.Builder
+	b.WriteString("🔔 Service Alert Status\n\n")
+	fmt.Fprintf(&b, "enabled: %t\n", enabled)
+	if channelID == "" {
+		b.WriteString("channel: NOT_CONFIGURED\n")
+	} else {
+		fmt.Fprintf(&b, "channel: <#%s>\n", channelID)
+	}
+	if roleID == "" {
+		b.WriteString("role mention: none\n")
+	} else {
+		fmt.Fprintf(&b, "role mention: <@&%s>\n", roleID)
+	}
+	fmt.Fprintf(&b, "cooldown: %s\n", formatKoreanDuration(cooldown))
+	fmt.Fprintf(&b, "recent alert fingerprints: %d", len(snapshot.ServiceAlerts.LastSent))
+	return formatting.TruncateDiscordMessage(b.String())
+}
+
+func (s *Service) alertsEnabled() bool {
+	snapshot := s.store.Snapshot()
+	return snapshot.ServiceAlerts.Enabled || s.cfg.Alert.Enabled || strings.TrimSpace(s.cfg.Alert.ChannelID) != ""
+}
+
+func (s *Service) alertChannelID() string {
+	snapshot := s.store.Snapshot()
+	return strings.TrimSpace(firstNonEmpty(snapshot.ServiceAlerts.ChannelID, s.cfg.Alert.ChannelID))
+}
+
+func (s *Service) alertCooldown(snapshot state.Data) time.Duration {
+	if snapshot.ServiceAlerts.CooldownSec > 0 {
+		return time.Duration(snapshot.ServiceAlerts.CooldownSec) * time.Second
+	}
+	return s.defaultAlertCooldown()
+}
+
+func (s *Service) defaultAlertCooldown() time.Duration {
+	if s.cfg.Alert.Cooldown > 0 {
+		return s.cfg.Alert.Cooldown
+	}
+	return 15 * time.Minute
+}
+
+func normalizeRoleID(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.TrimPrefix(value, "<@&")
+	value = strings.TrimSuffix(value, ">")
+	return value
+}
+
+func validRoleID(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.EqualFold(value, "everyone") || strings.EqualFold(value, "here") {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func formatAlert(alert Alert, mention string) string {

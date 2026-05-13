@@ -74,40 +74,126 @@ func NewService(cfg config.Config, healthClient *health.Client, logs LogsQueryer
 
 func (s *Service) Start(ctx context.Context) {
 	go s.dashboardLoop(ctx)
-	if s.cfg.Alert.Enabled {
-		go s.alertLoop(ctx)
-	}
+	go s.alertLoop(ctx)
+	go s.logFeedLoop(ctx)
 	go s.assignmentOpsLoop(ctx)
 }
 
 func (s *Service) WatchDashboard(ctx context.Context, channelID string, interval time.Duration) (string, error) {
+	return s.WatchDashboardScope(ctx, channelID, "all", "", interval)
+}
+
+func (s *Service) WatchDashboardScope(ctx context.Context, channelID, scope, service string, interval time.Duration) (string, error) {
 	if strings.TrimSpace(channelID) == "" {
 		return "", fmt.Errorf("channel id is required")
+	}
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		scope = "all"
+	}
+	if scope != "all" && scope != "service" {
+		return "", fmt.Errorf("지원하지 않는 scope입니다")
+	}
+	if scope == "service" {
+		normalized, ok := security.NormalizeService(service)
+		if !ok {
+			return "", fmt.Errorf("지원하지 않는 service입니다")
+		}
+		service = normalized
+		if service != "report" {
+			return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NOT_CONNECTED\ncatalog에는 표시되지만 자동 dashboard 조회 대상은 아닙니다.", service), nil
+		}
 	}
 	if interval <= 0 {
 		interval = s.cfg.Dashboard.RefreshInterval
 	}
+	if interval <= 0 {
+		interval = 5 * time.Minute
+	}
+	key := state.DashboardKey(scope, service)
 	if err := s.store.Update(func(data *state.Data) {
-		data.DashboardChannelID = strings.TrimSpace(channelID)
-		data.DashboardIntervalSec = int(interval.Seconds())
+		data.ServiceDashboards[key] = state.ServiceDashboard{
+			Scope:       scope,
+			Service:     service,
+			ChannelID:   strings.TrimSpace(channelID),
+			IntervalSec: int(interval.Seconds()),
+		}
+		if scope == "all" {
+			data.DashboardChannelID = strings.TrimSpace(channelID)
+			data.DashboardIntervalSec = int(interval.Seconds())
+		}
 	}); err != nil {
 		return "", err
 	}
-	if err := s.RefreshDashboard(ctx); err != nil {
+	if err := s.RefreshDashboardWatch(ctx, key); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("dashboard watch enabled: channel=%s interval=%s", channelID, interval), nil
+	scopeLabel := "all"
+	if scope == "service" {
+		scopeLabel = "service:" + service
+	}
+	return fmt.Sprintf("✅ 서비스 대시보드 등록 완료\n\nscope: %s\n채널: 현재 채널\n업데이트 주기: %s\n방식: 기존 메시지 자동 갱신", scopeLabel, formatKoreanDuration(interval)), nil
 }
 
 func (s *Service) UnwatchDashboard(ctx context.Context) (string, error) {
+	return s.UnwatchDashboardScope(ctx, "all", "")
+}
+
+func (s *Service) UnwatchDashboardScope(ctx context.Context, scope, service string) (string, error) {
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		scope = "all"
+	}
+	if scope == "service" {
+		normalized, ok := security.NormalizeService(service)
+		if !ok {
+			return "", fmt.Errorf("지원하지 않는 service입니다")
+		}
+		service = normalized
+	}
+	key := state.DashboardKey(scope, service)
+	existed := false
 	if err := s.store.Update(func(data *state.Data) {
-		data.DashboardChannelID = ""
-		data.DashboardMessageID = ""
-		data.DashboardIntervalSec = 0
+		_, existed = data.ServiceDashboards[key]
+		delete(data.ServiceDashboards, key)
+		if key == "all" {
+			data.DashboardChannelID = ""
+			data.DashboardMessageID = ""
+			data.DashboardIntervalSec = 0
+		}
 	}); err != nil {
 		return "", err
 	}
-	return "dashboard watch disabled", nil
+	if !existed {
+		return "NO_DATA: 해당 dashboard watch가 이미 비활성 상태입니다.", nil
+	}
+	return "✅ 자동 갱신이 중지되었습니다. 기존 Discord 메시지는 삭제하지 않습니다.", nil
+}
+
+func (s *Service) ListDashboardWatches(ctx context.Context) string {
+	snapshot := s.store.Snapshot()
+	if len(snapshot.ServiceDashboards) == 0 {
+		return "등록된 서비스 대시보드 watch가 없습니다.\n\nNext:\n- `/ops watch scope:all interval:5m`"
+	}
+	var b strings.Builder
+	b.WriteString("📌 Service Dashboard Watches\n\n")
+	for key, watch := range snapshot.ServiceDashboards {
+		status := "ACTIVE"
+		if watch.Disabled {
+			status = "DISABLED"
+		}
+		if strings.TrimSpace(watch.ConfigError) != "" {
+			status = "CONFIG_ERROR"
+		}
+		fmt.Fprintf(&b, "- %s channel=<#%s> interval=%s message=%t status=%s\n",
+			key,
+			watch.ChannelID,
+			formatKoreanDuration(time.Duration(watch.IntervalSec)*time.Second),
+			strings.TrimSpace(watch.MessageID) != "",
+			status,
+		)
+	}
+	return formatting.TruncateDiscordMessage(b.String())
 }
 
 func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interval time.Duration) string {
@@ -126,22 +212,49 @@ func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interv
 }
 
 func (s *Service) RefreshDashboard(ctx context.Context) error {
+	return s.RefreshDashboardWatch(ctx, "all")
+}
+
+func (s *Service) RefreshDashboardWatch(ctx context.Context, key string) error {
 	snapshot := s.store.Snapshot()
-	channelID := strings.TrimSpace(firstNonEmpty(snapshot.DashboardChannelID, s.cfg.Dashboard.ChannelID))
-	if !s.cfg.Dashboard.Enabled && strings.TrimSpace(snapshot.DashboardChannelID) == "" {
+	watch, ok := snapshot.ServiceDashboards[key]
+	if !ok && key == "all" {
+		channelID := strings.TrimSpace(firstNonEmpty(snapshot.DashboardChannelID, s.cfg.Dashboard.ChannelID))
+		if channelID == "" || !s.cfg.Dashboard.Enabled && strings.TrimSpace(snapshot.DashboardChannelID) == "" {
+			return nil
+		}
+		watch = state.ServiceDashboard{
+			Scope:       "all",
+			ChannelID:   channelID,
+			MessageID:   snapshot.DashboardMessageID,
+			IntervalSec: int(s.dashboardInterval(snapshot).Seconds()),
+		}
+	} else if !ok {
 		return nil
 	}
+	if watch.Disabled {
+		return nil
+	}
+	channelID := strings.TrimSpace(watch.ChannelID)
 	if channelID == "" {
 		return nil
 	}
-	interval := s.dashboardInterval(snapshot)
-	content := s.RenderDashboard(ctx, s.cfg.Dashboard.Since, interval)
-	messageID := strings.TrimSpace(snapshot.DashboardMessageID)
+	interval := dashboardWatchInterval(watch, s.dashboardInterval(snapshot))
+	content := s.RenderDashboardForWatch(ctx, watch, interval)
+	messageID := strings.TrimSpace(watch.MessageID)
 	if messageID != "" {
 		if err := s.discord.EditChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, channelID, messageID, content); err == nil {
 			return s.store.Update(func(data *state.Data) {
-				data.DashboardChannelID = channelID
-				data.LastDashboardUpdatedAt = time.Now()
+				current := data.ServiceDashboards[key]
+				current.ChannelID = channelID
+				current.LastUpdatedAt = time.Now()
+				current.LastStatus = "OK"
+				current.ConfigError = ""
+				data.ServiceDashboards[key] = current
+				if key == "all" {
+					data.DashboardChannelID = channelID
+					data.LastDashboardUpdatedAt = time.Now()
+				}
 			})
 		} else {
 			log.Printf("dashboard message edit failed: %v", err)
@@ -152,26 +265,82 @@ func (s *Service) RefreshDashboard(ctx context.Context) error {
 		return err
 	}
 	return s.store.Update(func(data *state.Data) {
-		data.DashboardChannelID = channelID
-		data.DashboardMessageID = msg.ID
-		data.LastDashboardUpdatedAt = time.Now()
+		current := data.ServiceDashboards[key]
+		current.ChannelID = channelID
+		current.MessageID = msg.ID
+		current.LastUpdatedAt = time.Now()
+		current.LastStatus = "OK"
+		current.ConfigError = ""
+		data.ServiceDashboards[key] = current
+		if key == "all" {
+			data.DashboardChannelID = channelID
+			data.DashboardMessageID = msg.ID
+			data.LastDashboardUpdatedAt = time.Now()
+		}
 	})
 }
 
 func (s *Service) dashboardLoop(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 	for {
-		if err := s.RefreshDashboard(ctx); err != nil {
-			log.Printf("dashboard refresh failed: %v", err)
-		}
-		interval := s.dashboardInterval(s.store.Snapshot())
-		timer := time.NewTimer(interval)
+		s.refreshDueDashboards(ctx)
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			return
-		case <-timer.C:
+		case <-ticker.C:
 		}
 	}
+}
+
+func (s *Service) refreshDueDashboards(ctx context.Context) {
+	snapshot := s.store.Snapshot()
+	if len(snapshot.ServiceDashboards) == 0 && s.cfg.Dashboard.Enabled && strings.TrimSpace(s.cfg.Dashboard.ChannelID) != "" {
+		if err := s.RefreshDashboardWatch(ctx, "all"); err != nil {
+			log.Printf("dashboard refresh failed: %v", err)
+		}
+		return
+	}
+	now := time.Now()
+	for key, watch := range snapshot.ServiceDashboards {
+		interval := dashboardWatchInterval(watch, s.dashboardInterval(snapshot))
+		if watch.LastUpdatedAt.IsZero() || now.Sub(watch.LastUpdatedAt) >= interval {
+			if err := s.RefreshDashboardWatch(ctx, key); err != nil {
+				log.Printf("dashboard refresh failed for %s: %v", key, err)
+			}
+		}
+	}
+}
+
+func (s *Service) RenderDashboardForWatch(ctx context.Context, watch state.ServiceDashboard, interval time.Duration) string {
+	if watch.Scope == "service" {
+		return s.RenderServiceDashboard(ctx, watch.Service, s.cfg.Dashboard.Since, interval)
+	}
+	return s.RenderDashboard(ctx, s.cfg.Dashboard.Since, interval)
+}
+
+func (s *Service) RenderServiceDashboard(ctx context.Context, service, sinceLabel string, interval time.Duration) string {
+	normalized, ok := security.NormalizeService(service)
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		sinceLabel = "30m"
+		since, _ = security.ParseSince(sinceLabel)
+	}
+	registry := s.cfg.ServiceRegistry
+	if len(registry) == 0 {
+		registry = config.BuildServiceRegistry(s.cfg.LogGroups, s.cfg.HealthURLs)
+	}
+	for _, item := range registry {
+		if item.Name != normalized {
+			continue
+		}
+		inputs := s.dashboardInputsForRegistry(ctx, since, []string{}, s.cfg.Dashboard.MaxCloudWatchQueries, []config.ServiceDefinition{item})
+		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, time.Now(), interval, recentServiceAlertLines(s.store.Snapshot().RecentServiceAlerts, 5))
+	}
+	return "service registry에 없는 서비스입니다."
 }
 
 func (s *Service) dashboardInputs(ctx context.Context, since time.Duration, alarmNames []string, maxQueries int) []formatting.DashboardServiceInput {
@@ -179,6 +348,10 @@ func (s *Service) dashboardInputs(ctx context.Context, since time.Duration, alar
 	if len(registry) == 0 {
 		registry = config.BuildServiceRegistry(s.cfg.LogGroups, s.cfg.HealthURLs)
 	}
+	return s.dashboardInputsForRegistry(ctx, since, alarmNames, maxQueries, registry)
+}
+
+func (s *Service) dashboardInputsForRegistry(ctx context.Context, since time.Duration, alarmNames []string, maxQueries int, registry []config.ServiceDefinition) []formatting.DashboardServiceInput {
 	queries := newQueryBudget(maxQueries)
 	inputs := make([]formatting.DashboardServiceInput, 0, len(registry))
 	for _, service := range registry {
@@ -285,6 +458,29 @@ func (s *Service) dashboardInterval(snapshot state.Data) time.Duration {
 		return s.cfg.Dashboard.RefreshInterval
 	}
 	return 5 * time.Minute
+}
+
+func dashboardWatchInterval(watch state.ServiceDashboard, fallback time.Duration) time.Duration {
+	if watch.IntervalSec > 0 {
+		return time.Duration(watch.IntervalSec) * time.Second
+	}
+	if fallback > 0 {
+		return fallback
+	}
+	return 5 * time.Minute
+}
+
+func formatKoreanDuration(duration time.Duration) string {
+	if duration <= 0 {
+		return "-"
+	}
+	if duration%time.Hour == 0 {
+		return fmt.Sprintf("%d시간", int(duration/time.Hour))
+	}
+	if duration%time.Minute == 0 {
+		return fmt.Sprintf("%d분", int(duration/time.Minute))
+	}
+	return duration.String()
 }
 
 type queryBudget struct {

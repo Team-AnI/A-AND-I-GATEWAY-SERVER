@@ -19,15 +19,21 @@ Primary commands:
 - `/ops dashboard since:<15m|30m|1h>`: Report 중심 health, log, alarm 요약. 미연동 서비스는 숨기지 않고 `UNK`/`NOLOG`로 표시한다.
 - `/ops service service:report view:<summary|health> since:<duration>`: 단일 서비스 상태
 - `/ops logs service:<report|all> mode:<recent|errors|slow> level:<INFO|WARN|ERROR> since:<duration> limit:<5|10|20>`: Report 로그 조회와 집계. `limit`은 모든 mode의 결과 개수 제한에 적용한다.
-- `/ops assignments course:<courseSlug> status:<all|published|draft|scheduled>`: WEB-SERVER admin API 기반 과제 목록 조회
-- `/ops assignments-all window:<today|this-week>`: 전체 코스 과제 상태 요약
-- `/ops assignment course:<courseSlug> id:<assignmentId>`: 특정 과제 상세 조회
-- `/ops assignment-check course:<courseSlug> id:<assignmentId>`: 특정 과제 생성/복사 후 상태 검증
-- `/ops submissions course:<courseSlug> assignment:<assignmentId>`: 제출/채점 상태 요약
-- `/ops trace trace_id:<traceId>`: traceId 기준 시간순 조회
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all> service:<optional>`: CloudWatch alarm 조회
 - `/ops storage view:<usage|retention>`: CloudWatch log group stored bytes와 retention 조회
+- `/ops watch scope:<all|service> service:<optional> interval:<1m|3m|5m|10m|15m>`: 서비스 대시보드 자동 갱신 등록
+- `/ops unwatch scope:<all|service> service:<optional>`: 서비스 대시보드 자동 갱신 중지
+- `/ops watches`: 등록된 dashboard watch 조회
+- `/ops alert action:<channel|role|role-clear|on|off|status|test>`: 서비스 장애 알림 설정
+- `/ops logs-watch service:report mode:<errors|slow|recent> interval:<3m|5m|10m|15m> since:<15m|30m|1h> limit:<5|10|20>`: report 로그 피드 등록
+- `/ops logs-unwatch service:report mode:<errors|slow|recent>`: report 로그 피드 중지
+- `/ops logs-watches`: 등록된 로그 피드 조회
 - `/ops help`: 짧은 운영 명령어 예시
+
+Drilldown/fallback commands:
+
+- `/ops trace trace_id:<traceId>`: `/ops logs` 또는 logs-watch 결과에 traceId가 있을 때만 사용하는 요청 단위 드릴다운
+- `/ops assignments`, `/ops assignments-all`, `/ops assignment`, `/ops assignment-check`, `/ops submissions`: Assignment Ops Feed 이후 상세 확인 또는 fallback 용도. 관리자 페이지를 대체하는 상시 상태 확인 UI가 아니다.
 
 장애 대응 흐름:
 
@@ -36,10 +42,6 @@ Primary commands:
 /ops logs service:all mode:errors since:15m limit:10
 /ops logs service:report mode:errors since:30m limit:10
 /ops logs service:report mode:slow since:30m limit:10
-/ops trace trace_id:<traceId>
-/ops assignments course:<courseSlug> status:all
-/ops assignment-check course:<courseSlug> id:<assignmentId>
-/ops submissions course:<courseSlug> assignment:<assignmentId>
 /ops alarms state:ALARM
 ```
 
@@ -50,7 +52,7 @@ Primary commands:
 - `service=all`: Phase 1에서는 연결된 Report 로그만 조회하며, CloudWatch 비용 보호를 위해 `/ops logs service:all mode:errors since:<15m|30m>`에서만 허용한다. `recent`, `slow`는 `service=report`를 지정한다.
 - Report copy API 상태는 별도 command 없이 `/ops logs service:report mode:errors`, `/ops logs service:report mode:slow`, `/ops trace` 흐름에서 확인한다.
 - 과제 등록/공개/제출 상태는 WEB-SERVER 기존 관리자 GET API를 authoritative source로 사용한다.
-- CloudWatch는 `/ops logs`, `/ops trace`, admin API 실패 시 fallback 확인 용도로만 사용한다. fallback 응답에는 `fallback result, not authoritative`를 표시한다.
+- CloudWatch는 `/ops logs`, logs-watch, `/ops trace`, admin API 실패 시 fallback 확인 용도로만 사용한다. `/ops trace`는 로그 결과에 traceId가 표시될 때만 후속 명령으로 노출한다. fallback 응답에는 `fallback result, not authoritative`를 표시한다.
 
 WEB-SERVER admin API 연동:
 
@@ -78,16 +80,32 @@ WEB-SERVER admin API 연동:
 
 ## Service Ops Dashboard
 
-Service Ops Dashboard는 `/ops dashboard`를 직접 입력하지 않아도 Discord 운영 채널에서 서비스 상태를 계속 확인할 수 있게 하는 자동 대시보드다.
+Service Ops Dashboard는 `/ops dashboard`를 직접 입력하지 않아도 Discord 운영 채널에서 서비스 상태를 계속 확인할 수 있게 하는 자동 대시보드다. GitHub Secret/env는 기본값으로 두고, 실제 운영 채널/role/feed 설정은 Discord 명령으로 state.json에 저장한다.
 
 - dashboard message는 하나만 유지하며 주기마다 edit/update한다.
 - 정상 상태에서는 새 메시지를 보내지 않는다.
 - 장애, 5xx 증가, ERROR 로그 증가, health 연속 실패 같은 중요한 상황에서만 alert 메시지를 보낸다.
 - alert 메시지는 raw log를 길게 출력하지 않고 요약과 추천 명령어만 표시한다.
-- 중요한 alert에는 `DISCORD_ALLOWED_ROLE_IDS`의 첫 번째 role을 mention한다. role 값이 없으면 mention 없이 전송한다.
-- dashboard 채널은 기존 `DISCORD_DASHBOARD_CHANNEL_ID` 또는 `/watch` state를 사용한다.
-- alert 채널은 기존 `DISCORD_ALERT_CHANNEL_ID`를 사용한다.
+- 중요한 alert에는 `/ops alert action:role`로 저장한 role을 mention한다. 없으면 `DISCORD_ALLOWED_ROLE_IDS` 첫 번째 role을 fallback으로 사용하고, 둘 다 없으면 mention 없이 전송한다.
+- dashboard 채널은 `/ops watch` state를 우선 사용하고, 없으면 기존 `DISCORD_DASHBOARD_CHANNEL_ID`를 사용한다.
+- alert 채널은 `/ops alert action:channel` state를 우선 사용하고, 없으면 기존 `DISCORD_ALERT_CHANNEL_ID`를 사용한다.
 - update interval은 `DASHBOARD_REFRESH_INTERVAL_SECONDS`, alert cooldown은 `ALERT_COOLDOWN_SECONDS`를 재사용한다.
+- state 파일은 `/var/lib/monitor-bot/state.json`이며 v2 schema에서 `serviceDashboards`, `serviceAlerts`, `logFeeds`를 보관한다. 저장은 atomic rename 방식이고, 깨진 JSON은 `.corrupt.*`로 보존한 뒤 graceful fallback한다.
+- logs-watch는 최초 등록 시 기존 로그를 baseline fingerprint로 저장하고, 이후 새 error/slow 항목만 전송한다.
+
+설정 예시:
+
+```text
+/ops watch scope:all interval:5m
+/ops watch scope:service service:report interval:5m
+/ops alert action:channel
+/ops alert action:role role:@운영팀
+/ops alert action:on
+/ops alert action:test
+/ops logs-watch service:report mode:errors interval:5m since:30m limit:10
+/ops logs-watch service:report mode:slow interval:10m since:30m limit:10
+/ops logs-watches
+```
 
 compact table 형식:
 
@@ -162,14 +180,14 @@ Course 분류:
 - `GRADING_FAILED`: 채점 실패 수 증가
 - `WEB_ADMIN_API_*`: 인증/권한/업스트림 오류
 
-기존 `/ops` 명령은 상세 확인용이다.
+기존 assignment 관련 `/ops` 명령은 관리자 페이지를 대체하는 상태 확인 UI가 아니라, 자동 feed에서 이상 항목을 봤을 때 상세 확인하거나 fallback으로 확인하는 용도다.
 
-- `/ops assignments`: 특정 코스 과제 목록 수동 확인
-- `/ops assignments-all`: 전체 코스 수동 요약 확인
+- `/ops assignments`: 특정 코스 과제 이벤트 상세/fallback 확인
+- `/ops assignments-all`: 전체 코스 과제 이벤트 요약/fallback 확인
 - `/ops assignment`: 특정 과제 상세 확인
-- `/ops assignment-check`: 자동 poller의 검증 로직 수동 실행
-- `/ops submissions`: 제출/채점 상태 상세 확인
-- `/ops logs`, `/ops trace`: 장애 원인 분석
+- `/ops assignment-check`: 자동 poller의 검증 로직을 장애 시 수동 재확인
+- `/ops submissions`: 제출/채점 이상 알림 이후 상세 확인
+- `/ops logs`, `/ops trace`: 장애 원인 분석. trace는 로그 결과에 traceId가 있을 때만 사용한다.
 
 ## Dashboard UX
 
@@ -233,11 +251,6 @@ Top issue: auth 5xx x1
 /ops logs service:all mode:errors since:15m limit:10
 /ops logs service:report mode:errors since:30m limit:10
 /ops logs service:report mode:slow since:30m limit:10
-/ops assignments course:<courseSlug> status:all
-/ops assignments-all window:today
-/ops assignment course:<courseSlug> id:<assignmentId>
-/ops assignment-check course:<courseSlug> id:<assignmentId>
-/ops submissions course:<courseSlug> assignment:<assignmentId>
 /ops alarms state:ALARM
 ```
 
@@ -245,21 +258,22 @@ Dashboard button UX는 후속 PR에서 붙인다. 버튼 후보는 `Refresh`, `R
 
 ## Persistent Dashboard And Alerts
 
-`DASHBOARD_ENABLED=true`이면 monitor-bot은 `DISCORD_DASHBOARD_CHANNEL_ID`에 dashboard message를 1개 생성하고 이후 같은 message를 edit한다. message id는 `/var/lib/monitor-bot/state.json`에 저장한다. 새 메시지를 계속 보내지 않으므로 운영 채널이 도배되지 않는다.
+`DASHBOARD_ENABLED=true`이면 monitor-bot은 `DISCORD_DASHBOARD_CHANNEL_ID`에 dashboard message를 1개 생성하고 이후 같은 message를 edit한다. 운영 중에는 `/ops watch`로 현재 채널에 dashboard watch를 저장하는 방식을 권장한다. message id는 `/var/lib/monitor-bot/state.json`에 저장한다. 새 메시지를 계속 보내지 않으므로 운영 채널이 도배되지 않는다.
 
-`/watch`는 실행한 채널 또는 지정 채널에 dashboard 갱신을 설정한다. `/unwatch`는 state에서 dashboard channel/message id를 비우고 갱신을 중지한다.
+`/ops watch`는 실행한 채널에 dashboard 갱신을 설정한다. `/ops unwatch`는 state에서 dashboard watch를 제거하고 갱신을 중지한다. `/ops watches`로 등록 상태를 확인한다.
 
 state file에는 다음 정도의 작은 상태만 저장한다.
 
-- `dashboardChannelId`
-- `dashboardMessageId`
-- `lastDashboardUpdatedAt`
+- `version`
+- `serviceDashboards`
+- `serviceAlerts`
+- `logFeeds`
 - alert fingerprint별 `lastSentAt`, `active`, `resolvedAt`
 - health DOWN 연속 횟수
 
 CloudWatch raw log, query result, request/response body는 저장하지 않는다.
 
-자동 알림은 `ALERT_ENABLED=true`일 때만 동작한다. 알림 조건:
+자동 알림은 `ALERT_ENABLED=true` 또는 `/ops alert action:on` 상태일 때 동작한다. 알림 조건:
 
 - health DOWN 연속 `ALERT_HEALTH_DOWN_CONSECUTIVE`회
 - 최근 5분 5xx가 `ALERT_5XX_THRESHOLD_5M` 이상

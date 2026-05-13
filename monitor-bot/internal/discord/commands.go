@@ -59,6 +59,9 @@ func Definitions() []commandDefinition {
 	reportServiceChoices := choices("report")
 	reportOrAllChoices := choices("all", "report")
 	reportSinceChoices := choices("15m", "30m", "1h")
+	watchScopeChoices := choices("all", "service")
+	watchIntervalChoices := choices("1m", "3m", "5m", "10m", "15m")
+	alertActionChoices := choices("channel", "role", "role-clear", "on", "off", "status", "test")
 	assignmentStatusChoices := choices("all", "published", "draft", "scheduled")
 	assignmentWindowChoices := choices("today", "this-week")
 	levelChoices := choices("INFO", "WARN", "ERROR")
@@ -84,6 +87,32 @@ func Definitions() []commandDefinition {
 				stringOption("since", "조회 기간", false, reportSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
 			}),
+			subcommandOption("watch", "서비스 대시보드 자동 갱신 등록", []commandOption{
+				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
+				stringOption("service", "서비스 범위일 때 대상 서비스", false, serviceChoices),
+				stringOption("interval", "업데이트 주기", false, watchIntervalChoices),
+			}),
+			subcommandOption("unwatch", "서비스 대시보드 자동 갱신 중지", []commandOption{
+				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
+				stringOption("service", "서비스 범위일 때 대상 서비스", false, serviceChoices),
+			}),
+			subcommandOption("watches", "등록된 서비스 대시보드 목록", nil),
+			subcommandOption("alert", "서비스 알림 설정", []commandOption{
+				stringOption("action", "알림 설정 동작", true, alertActionChoices),
+				roleOption("role", "멘션할 운영자 역할", false),
+			}),
+			subcommandOption("logs-watch", "Report 로그 피드 등록", []commandOption{
+				stringOption("service", "피드 서비스", true, serviceChoices),
+				stringOption("mode", "피드 모드", true, logModeChoices),
+				stringOption("interval", "조회 주기", false, watchIntervalChoices),
+				stringOption("since", "조회 기간", false, reportSinceChoices),
+				integerOption("limit", "출력 개수", false, limitChoices),
+			}),
+			subcommandOption("logs-unwatch", "Report 로그 피드 중지", []commandOption{
+				stringOption("service", "피드 서비스", true, serviceChoices),
+				stringOption("mode", "피드 모드", true, logModeChoices),
+			}),
+			subcommandOption("logs-watches", "등록된 로그 피드 목록", nil),
 			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{
 				stringOption("course", "courseSlug", true, nil),
 				stringOption("status", "과제 상태", false, assignmentStatusChoices),
@@ -182,6 +211,10 @@ func stringOption(name, description string, required bool, choices []commandChoi
 
 func integerOption(name, description string, required bool, choices []commandChoice) commandOption {
 	return commandOption{Type: 4, Name: name, Description: description, Required: required, Choices: choices}
+}
+
+func roleOption(name, description string, required bool) commandOption {
+	return commandOption{Type: 8, Name: name, Description: description, Required: required}
 }
 
 func subcommandOption(name, description string, options []commandOption) commandOption {

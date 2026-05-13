@@ -631,17 +631,18 @@ func HelpText() string {
    /ops logs service:report mode:errors since:30m limit:10
 4. 느린 API 확인
    /ops logs service:report mode:slow since:30m limit:10
-5. trace 추적
-   /ops trace trace_id:<traceId>
-6. 과제 목록 확인
-   /ops assignments course:<courseSlug> status:all
-7. 과제 검증/제출 상태 확인
-   /ops assignment-check course:<courseSlug> id:<assignmentId>
-   /ops submissions course:<courseSlug> assignment:<assignmentId>
 
-Use /ops service for service state.
-Use /ops logs for log analysis.
-Assignments use WEB-SERVER admin API first; CloudWatch is fallback only.`)
+Automation setup
+- /ops watch scope:all interval:5m
+- /ops alert action:channel
+- /ops alert action:role role:@운영팀
+- /ops alert action:on
+- /ops logs-watch service:report mode:errors interval:5m since:30m limit:10
+- /ops logs-watches
+
+Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.
+Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.
+수동 assignment 명령은 알림 이후 상세 확인 또는 fallback 용도입니다.`)
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {

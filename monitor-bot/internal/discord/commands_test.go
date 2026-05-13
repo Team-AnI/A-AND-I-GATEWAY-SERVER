@@ -49,7 +49,7 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "assignments", "assignments-all", "assignment", "assignment-check", "submissions", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "watch", "unwatch", "watches", "alert", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment", "assignment-check", "submissions", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
@@ -161,6 +161,31 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 	}
 }
 
+func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	watch := findSubcommand(t, command, "watch")
+	if !findOption(t, watch.Options, "scope").Required {
+		t.Fatal("watch scope must be required")
+	}
+	if got := choiceValues(findOption(t, watch.Options, "interval").Choices); strings.Join(got, ",") != "1m,3m,5m,10m,15m" {
+		t.Fatalf("watch interval choices = %#v", got)
+	}
+	alert := findSubcommand(t, command, "alert")
+	if !findOption(t, alert.Options, "action").Required {
+		t.Fatal("alert action must be required")
+	}
+	if role := findOption(t, alert.Options, "role"); role.Type != 8 {
+		t.Fatalf("alert role option must be role type, got %d", role.Type)
+	}
+	logsWatch := findSubcommand(t, command, "logs-watch")
+	if !findOption(t, logsWatch.Options, "service").Required || !findOption(t, logsWatch.Options, "mode").Required {
+		t.Fatal("logs-watch service/mode options must be required")
+	}
+}
+
 func TestAllServiceQueryGuard(t *testing.T) {
 	if !isAllServiceQuery("") || !isAllServiceQuery("all") {
 		t.Fatal("blank or all service should be treated as all-service query")
@@ -173,6 +198,37 @@ func TestAllServiceQueryGuard(t *testing.T) {
 	}
 	if !strings.Contains(allServiceGuardMessage(), "errors/dashboard") {
 		t.Fatalf("all-service guard should explain allowed modes: %s", allServiceGuardMessage())
+	}
+}
+
+func TestParseOpsInterval(t *testing.T) {
+	cases := map[string]time.Duration{
+		"":    5 * time.Minute,
+		"1m":  time.Minute,
+		"3m":  3 * time.Minute,
+		"5m":  5 * time.Minute,
+		"10m": 10 * time.Minute,
+		"15m": 15 * time.Minute,
+	}
+	for input, want := range cases {
+		got, ok := parseOpsInterval(input, 5*time.Minute)
+		if !ok || got != want {
+			t.Fatalf("parseOpsInterval(%q) = %s %t, want %s true", input, got, ok, want)
+		}
+	}
+	if _, ok := parseOpsInterval("30s", 5*time.Minute); ok {
+		t.Fatal("30s should not be accepted")
+	}
+}
+
+func TestAppendTraceNextOnlyWhenRowsContainTraceID(t *testing.T) {
+	withoutTrace := appendTraceNext("content", []map[string]string{{"message": "no trace"}})
+	if strings.Contains(withoutTrace, "/ops trace") {
+		t.Fatalf("trace next should be hidden without trace id: %s", withoutTrace)
+	}
+	withTrace := appendTraceNext("content", []map[string]string{{"trace.traceId": "abc-123"}})
+	if !strings.Contains(withTrace, "/ops trace trace_id:abc-123") {
+		t.Fatalf("trace next should be shown when trace exists: %s", withTrace)
 	}
 }
 

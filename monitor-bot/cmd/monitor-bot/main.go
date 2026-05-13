@@ -92,6 +92,7 @@ func main() {
 	}
 	monitorService := monitor.NewService(cfg, healthClient, logsClient, alarmClient, stateStore, httpClient)
 	readyInteractionHandler := discord.NewHandler(cfg, healthClient, logsClient, alarmClient)
+	readyInteractionHandler.SetOpsController(monitorService)
 	interactionHandler.Set(readyInteractionHandler)
 	monitorService.Start(context.Background())
 
