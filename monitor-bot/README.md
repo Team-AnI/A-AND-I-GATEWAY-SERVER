@@ -85,7 +85,8 @@ post      ⚪ UNK   NOLOG     0    0    0 -
 - `UNKNOWN` 코스는 dashboard count에만 포함하고 이벤트 발송은 제한합니다.
 - 첫 실행은 baseline만 저장하고 과거 과제를 대량 발송하지 않습니다.
 - dashboard는 한 Discord 메시지를 edit/update하며, 이벤트 feed만 중요한 변경을 새 메시지로 보냅니다.
-- 채널은 기존 `DISCORD_ALERT_CHANNEL_ID`를 우선 재사용하고, 없으면 `DISCORD_DASHBOARD_CHANNEL_ID`를 사용합니다. 별도 `ASSIGNMENT_OPS_CHANNEL_ID`는 추가하지 않았습니다.
+- 채널은 `/ops alert action:channel channel:#채널`로 저장한 state 값을 우선 사용합니다. 없으면 기존 `DISCORD_ALERT_CHANNEL_ID`, 그다음 `DISCORD_DASHBOARD_CHANNEL_ID`를 사용합니다. 별도 `ASSIGNMENT_OPS_CHANNEL_ID`는 추가하지 않았습니다.
+- poll 주기는 기존 alert poll interval을 재사용합니다. 기본값은 보통 3분이며, 첫 성공 poll은 baseline만 저장해서 과거 과제를 대량 발송하지 않습니다.
 
 자동 감지 이벤트:
 

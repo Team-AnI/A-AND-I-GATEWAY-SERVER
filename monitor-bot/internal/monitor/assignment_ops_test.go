@@ -198,6 +198,40 @@ func TestAssignmentDashboardReusesMessageIDAndLimitsRecentEvents(t *testing.T) {
 	}
 }
 
+func TestAssignmentOpsUsesConfiguredAlertChannelFromState(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(data *state.Data) {
+		data.ServiceAlerts.ChannelID = "state-alert-channel"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newAssignmentOpsTestService(store, &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z"}},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {Submitted: 1, Graded: 1}},
+	})
+	service.cfg.Alert.ChannelID = ""
+	service.cfg.Dashboard.ChannelID = ""
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("expected assignment dashboard send, got sends=%d", fakeDiscord.sends)
+	}
+	if got := fakeDiscord.sentChannels[0]; got != "state-alert-channel" {
+		t.Fatalf("assignment ops should use state alert channel, got %q", got)
+	}
+}
+
 func newAssignmentOpsTestService(store *state.Store, report ReportAdminAPI) *Service {
 	cfg := config.Config{
 		DiscordBotToken: "bot-token",

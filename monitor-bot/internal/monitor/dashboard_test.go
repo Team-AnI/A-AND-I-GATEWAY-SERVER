@@ -37,16 +37,20 @@ type fakeDiscord struct {
 	edits        int
 	sentContents []string
 	editContents []string
+	sentChannels []string
+	editChannels []string
 }
 
-func (f *fakeDiscord) SendChannelMessage(_ context.Context, _ *http.Client, _ string, _ string, content string) (discord.Message, error) {
+func (f *fakeDiscord) SendChannelMessage(_ context.Context, _ *http.Client, _ string, channelID string, content string) (discord.Message, error) {
 	f.sends++
+	f.sentChannels = append(f.sentChannels, channelID)
 	f.sentContents = append(f.sentContents, content)
 	return discord.Message{ID: "created-message"}, nil
 }
 
-func (f *fakeDiscord) EditChannelMessage(_ context.Context, _ *http.Client, _ string, _ string, _ string, content string) error {
+func (f *fakeDiscord) EditChannelMessage(_ context.Context, _ *http.Client, _ string, channelID string, _ string, content string) error {
 	f.edits++
+	f.editChannels = append(f.editChannels, channelID)
 	f.editContents = append(f.editContents, content)
 	return nil
 }

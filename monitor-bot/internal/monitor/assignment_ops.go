@@ -62,8 +62,13 @@ func (s *Service) assignmentOpsInterval() time.Duration {
 	return 3 * time.Minute
 }
 
+func (s *Service) assignmentOpsChannelID() string {
+	snapshot := s.store.Snapshot()
+	return strings.TrimSpace(firstNonEmpty(snapshot.ServiceAlerts.ChannelID, s.cfg.Alert.ChannelID, s.cfg.Dashboard.ChannelID))
+}
+
 func (s *Service) RefreshAssignmentOps(ctx context.Context) error {
-	channelID := strings.TrimSpace(firstNonEmpty(s.cfg.Alert.ChannelID, s.cfg.Dashboard.ChannelID))
+	channelID := s.assignmentOpsChannelID()
 	if channelID == "" {
 		return nil
 	}
