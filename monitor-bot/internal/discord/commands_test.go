@@ -63,10 +63,13 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "copy", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
+	}
+	if got["copy"] {
+		t.Fatal("copy subcommand should not be registered")
 	}
 }
 
@@ -110,7 +113,7 @@ func TestOpsServiceViewsStayStateFocused(t *testing.T) {
 	serviceCommand := findSubcommand(t, command, "service")
 	viewOption := findOption(t, serviceCommand.Options, "view")
 	got := choiceValues(viewOption.Choices)
-	want := []string{"summary", "health", "copy"}
+	want := []string{"summary", "health"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops service view choices = %#v, want %#v", got, want)
 	}
@@ -132,21 +135,29 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 
 func TestLegacyCommandsDelegateToOpsHandlers(t *testing.T) {
 	cases := map[string]string{
-		"dashboard":   "/ops dashboard",
-		"service":     "/ops service",
-		"copy-status": "/ops copy",
-		"logs":        "/ops logs mode:recent",
-		"errors":      "/ops logs mode:errors",
-		"trace":       "/ops trace",
-		"alarm":       "/ops alarms",
-		"disk":        "/ops storage view:usage",
-		"retention":   "/ops storage view:retention",
+		"dashboard": "/ops dashboard",
+		"service":   "/ops service",
+		"logs":      "/ops logs mode:recent",
+		"errors":    "/ops logs mode:errors",
+		"trace":     "/ops trace",
+		"alarm":     "/ops alarms",
+		"disk":      "/ops storage view:usage",
+		"retention": "/ops storage view:retention",
 	}
 	for legacy, want := range cases {
 		got, ok := legacyOpsReplacement(legacy)
 		if !ok || got != want {
 			t.Fatalf("legacy command %q replacement mismatch: got %q ok=%v want %q", legacy, got, ok, want)
 		}
+	}
+}
+
+func TestLegacyCopyStatusIsNotRegistered(t *testing.T) {
+	if _, err := findCommand("copy-status"); err == nil {
+		t.Fatal("legacy /copy-status should not be registered")
+	}
+	if replacement, ok := legacyOpsReplacement("copy-status"); ok {
+		t.Fatalf("legacy copy-status should not have an ops replacement, got %q", replacement)
 	}
 }
 

@@ -201,7 +201,7 @@ func FormatDashboardWithMeta(since string, services []DashboardServiceInput, ala
 		b.WriteString(strings.Join(alarmNames, ", "))
 	}
 	b.WriteString("\nTop issue: " + topIssue)
-	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops copy since:" + since + "`")
+	b.WriteString("\n\nNext: `/ops logs service:report mode:errors since:" + since + "` 또는 `/ops logs service:report mode:slow since:" + since + "`")
 	return TruncateDiscordMessage(b.String())
 }
 
@@ -279,41 +279,6 @@ func FormatSlowSummary(service, since string, rows []map[string]string) string {
 	return TruncateDiscordMessage(b.String())
 }
 
-func FormatCopyStatus(since string, rows []map[string]string) string {
-	summary := SummarizeRows(rows)
-	success := 0
-	duplicate := 0
-	var failed []string
-	for _, row := range rows {
-		status := parseInt(row["http.statusCode"])
-		if status >= 200 && status < 400 {
-			success++
-			continue
-		}
-		if status == 409 {
-			duplicate++
-		}
-		if len(failed) < 5 && status >= 400 {
-			failed = append(failed, fmt.Sprintf("- trace=%s status=%d code=%s", value(row, "trace.traceId", "-"), status, value(row, "response.error.code", "-")))
-		}
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "📦 Assignment Copy API - last %s\n\n", since)
-	fmt.Fprintf(&b, "total: %d\n", summary.Total)
-	fmt.Fprintf(&b, "success: %d\n", success)
-	fmt.Fprintf(&b, "fail: %d\n", summary.FourXX+summary.FiveXX)
-	fmt.Fprintf(&b, "409 duplicate: %d\n", duplicate)
-	fmt.Fprintf(&b, "5xx: %d\n", summary.FiveXX)
-	fmt.Fprintf(&b, "p95 latency: %s\n\n", formatLatency(summary.P95))
-	b.WriteString("Recent failed traces:\n")
-	if len(failed) == 0 {
-		b.WriteString("- none")
-	} else {
-		b.WriteString(strings.Join(failed, "\n"))
-	}
-	return TruncateDiscordMessage(b.String())
-}
-
 func SummarizeRows(rows []map[string]string) LogSummary {
 	var summary LogSummary
 	for _, row := range rows {
@@ -368,8 +333,6 @@ func HelpText() string {
    /ops logs service:report mode:slow since:30m limit:10
 5. trace 추적
    /ops trace trace_id:<traceId>
-6. report copy API 상태
-   /ops copy since:30m
 
 Use /ops service for service state.
 Use /ops logs for log analysis.

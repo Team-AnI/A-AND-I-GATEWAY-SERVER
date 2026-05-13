@@ -63,7 +63,7 @@ func Definitions() []commandDefinition {
 	limitChoices := integerChoices(5, 10, 20)
 	countTypeChoices := choices("all", "api", "error", "4xx", "5xx")
 	topByChoices := choices("path", "error", "status")
-	serviceViewChoices := choices("summary", "health", "copy")
+	serviceViewChoices := choices("summary", "health")
 	logModeChoices := choices("recent", "errors", "top", "slow")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
@@ -83,9 +83,6 @@ func Definitions() []commandDefinition {
 				stringOption("level", "로그 레벨", false, levelChoices),
 				stringOption("since", "조회 기간", false, sinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
-			}),
-			subcommandOption("copy", "Report 과제 복사 API 상태", []commandOption{
-				stringOption("since", "조회 기간", false, sinceChoices),
 			}),
 			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
 				stringOption("trace_id", "조회할 traceId", true, nil),
@@ -112,7 +109,7 @@ func DefinitionsWithLegacy(includeLegacy bool) []commandDefinition {
 	sinceChoices := choices("5m", "15m", "30m", "1h", "3h")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
-	serviceViewChoices := choices("summary", "health", "copy")
+	serviceViewChoices := choices("summary", "health")
 	logModeChoices := choices("recent", "errors", "top", "slow")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
@@ -132,9 +129,6 @@ func DefinitionsWithLegacy(includeLegacy bool) []commandDefinition {
 				stringOption("level", "로그 레벨", false, levelChoices),
 				stringOption("since", "조회 기간", false, sinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
-			}),
-			subcommandOption("copy", "Report 과제 복사 API 상태", []commandOption{
-				stringOption("since", "조회 기간", false, sinceChoices),
 			}),
 			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
 				stringOption("trace_id", "조회할 traceId", true, nil),
@@ -180,9 +174,6 @@ func legacyDefinitions(serviceChoices, serviceOrAllChoices, sinceChoices, watchI
 			stringOption("since", "조회 기간", true, sinceChoices),
 			integerOption("limit", "출력 개수(1..20)", false, nil),
 			integerOption("threshold_ms", "최소 latency ms", false, nil),
-		}},
-		{Name: "copy-status", Description: "Report 과제 복사 API 상태", Options: []commandOption{
-			stringOption("since", "조회 기간", true, sinceChoices),
 		}},
 		{Name: "status", Description: "A&I 서비스 상태 요약"},
 		{Name: "health", Description: "특정 서비스 health 조회", Options: []commandOption{

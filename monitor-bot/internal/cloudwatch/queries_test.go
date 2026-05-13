@@ -128,10 +128,6 @@ func TestBuildDashboardQueriesUseSafeV2Fields(t *testing.T) {
 	if !strings.Contains(slowQuery, "http.latencyMs >= 1000") || !strings.Contains(slowQuery, "limit 20") {
 		t.Fatalf("slow query should include threshold and clamp limit: %s", slowQuery)
 	}
-	copyQuery := BuildCopyStatusQuery()
-	if !strings.Contains(copyQuery, `service.name = "report-service"`) || !strings.Contains(copyQuery, "assignments") {
-		t.Fatalf("copy status query should target report copy API: %s", copyQuery)
-	}
 }
 
 func TestBuildAggregationQueriesAllowAllWithoutRawInput(t *testing.T) {

@@ -14,7 +14,6 @@ const (
 	errorFields  = `fields service.name, http.path, http.statusCode, response.error.code, response.error.value, response.error.message`
 	countFields  = `fields service.name, logType, level, http.statusCode`
 	slowFields   = `fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, message`
-	copyFields   = `fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message`
 )
 
 func LogGroupsForService(logGroups map[string]string, service string) ([]string, error) {
@@ -176,15 +175,6 @@ func BuildSlowQuery(service string, thresholdMs, limit int) (string, error) {
 | filter logType = "API" or logType = "API_ERROR"%s
 | sort http.latencyMs desc
 | limit %d`, slowFields, serviceNameFilter(normalized), thresholdFilter, limit32), nil
-}
-
-func BuildCopyStatusQuery() string {
-	return fmt.Sprintf(`%s
-| filter service.name = "report-service"
-| filter http.method = "POST"
-| filter http.path like /\/v2\/admin\/courses\/.*\/assignments\/copy/
-| sort @timestamp desc
-| limit 100`, copyFields)
 }
 
 func BuildAlertQuery(service string) (string, error) {

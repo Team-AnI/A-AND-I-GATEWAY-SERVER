@@ -173,8 +173,6 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 		return legacyNoticeFor("top") + h.topCommand(ctx, interaction)
 	case "slow":
 		return legacyNoticeFor("slow") + h.slowCommand(ctx, interaction)
-	case "copy-status":
-		return legacyNoticeFor("copy-status") + h.copyStatusCommand(ctx, interaction)
 	case "status":
 		return legacyNoticeFor("status") + formatting.FormatStatus(h.health.CheckAll(ctx, serviceOrder))
 	case "health":
@@ -220,8 +218,6 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 		return h.opsServiceCommand(ctx, subcommand)
 	case "logs":
 		return h.opsLogsCommand(ctx, subcommand)
-	case "copy":
-		return h.copyStatusCommand(ctx, interactionForCommand("copy-status", withDefaultOptions(subcommand.Options, map[string]string{"since": "30m"})))
 	case "trace":
 		return h.traceCommand(ctx, interactionForCommand("trace", subcommand.Options))
 	case "alarms":
@@ -291,15 +287,8 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 		return h.serviceCommand(ctx, interactionForCommand("service", withDefaultOptions(subcommand.Options, map[string]string{"since": since})))
 	case "health":
 		return withNext(formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)}), "/ops logs service:"+service+" mode:errors")
-	case "copy":
-		if service != "report" {
-			return "copy view는 report 서비스 전용입니다. 권장 명령어: `/ops copy since:" + since + "`"
-		}
-		content := "참고: copy 상태 확인은 이제 `/ops copy since:" + since + "` 사용을 권장합니다.\n\n"
-		content += h.copyStatusCommand(ctx, interactionForCommand("copy-status", []ApplicationCommandOpt{stringInteractionOption("since", since)}))
-		return withNext(content, "/ops copy since:"+since, "/ops logs service:report mode:errors")
 	default:
-		return "지원하지 않는 service view입니다. 상태는 `/ops service view:summary|health|copy`, 로그 분석은 `/ops logs`를 사용하세요."
+		return "지원하지 않는 service view입니다. 상태는 `/ops service view:summary|health`, 로그 분석은 `/ops logs`를 사용하세요."
 	}
 }
 
@@ -590,23 +579,6 @@ func (h *Handler) slowCommand(ctx context.Context, interaction Interaction) stri
 	return formatting.FormatSlowSummary(service, sinceLabel, rows)
 }
 
-func (h *Handler) copyStatusCommand(ctx context.Context, interaction Interaction) string {
-	sinceLabel := optionString(interaction, "since")
-	since, ok := security.ParseSince(sinceLabel)
-	if !ok {
-		return "지원하지 않는 since 값입니다."
-	}
-	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
-	if err != nil {
-		return security.SanitizeText(err.Error())
-	}
-	rows, err := h.logs.Query(ctx, groups, cw.BuildCopyStatusQuery(), since, 100)
-	if err != nil {
-		return "CloudWatch copy-status 조회 실패: " + security.SanitizeText(err.Error())
-	}
-	return formatting.FormatCopyStatus(sinceLabel, rows)
-}
-
 func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) string {
 	service, ok := security.NormalizeService(optionString(interaction, "service"))
 	if !ok {
@@ -752,20 +724,19 @@ func legacyNoticeFor(command string) string {
 
 func legacyOpsReplacement(command string) (string, bool) {
 	replacements := map[string]string{
-		"dashboard":   "/ops dashboard",
-		"service":     "/ops service",
-		"count":       "/ops logs mode:errors",
-		"top":         "/ops logs mode:top",
-		"slow":        "/ops logs mode:slow",
-		"copy-status": "/ops copy",
-		"status":      "/ops dashboard",
-		"health":      "/ops service view:health",
-		"logs":        "/ops logs mode:recent",
-		"errors":      "/ops logs mode:errors",
-		"trace":       "/ops trace",
-		"alarm":       "/ops alarms",
-		"disk":        "/ops storage view:usage",
-		"retention":   "/ops storage view:retention",
+		"dashboard": "/ops dashboard",
+		"service":   "/ops service",
+		"count":     "/ops logs mode:errors",
+		"top":       "/ops logs mode:top",
+		"slow":      "/ops logs mode:slow",
+		"status":    "/ops dashboard",
+		"health":    "/ops service view:health",
+		"logs":      "/ops logs mode:recent",
+		"errors":    "/ops logs mode:errors",
+		"trace":     "/ops trace",
+		"alarm":     "/ops alarms",
+		"disk":      "/ops storage view:usage",
+		"retention": "/ops storage view:retention",
 	}
 	replacement, ok := replacements[command]
 	return replacement, ok
