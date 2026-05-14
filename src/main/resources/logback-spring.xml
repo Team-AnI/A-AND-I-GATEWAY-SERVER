@@ -3,6 +3,7 @@
 
     <springProperty scope="context" name="loggingEnv" source="aandi.logging.env" defaultValue="default"/>
     <springProperty scope="context" name="loggingServiceName" source="aandi.logging.service.name" defaultValue="gateway"/>
+    <springProperty scope="context" name="loggingDomain" source="aandi.logging.service.domain" defaultValue="gateway"/>
     <springProperty scope="context" name="loggingDomainCode" source="aandi.logging.service.domain-code" defaultValue="1"/>
     <springProperty scope="context" name="loggingVersion" source="aandi.logging.service.version" defaultValue="unknown"/>
     <springProperty scope="context" name="loggingInstanceId" source="aandi.logging.service.instance-id" defaultValue="unknown"/>
@@ -12,6 +13,7 @@
             <layout class="com.aandi.gateway.logging.StructuredJsonLogLayout">
                 <env>${loggingEnv}</env>
                 <serviceName>${loggingServiceName}</serviceName>
+                <domain>${loggingDomain}</domain>
                 <domainCode>${loggingDomainCode}</domainCode>
                 <version>${loggingVersion}</version>
                 <instanceId>${loggingInstanceId}</instanceId>

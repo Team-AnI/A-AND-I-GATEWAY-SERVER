@@ -47,7 +47,11 @@ enum class GatewayErrorCode(
     val httpStatus: HttpStatus,
     val value: String,
     val message: String,
-    val alert: String
+    val alert: String,
+    val status: String = "active",
+    val service: String = "Gateway",
+    val category: String = gatewayErrorCategory(code),
+    val severity: String = gatewayErrorSeverity(code)
 ) {
     HTTPS_REQUIRED(
         code = 10001,
@@ -140,6 +144,15 @@ enum class GatewayErrorCode(
         message = "요청 메서드와 경로가 게이트웨이 허용 목록에 없습니다.",
         alert = "요청한 기능을 찾을 수 없어요."
     ),
+    DOWNSTREAM_SERVICE_UNAVAILABLE(
+        code = 17801,
+        httpStatus = HttpStatus.BAD_GATEWAY,
+        value = "DOWNSTREAM_SERVICE_UNAVAILABLE",
+        message = "downstream service is unavailable",
+        alert = "서버 연결이 불안정합니다.",
+        category = "외부 시스템",
+        severity = "HIGH"
+    ),
     INTERNAL_SERVER_ERROR(
         code = 18801,
         httpStatus = HttpStatus.INTERNAL_SERVER_ERROR,
@@ -147,4 +160,28 @@ enum class GatewayErrorCode(
         message = "게이트웨이 내부 처리 중 예기치 못한 오류가 발생했습니다.",
         alert = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
     )
+}
+
+private fun gatewayErrorCategory(code: Int): String {
+    return when ((code / 1000) % 10) {
+        0 -> "일반"
+        1 -> "인증"
+        2 -> "인가"
+        3 -> "검증"
+        4 -> "비즈니스"
+        5 -> "리소스 없음"
+        6 -> "중복 / 충돌"
+        7 -> "외부 시스템"
+        8 -> "시스템 내부 오류"
+        else -> "일반"
+    }
+}
+
+private fun gatewayErrorSeverity(code: Int): String {
+    return when (code) {
+        10002, 11003 -> "HIGH"
+        10003, 10004, 10005, 15001 -> "MEDIUM"
+        18801 -> "CRITICAL"
+        else -> "LOW"
+    }
 }

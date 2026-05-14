@@ -9,6 +9,7 @@ data class ApiLoggingProperties(
 ) {
     data class ServiceProperties(
         val name: String = "gateway",
+        val domain: String = "gateway",
         val domainCode: Int = 1,
         val version: String = "unknown",
         val instanceId: String = "unknown"

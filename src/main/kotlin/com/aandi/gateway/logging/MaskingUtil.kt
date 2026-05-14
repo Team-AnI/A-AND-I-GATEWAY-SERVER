@@ -4,8 +4,18 @@ import org.springframework.http.HttpHeaders
 import org.springframework.util.MultiValueMap
 
 object MaskingUtil {
-    private val fullMaskKeys = setOf("password", "accessToken", "refreshToken")
-    private val partialMaskKeys = setOf("loginId", "username")
+    private val fullMaskKeys = setOf(
+        "password",
+        "passwordconfirm",
+        "accesstoken",
+        "refreshtoken",
+        "authorization",
+        "authenticate",
+        "token",
+        "salt",
+        "secret"
+    )
+    private val partialMaskKeys = setOf("loginid", "username")
 
     fun maskAuthenticate(value: String?): String? {
         val raw = value?.trim().orEmpty()
@@ -32,7 +42,7 @@ object MaskingUtil {
     }
 
     fun maskByKey(key: String?, value: Any?): Any? {
-        val normalized = key?.trim().orEmpty()
+        val normalized = key?.trim().orEmpty().lowercase()
         return when {
             normalized in fullMaskKeys -> FULL_MASK
             normalized in partialMaskKeys -> partialMask(value?.toString())

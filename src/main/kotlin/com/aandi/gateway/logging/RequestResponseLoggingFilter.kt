@@ -31,9 +31,10 @@ class RequestResponseLoggingFilter(
         val context = ApiLogContext.initialize(exchange)
         return cacheRequestBody(exchange, context)
             .flatMap { requestExchange ->
-                val decoratedResponse = LoggingResponseDecorator(requestExchange, context)
+                val tracedExchange = withTraceHeaders(requestExchange, context)
+                val decoratedResponse = LoggingResponseDecorator(tracedExchange, context)
                 val decoratedExchange = ApiLogContext.attach(
-                    requestExchange.mutate().response(decoratedResponse).build(),
+                    tracedExchange.mutate().response(decoratedResponse).build(),
                     context
                 )
                 chain.filter(decoratedExchange)
@@ -43,6 +44,14 @@ class RequestResponseLoggingFilter(
                     }
                     .then()
             }
+    }
+
+    private fun withTraceHeaders(exchange: ServerWebExchange, context: ApiLogContext): ServerWebExchange {
+        val request = exchange.request.mutate().headers { headers ->
+            headers.set(ApiLogContext.TRACE_ID_HEADER, context.traceId)
+            headers.set(ApiLogContext.REQUEST_ID_HEADER, context.requestId)
+        }.build()
+        return ApiLogContext.attach(exchange.mutate().request(request).build(), context)
     }
 
     private fun cacheRequestBody(exchange: ServerWebExchange, context: ApiLogContext): Mono<ServerWebExchange> {

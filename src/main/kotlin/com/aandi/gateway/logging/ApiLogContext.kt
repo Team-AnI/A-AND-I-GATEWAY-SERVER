@@ -32,14 +32,18 @@ data class ApiLogContext(
             val requestId = exchange.request.headers.getFirst(REQUEST_ID_HEADER)
                 ?.takeIf { it.isNotBlank() }
                 ?: UUID.randomUUID().toString()
+            val traceId = exchange.request.headers.getFirst(TRACE_ID_HEADER)
+                ?.takeIf { it.isNotBlank() }
+                ?: UUID.randomUUID().toString()
 
             val context = ApiLogContext(
-                traceId = UUID.randomUUID().toString(),
+                traceId = traceId,
                 requestId = requestId,
                 startedAt = Instant.now()
             )
             exchange.attributes[ATTRIBUTE_NAME] = context
-            exchange.response.headers.add(REQUEST_ID_HEADER, context.requestId)
+            exchange.response.headers.set(TRACE_ID_HEADER, context.traceId)
+            exchange.response.headers.set(REQUEST_ID_HEADER, context.requestId)
             return context
         }
 
@@ -52,6 +56,7 @@ data class ApiLogContext(
             return exchange
         }
 
-        private const val REQUEST_ID_HEADER = "X-Request-Id"
+        const val TRACE_ID_HEADER = "X-Trace-Id"
+        const val REQUEST_ID_HEADER = "X-Request-Id"
     }
 }

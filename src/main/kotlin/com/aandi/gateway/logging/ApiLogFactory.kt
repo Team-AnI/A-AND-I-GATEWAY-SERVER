@@ -1,6 +1,7 @@
 package com.aandi.gateway.logging
 
 import com.aandi.gateway.common.response.GatewayErrorCode
+import org.springframework.cloud.gateway.support.ServerWebExchangeUtils
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.Authentication
@@ -44,6 +45,7 @@ class ApiLogFactory(
             env = properties.env,
             service = ApiLogService(
                 name = properties.service.name,
+                domain = properties.service.domain,
                 domainCode = properties.service.domainCode,
                 version = properties.service.version,
                 instanceId = properties.service.instanceId
@@ -111,6 +113,7 @@ class ApiLogFactory(
             env = properties.env,
             service = ApiLogService(
                 name = properties.service.name,
+                domain = properties.service.domain,
                 domainCode = properties.service.domainCode,
                 version = properties.service.version,
                 instanceId = properties.service.instanceId
@@ -255,6 +258,11 @@ class ApiLogFactory(
     }
 
     private fun resolveRoute(exchange: ServerWebExchange): String {
+        val gatewayMatchedPath = exchange.getAttribute<String>(ServerWebExchangeUtils.GATEWAY_PREDICATE_MATCHED_PATH_ATTR)
+        if (!gatewayMatchedPath.isNullOrBlank()) {
+            return gatewayMatchedPath
+        }
+
         val matchedPattern = exchange.getAttribute<Any>(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)
         return when (matchedPattern) {
             is PathPattern -> matchedPattern.patternString

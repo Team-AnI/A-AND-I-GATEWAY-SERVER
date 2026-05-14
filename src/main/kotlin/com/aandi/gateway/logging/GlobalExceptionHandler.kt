@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
+import java.net.ConnectException
+import java.net.UnknownHostException
 import java.security.Principal
 import java.util.Optional
 
@@ -48,6 +50,10 @@ class GlobalExceptionHandler(
     }
 
     private fun mapErrorCode(ex: Throwable): GatewayErrorCode {
+        if (isDownstreamConnectionFailure(ex)) {
+            return GatewayErrorCode.DOWNSTREAM_SERVICE_UNAVAILABLE
+        }
+
         return when (ex) {
             is ResponseStatusException -> when (ex.statusCode.value()) {
                 HttpStatus.NOT_FOUND.value() -> GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
@@ -55,6 +61,27 @@ class GlobalExceptionHandler(
             }
             else -> GatewayErrorCode.INTERNAL_SERVER_ERROR
         }
+    }
+
+    private fun isDownstreamConnectionFailure(ex: Throwable): Boolean {
+        var current: Throwable? = ex
+        while (current != null) {
+            val className = current.javaClass.name
+            if (current is ConnectException || current is UnknownHostException) {
+                return true
+            }
+            if (
+                className == "reactor.netty.http.client.PrematureCloseException" ||
+                className == "io.netty.channel.ConnectTimeoutException" ||
+                className == "io.netty.handler.timeout.ReadTimeoutException" ||
+                className == "io.netty.handler.timeout.WriteTimeoutException" ||
+                className.endsWith(".AnnotatedConnectException")
+            ) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     private fun resolveAuthentication(exchange: ServerWebExchange): Mono<Optional<Authentication>> {

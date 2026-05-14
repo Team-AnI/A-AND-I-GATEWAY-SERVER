@@ -38,6 +38,7 @@ data class ApiStructuredLog(
 
 data class ApiLogService(
     val name: String,
+    val domain: String,
     val domainCode: Int,
     val version: String,
     val instanceId: String
@@ -45,6 +46,7 @@ data class ApiLogService(
     fun toMap(): Map<String, Any?> {
         return linkedMapOf(
             "name" to name,
+            "domain" to domain,
             "domainCode" to domainCode,
             "version" to version,
             "instanceId" to instanceId

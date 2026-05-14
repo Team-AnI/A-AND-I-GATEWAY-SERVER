@@ -12,6 +12,7 @@ class StructuredJsonLogLayout : LayoutBase<ILoggingEvent>() {
 
     var env: String = "local"
     var serviceName: String = "gateway"
+    var domain: String = "gateway"
     var domainCode: Int = 1
     var version: String = "unknown"
     var instanceId: String = "unknown"
@@ -36,6 +37,7 @@ class StructuredJsonLogLayout : LayoutBase<ILoggingEvent>() {
             "env" to env,
             "service" to linkedMapOf(
                 "name" to serviceName,
+                "domain" to domain,
                 "domainCode" to domainCode,
                 "version" to version,
                 "instanceId" to instanceId
