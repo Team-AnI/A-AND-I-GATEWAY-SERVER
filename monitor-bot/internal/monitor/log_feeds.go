@@ -21,12 +21,12 @@ func (s *Service) WatchLogFeed(ctx context.Context, channelID, service, mode, si
 	if !ok {
 		return "", fmt.Errorf("지원하지 않는 service입니다")
 	}
-	if normalized != "report" {
-		return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NOT_CONNECTED\nlogs-watch는 현재 report/web만 지원합니다.", normalized), nil
+	if !isServiceOpsNameConnected(normalized) {
+		return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NO_V2_LOG\nlogs-watch는 현재 gateway/auth/report V2 로그만 지원합니다.", normalized), nil
 	}
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	switch mode {
-	case "errors", "slow", "recent":
+	case "errors", "slow", "recent", "security":
 	default:
 		return "", fmt.Errorf("지원하지 않는 logs-watch mode입니다")
 	}
@@ -139,7 +139,7 @@ func (s *Service) refreshDueLogFeeds(ctx context.Context) {
 	now := time.Now()
 	queries := newQueryBudget(s.cfg.Dashboard.MaxCloudWatchQueries)
 	for key, feed := range snapshot.LogFeeds {
-		if feed.Disabled || feed.Service != "report" {
+		if feed.Disabled || !isServiceOpsNameConnected(feed.Service) {
 			continue
 		}
 		interval := time.Duration(feed.IntervalSec) * time.Second
@@ -218,6 +218,8 @@ func (s *Service) queryLogFeedRows(ctx context.Context, service, mode, sinceLabe
 		query, err = cw.BuildSlowQuery(service, 0, limit)
 	case "recent":
 		query, err = cw.BuildRecentLogsQuery(service, "ERROR", limit)
+	case "security":
+		query, err = cw.BuildSecurityQuery(service, limit)
 	default:
 		err = fmt.Errorf("unsupported log feed mode: %s", mode)
 	}
@@ -237,7 +239,7 @@ func logFeedFingerprint(service, mode string, row map[string]string) string {
 		mode,
 		row["@timestamp"],
 		row["http.method"],
-		row["http.path"],
+		firstNonEmpty(row["http.route"], row["http.path"]),
 		row["http.statusCode"],
 		row["response.error.code"],
 		row["response.error.value"],
@@ -248,12 +250,15 @@ func logFeedFingerprint(service, mode string, row map[string]string) string {
 }
 
 func formatLogFeedMessage(service, mode string, rows []map[string]string, limit int) string {
-	title := "🚨 report ERROR 로그 감지"
+	title := "🚨 " + service + " ERROR 로그 감지"
 	if mode == "slow" {
-		title = "🐢 report 느린 API 감지"
+		title = "🐢 " + service + " 느린 API 감지"
 	}
 	if mode == "recent" {
-		title = "🧾 report 최근 로그 감지"
+		title = "🧾 " + service + " 최근 로그 감지"
+	}
+	if mode == "security" {
+		title = "🛡️ " + service + " 보안 로그 감지"
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n\n", title)
@@ -262,7 +267,7 @@ func formatLogFeedMessage(service, mode string, rows []map[string]string, limit 
 			break
 		}
 		fmt.Fprintf(&b, "%d. 시각: %s\n", i+1, shortLogValue(row["@timestamp"]))
-		fmt.Fprintf(&b, "   path: %s\n", security.SanitizeText(row["http.path"]))
+		fmt.Fprintf(&b, "   path: %s\n", security.SanitizeText(firstNonEmpty(row["http.route"], row["http.path"])))
 		if row["http.latencyMs"] != "" {
 			fmt.Fprintf(&b, "   duration: %sms\n", security.SanitizeText(row["http.latencyMs"]))
 		}

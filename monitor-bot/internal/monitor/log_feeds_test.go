@@ -22,14 +22,14 @@ func TestWatchLogFeedStoresBaselineWithoutSendingOldLogs(t *testing.T) {
 	fakeDiscord := &fakeDiscord{}
 	service.discord = fakeDiscord
 
-	result, err := service.WatchLogFeed(context.Background(), "channel-1", "report", "errors", "30m", 5*time.Minute, 10)
+	result, err := service.WatchLogFeed(context.Background(), "channel-1", "auth", "errors", "30m", 5*time.Minute, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(result, "baseline") {
 		t.Fatalf("expected baseline guidance: %s", result)
 	}
-	feed := store.Snapshot().LogFeeds["report:errors"]
+	feed := store.Snapshot().LogFeeds["auth:errors"]
 	if feed.ChannelID != "channel-1" || len(feed.Fingerprints) != 1 {
 		t.Fatalf("log feed baseline was not stored: %#v", feed)
 	}
@@ -44,14 +44,14 @@ func TestWatchLogFeedRejectsUnconnectedService(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := newTestService(store, &fakeLogs{})
-	result, err := service.WatchLogFeed(context.Background(), "channel-1", "auth", "errors", "30m", 5*time.Minute, 10)
+	result, err := service.WatchLogFeed(context.Background(), "channel-1", "online-judge", "errors", "30m", 5*time.Minute, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(result, "NOT_CONNECTED") {
-		t.Fatalf("expected NOT_CONNECTED guidance: %s", result)
+	if !strings.Contains(result, "NO_V2_LOG") {
+		t.Fatalf("expected NO_V2_LOG guidance: %s", result)
 	}
-	if _, ok := store.Snapshot().LogFeeds["auth:errors"]; ok {
+	if _, ok := store.Snapshot().LogFeeds["online-judge:errors"]; ok {
 		t.Fatal("unconnected service log feed should not be stored")
 	}
 }

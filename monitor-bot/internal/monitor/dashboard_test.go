@@ -82,19 +82,19 @@ func TestRefreshDashboardEditsExistingMessage(t *testing.T) {
 	}
 }
 
-func TestDashboardQueriesOnlyConnectedServiceInPhaseOne(t *testing.T) {
+func TestDashboardQueriesOnlyV2ConnectedServices(t *testing.T) {
 	logs := &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}}}
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {
 		t.Fatal(err)
 	}
 	service := newTestService(store, logs)
-	service.cfg.Dashboard.MaxCloudWatchQueries = 2
+	service.cfg.Dashboard.MaxCloudWatchQueries = 3
 
 	_ = service.RenderDashboard(context.Background(), "30m", 5*time.Minute)
 
-	if logs.calls != 1 {
-		t.Fatalf("expected only report CloudWatch query, got %d", logs.calls)
+	if logs.calls != 3 {
+		t.Fatalf("expected gateway/auth/report CloudWatch queries, got %d", logs.calls)
 	}
 }
 
@@ -107,7 +107,7 @@ func TestWatchDashboardScopeStoresServiceWatch(t *testing.T) {
 	service := newTestService(store, &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API"}}})
 	service.discord = fakeDiscord
 
-	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "report", 5*time.Minute)
+	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "auth", 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestWatchDashboardScopeStoresServiceWatch(t *testing.T) {
 		t.Fatalf("unexpected result: %s", result)
 	}
 	snapshot := store.Snapshot()
-	watch := snapshot.ServiceDashboards["service:report"]
+	watch := snapshot.ServiceDashboards["service:auth"]
 	if watch.ChannelID != "channel-1" || watch.MessageID == "" || watch.IntervalSec != 300 {
 		t.Fatalf("service watch was not stored: %#v", watch)
 	}
@@ -130,14 +130,14 @@ func TestWatchDashboardRejectsUnconnectedService(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := newTestService(store, &fakeLogs{})
-	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "auth", 5*time.Minute)
+	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "online-judge", 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(result, "NOT_CONNECTED") {
-		t.Fatalf("expected NOT_CONNECTED guidance: %s", result)
+		t.Fatalf("expected not-connected guidance: %s", result)
 	}
-	if _, ok := store.Snapshot().ServiceDashboards["service:auth"]; ok {
+	if _, ok := store.Snapshot().ServiceDashboards["service:online-judge"]; ok {
 		t.Fatal("unconnected service watch should not be stored")
 	}
 }

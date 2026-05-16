@@ -171,7 +171,7 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 			}
 			break
 		}
-		if strings.EqualFold(service.Health.State, "UNKNOWN") || strings.EqualFold(service.Health.State, "NOT_CONNECTED") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NO_LOGS" || service.LogStatus == "NOT_CONFIGURED" || service.LogStatus == "NOT_CONNECTED" {
+		if strings.EqualFold(service.Health.State, "UNKNOWN") || strings.EqualFold(service.Health.State, "NOT_CONNECTED") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NOT_CONFIGURED" || service.LogStatus == "NOT_CONNECTED" {
 			statusIcon = "🟡"
 			overall = "주의"
 		}
@@ -196,7 +196,7 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 		logStatus := strings.ToUpper(strings.TrimSpace(service.LogStatus))
 		if logStatus == "" {
 			if len(service.Rows) == 0 {
-				logStatus = "NO_LOGS"
+				logStatus = "NO_V2_LOG"
 			} else {
 				logStatus = "OK"
 			}
@@ -241,7 +241,7 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 }
 
 func isUnconnectedDashboardInput(service DashboardServiceInput) bool {
-	return strings.Contains(strings.ToLower(service.Health.Detail), "not connected") && strings.EqualFold(service.LogStatus, "NO_LOGS")
+	return strings.Contains(strings.ToLower(service.Health.Detail), "not connected") && (strings.EqualFold(service.LogStatus, "NO_LOGS") || strings.EqualFold(service.LogStatus, "NO_V2_LOG"))
 }
 
 func dashboardTableHeader() string {
@@ -309,7 +309,7 @@ func FormatSlowSummary(service, since string, rows []map[string]string) string {
 			"%d. %s %s\n   latency=%sms status=%s trace=%s\n",
 			i+1,
 			value(row, "http.method", "-"),
-			redactPath(value(row, "http.path", "-")),
+			redactPath(firstNonEmpty(value(row, "http.route", ""), value(row, "http.path", "-"))),
 			value(row, "http.latencyMs", "-"),
 			value(row, "http.statusCode", "-"),
 			value(row, "trace.traceId", "-"),
@@ -588,7 +588,6 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 		}
 		summary.Total += count
 		logType := strings.ToUpper(strings.TrimSpace(row["logType"]))
-		level := strings.ToUpper(strings.TrimSpace(row["level"]))
 		statusCode := parseInt(row["http.statusCode"])
 		if logType == "API" {
 			summary.API += count
@@ -596,10 +595,7 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 		if logType == "API_ERROR" {
 			summary.APIError += count
 		}
-		if level == "WARN" {
-			summary.Warn += count
-		}
-		if level == "ERROR" {
+		if logType == "API_ERROR" || logType == "EVENT_ERROR" {
 			summary.Error += count
 		}
 		if statusCode >= 400 && statusCode < 500 {
@@ -679,7 +675,7 @@ func writeTopRowsWithLimit(b *strings.Builder, rows []map[string]string, limit i
 			break
 		}
 		count := value(row, "count", "1")
-		path := redactPath(value(row, "http.path", ""))
+		path := redactPath(firstNonEmpty(value(row, "http.route", ""), value(row, "http.path", "")))
 		status := value(row, "http.statusCode", "")
 		code := value(row, "response.error.code", "")
 		message := security.SanitizeText(value(row, "response.error.message", ""))
@@ -722,7 +718,7 @@ func dashboardIcon(healthState, logStatus string, summary LogSummary, alarm bool
 		return "⚫"
 	case alarm || healthState == "DOWN" || isDashboardLogFailure(logStatus) || summary.FiveXX > 0:
 		return "🔴"
-	case logStatus == "NO_LOGS":
+	case logStatus == "NO_LOGS" || logStatus == "NO_V2_LOG":
 		return "⚪"
 	case healthState == "UNKNOWN" || healthState == "" || summary.Error > 0 || summary.P95 >= 1000:
 		return "🟡"
@@ -737,6 +733,8 @@ func formatLogStatusShort(status string) string {
 		return "OK"
 	case "NO_LOGS":
 		return "NOLOG"
+	case "NO_V2_LOG":
+		return "NO_V2"
 	case "NOT_CONFIGURED":
 		return "NOCFG"
 	case "NOT_CONNECTED":
@@ -773,6 +771,8 @@ func dashboardShortStatus(status string) string {
 		return "UNK"
 	case "NO_LOGS":
 		return "NOLOG"
+	case "NO_V2_LOG":
+		return "UNK"
 	case "NOT_CONFIGURED":
 		return "NOCFG"
 	case "NOT_CONNECTED":
@@ -811,7 +811,7 @@ func dashboardNumber(value int, logStatus string) string {
 }
 
 func dashboardLastLogShort(value, logStatus string) string {
-	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "NO_LOGS" || isDashboardLogFailure(logStatus) {
+	if logStatus == "NOT_CONFIGURED" || logStatus == "NOT_CONNECTED" || logStatus == "NO_LOGS" || logStatus == "NO_V2_LOG" || isDashboardLogFailure(logStatus) {
 		return "-"
 	}
 	return formatLastLogCompact(value)

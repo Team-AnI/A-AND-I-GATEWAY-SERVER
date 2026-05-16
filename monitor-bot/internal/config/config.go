@@ -132,11 +132,11 @@ func BuildServiceRegistry(logGroups, healthURLs map[string]string) []ServiceDefi
 		serviceName string
 		domainCode  int
 	}{
-		{"gateway", "gateway", "gateway", 0},
-		{"auth", "auth", "auth-service", 1},
+		{"gateway", "gateway", "gateway", 1},
+		{"auth", "auth", "auth-service", 2},
 		{"report", "report", "report-service", 4},
-		{"online-judge", "online-judge", "online-judge-service", 3},
-		{"post", "post", "post-service", 2},
+		{"online-judge", "judge", "online-judge-service", 5},
+		{"post", "blog", "post-service", 6},
 	}
 	registry := make([]ServiceDefinition, 0, len(order))
 	for _, item := range order {

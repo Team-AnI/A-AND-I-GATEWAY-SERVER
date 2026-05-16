@@ -69,8 +69,12 @@ func TestOpsReportPhaseChoices(t *testing.T) {
 		t.Fatalf("dashboard since choices = %#v", got)
 	}
 	logs := findSubcommand(t, command, "logs")
-	if got := choiceValues(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,report" {
+	if got := choiceValues(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report" {
 		t.Fatalf("logs service choices = %#v", got)
+	}
+	service := findSubcommand(t, command, "service")
+	if got := choiceValues(findOption(t, service.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report" {
+		t.Fatalf("service choices = %#v", got)
 	}
 	assignments := findSubcommand(t, command, "assignments")
 	if course := findOption(t, assignments.Options, "course"); !course.Required {
@@ -155,7 +159,7 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 	logsCommand := findSubcommand(t, command, "logs")
 	modeOption := findOption(t, logsCommand.Options, "mode")
 	got := choiceValues(modeOption.Choices)
-	want := []string{"recent", "errors", "slow"}
+	want := []string{"recent", "errors", "slow", "security"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops logs mode choices = %#v, want %#v", got, want)
 	}

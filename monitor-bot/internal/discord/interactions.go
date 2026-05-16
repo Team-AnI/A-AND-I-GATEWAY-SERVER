@@ -333,8 +333,8 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
-	if service != "report" {
-		return "status: NOT_CONFIGURED\nservice: " + service + "\nkey findings: 이번 단계에서는 report/web 서버만 실제 연동되어 있습니다.\nrecommended next commands:\n- `/ops dashboard since:30m`"
+	if !isOpsV2Service(service) {
+		return "status: NO_V2_LOG\nservice: " + service + "\nkey findings: V2 로그 전환 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops dashboard since:30m`"
 	}
 	view := optionStringFromOptions(subcommand.Options, "view")
 	if view == "" {
@@ -359,8 +359,8 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
-	if service != "report" && service != "all" {
-		return "status: NOT_CONFIGURED\nservice: " + service + "\nkey findings: 이번 단계에서는 report/web 서버 로그만 조회합니다.\nrecommended next commands:\n- `/ops logs service:report mode:errors since:30m limit:10`"
+	if service != "all" && !isOpsV2Service(service) {
+		return "status: NO_V2_LOG\nservice: " + service + "\nkey findings: V2 로그 전환 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops logs service:report mode:errors since:30m limit:10`"
 	}
 	mode := optionStringFromOptions(subcommand.Options, "mode")
 	if mode == "" {
@@ -390,17 +390,13 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 		if service == "all" && !sinceAllowsAllQuery(since) {
 			return allServiceSinceGuardMessage()
 		}
-		queryService := service
-		if service == "all" {
-			queryService = "report"
-		}
 		next := []string{"/ops dashboard since:" + since}
 		if service != "all" {
 			next = append(next, "/ops logs service:"+service+" mode:recent level:ERROR", "/ops service service:"+service)
 		}
 		return withNext(h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
 			stringInteractionOption("since", since),
-			stringInteractionOption("service", queryService),
+			stringInteractionOption("service", service),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
 		})), next...)
 	case "top":
@@ -418,6 +414,15 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			return allServiceGuardMessage()
 		}
 		return withNext(h.slowCommand(ctx, interactionForCommand("slow", []ApplicationCommandOpt{
+			stringInteractionOption("service", service),
+			stringInteractionOption("since", since),
+			stringInteractionOption("limit", strconv.Itoa(limit)),
+		})), "/ops logs service:"+service+" mode:errors", "/ops trace trace_id:<traceId>")
+	case "security":
+		if service == "all" {
+			return allServiceGuardMessage()
+		}
+		return withNext(h.securityLogsCommand(ctx, interactionForCommand("security", []ApplicationCommandOpt{
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
@@ -469,9 +474,9 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 			Health:      formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected in service ops phase"},
 			Alarm:       serviceHasAlarm(service.Name, alarmNames),
 		}
-		if service.Name != "report" {
+		if !isOpsV2Service(service.Name) {
 			input.Health = formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected in Phase 1"}
-			input.LogStatus = "NO_LOGS"
+			input.LogStatus = "NO_V2_LOG"
 			inputs = append(inputs, input)
 			continue
 		}
@@ -501,7 +506,7 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 		}
 		input.Rows = rows
 		if len(rows) == 0 {
-			input.LogStatus = "NO_LOGS"
+			input.LogStatus = "NO_V2_LOG"
 		} else {
 			input.LogStatus = "OK"
 		}
@@ -648,6 +653,35 @@ func (h *Handler) slowCommand(ctx context.Context, interaction Interaction) stri
 		return "CloudWatch slow 조회 실패: " + security.SanitizeText(err.Error())
 	}
 	return appendTraceNext(formatting.FormatSlowSummary(service, sinceLabel, rows), rows)
+}
+
+func (h *Handler) securityLogsCommand(ctx context.Context, interaction Interaction) string {
+	service, ok := security.NormalizeService(optionString(interaction, "service"))
+	if !ok {
+		return "지원하지 않는 service입니다."
+	}
+	sinceLabel := optionString(interaction, "since")
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	limit := security.ParsePositiveInt(optionString(interaction, "limit"), 10)
+	if limit > 20 {
+		limit = 20
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, service)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	query, err := cw.BuildSecurityQuery(service, limit)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, since, int32(limit))
+	if err != nil {
+		return "CloudWatch security 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return appendTraceNext(formatting.FormatLogRows("Security 로그", rows), rows)
 }
 
 func (h *Handler) assignmentsCommand(ctx context.Context, interaction Interaction) string {
@@ -976,6 +1010,10 @@ func (h *Handler) traceCommand(ctx context.Context, interaction Interaction) str
 	return formatting.FormatTrace(rows)
 }
 
+func isOpsV2Service(service string) bool {
+	return service == "gateway" || service == "auth" || service == "report"
+}
+
 func (h *Handler) retentionCommand(ctx context.Context, title string) string {
 	groups, err := h.logs.DescribeGroups(ctx, cw.RetentionTargetLogGroups(h.cfg.LogGroups))
 	if err != nil {
@@ -1079,9 +1117,6 @@ func appendTraceNext(content string, rows []map[string]string) string {
 func firstTraceID(rows []map[string]string) string {
 	for _, row := range rows {
 		traceID := strings.TrimSpace(row["trace.traceId"])
-		if traceID == "" {
-			traceID = strings.TrimSpace(row["traceId"])
-		}
 		if traceID != "" && security.ValidateTraceID(traceID) {
 			return traceID
 		}

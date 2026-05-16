@@ -16,7 +16,7 @@ func TestAlertFingerprintDedupeAndCooldown(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := newTestService(store, &fakeLogs{rows: []map[string]string{
-		{"count": "2", "logType": "API_ERROR", "level": "ERROR", "http.statusCode": "500", "http.path": "/v2/admin/courses/java/assignments/copy", "response.error.code": "49000"},
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "report", "service.name": "web-service", "logType": "API_ERROR", "http.statusCode": "502", "http.route": "/v2/report", "response.error.code": "17801", "trace.traceId": "trace-1"},
 	}})
 	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[2:3]
 	fakeDiscord := &fakeDiscord{}
@@ -29,8 +29,8 @@ func TestAlertFingerprintDedupeAndCooldown(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if fakeDiscord.sends != 3 {
-		t.Fatalf("expected one send per active fingerprint within cooldown, got %d", fakeDiscord.sends)
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("expected one V2 alert within cooldown, got %d", fakeDiscord.sends)
 	}
 }
 
@@ -40,7 +40,7 @@ func TestServiceAlertsSkipUnconnectedServices(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := newTestService(store, &fakeLogs{rows: []map[string]string{
-		{"count": "2", "logType": "API_ERROR", "level": "ERROR", "http.statusCode": "500", "http.path": "/v2/report", "response.error.code": "500"},
+		{"service.domain": "report", "service.name": "web-service", "logType": "API_ERROR", "http.statusCode": "500", "response.error.code": "18801"},
 	}})
 
 	alerts := service.collectAlerts(context.Background())
@@ -51,13 +51,33 @@ func TestServiceAlertsSkipUnconnectedServices(t *testing.T) {
 	}
 }
 
+func TestServiceAlertsCollectAuthV2Alert(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "auth", "service.name": "auth-service", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/api/v2/auth/login", "response.error.code": "21801", "trace.traceId": "trace-auth"},
+	}})
+	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[1:2]
+
+	alerts := service.collectAlerts(context.Background())
+	if len(alerts) != 1 {
+		t.Fatalf("expected one auth alert, got %#v", alerts)
+	}
+	alert := alerts[0]
+	if alert.Service != "auth" || alert.Severity != "CRITICAL" || alert.V2Decision.ErrorCode.CategoryCode != 8 {
+		t.Fatalf("unexpected auth alert: %#v", alert)
+	}
+}
+
 func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {
 		t.Fatal(err)
 	}
 	service := newTestService(store, &fakeLogs{rows: []map[string]string{
-		{"count": "3", "logType": "API_ERROR", "level": "ERROR", "http.statusCode": "500", "http.path": "/v2/report", "response.error.code": "500", "trace.traceId": "trace-1"},
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "report", "service.name": "web-service", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/report", "response.error.code": "18801", "trace.traceId": "trace-1"},
 	}})
 	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[2:3]
 	service.cfg.DiscordAllowedRoleIDs = []string{"1234567890"}
@@ -71,7 +91,7 @@ func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 		t.Fatal("expected service alert message")
 	}
 	content := fakeDiscord.sentContents[0]
-	for _, want := range []string{"<@&1234567890>", "서비스 장애 감지", "서비스: report/web", "/ops logs service:report mode:errors", "/ops trace trace_id:trace-1"} {
+	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "/ops logs service:report mode:errors", "/ops trace trace_id:trace-1"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}
@@ -135,7 +155,7 @@ func TestResolvedAlertStateTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := newTestService(store, &fakeLogs{rows: []map[string]string{
-		{"count": "2", "logType": "API_ERROR", "level": "ERROR", "http.statusCode": "500", "http.path": "/v2/report", "response.error.code": "500"},
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "report", "service.name": "web-service", "logType": "API_ERROR", "http.statusCode": "500", "http.path": "/v2/report", "response.error.code": "18801"},
 	}})
 	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[2:3]
 	fakeDiscord := &fakeDiscord{}

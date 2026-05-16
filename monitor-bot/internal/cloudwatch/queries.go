@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	recentFields     = `fields @timestamp, level, logType, env, service.name, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
-	traceFields      = `fields @timestamp, level, logType, service.name, service.version, trace.traceId, traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
-	errorFields      = `fields service.name, http.path, http.statusCode, response.error.code, response.error.value, response.error.message`
+	recentFields     = `fields @timestamp, level, logType, env, service.name, service.domain, service.domainCode, service.version, service.instanceId, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
+	traceFields      = `fields @timestamp, level, logType, service.name, service.domain, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
+	errorFields      = `fields service.domain, service.name, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, trace.traceId, logType, message`
 	assignmentFields = `fields service.name, http.method, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, tags`
-	countFields      = `fields service.name, logType, level, http.statusCode`
-	slowFields       = `fields @timestamp, service.name, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, message`
+	countFields      = `fields service.domain, service.name, service.domainCode, logType, http.statusCode`
+	slowFields       = `fields @timestamp, level, logType, service.domain, service.name, service.domainCode, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, response.error.alert, message`
 )
 
 func LogGroupsForService(logGroups map[string]string, service string) ([]string, error) {
@@ -62,17 +62,12 @@ func BuildRecentLogsQuery(service, level string, limit int) (string, error) {
 		return "", fmt.Errorf("unsupported level: %s", level)
 	}
 	limit32 := security.ClampLimit(limit, 20, 100)
-	if normalizedService == "report" {
-		return fmt.Sprintf(`%s
-| filter service.name = "report-service"
-| filter level = "%s"
-| sort @timestamp desc
-| limit %d`, recentFields, normalized, limit32), nil
-	}
 	return fmt.Sprintf(`%s
+%s
+| filter logType != "" and service.name != ""
 | filter level = "%s"
 | sort @timestamp desc
-| limit %d`, recentFields, normalized, limit32), nil
+| limit %d`, recentFields, serviceDomainFilter(normalizedService), normalized, limit32), nil
 }
 
 func BuildTraceQuery(traceID string) (string, error) {
@@ -81,26 +76,19 @@ func BuildTraceQuery(traceID string) (string, error) {
 		return "", fmt.Errorf("invalid trace_id")
 	}
 	return fmt.Sprintf(`%s
-| filter trace.traceId = "%s" or traceId = "%s"
+| filter trace.traceId = "%s"
 | sort @timestamp asc
-| limit 100`, traceFields, traceID, traceID), nil
+| limit 100`, traceFields, traceID), nil
 }
 
 func BuildErrorsQuery(service string, limit int) string {
 	limit32 := security.ClampLimit(limit, 20, 100)
-	if normalized, ok := security.NormalizeService(service); ok && normalized == "report" {
-		return fmt.Sprintf(`%s
-| filter service.name = "report-service"
-| filter level = "ERROR" or level = "WARN" or logType = "API_ERROR" or http.statusCode >= 400
-| stats count(*) as count by http.path, http.statusCode, response.error.code, response.error.value, response.error.message
-| sort count desc
-| limit %d`, errorFields, limit32)
-	}
 	return fmt.Sprintf(`%s
-| filter level = "ERROR" or level = "WARN" or logType = "API_ERROR" or http.statusCode >= 400
-| stats count(*) as count by service.name, http.path, http.statusCode, response.error.code, response.error.value
+%s
+| filter logType in ["API_ERROR", "EVENT_ERROR"]
+| stats count(*) as count by service.domain, service.name, http.route, http.path, http.statusCode, response.error.code, response.error.value, response.error.message, trace.traceId, logType, message
 | sort count desc
-| limit %d`, errorFields, limit32)
+| limit %d`, errorFields, serviceDomainFilter(service), limit32)
 }
 
 func BuildDashboardSummaryQuery(service string) (string, error) {
@@ -108,11 +96,11 @@ func BuildDashboardSummaryQuery(service string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	filter := serviceNameFilter(normalized)
-	return fmt.Sprintf(`fields service.name, logType, level, http.path, http.statusCode, http.latencyMs, response.error.code, response.error.value
+	filter := serviceDomainFilter(normalized)
+	return fmt.Sprintf(`fields service.domain, service.name, service.domainCode, logType, http.route, http.path, http.statusCode, http.latencyMs, response.error.code, response.error.value
 %s
-| filter logType = "API" or logType = "API_ERROR" or level = "WARN" or level = "ERROR"
-| stats count(*) as count, max(@timestamp) as lastLog, max(http.latencyMs) as maxLatency, pct(http.latencyMs, 95) as p95 by service.name, logType, level, http.path, http.statusCode, response.error.code, response.error.value
+| filter logType in ["API", "API_ERROR", "API_SLOW", "EVENT_ERROR", "SECURITY"]
+| stats count(*) as count, max(@timestamp) as lastLog, max(http.latencyMs) as maxLatency, pct(http.latencyMs, 95) as p95 by service.domain, service.name, service.domainCode, logType, http.route, http.path, http.statusCode, response.error.code, response.error.value
 | sort count desc
 | limit 100`, filter), nil
 }
@@ -126,10 +114,10 @@ func BuildCountQuery(service, countType string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unsupported count type: %s", countType)
 	}
-	filter := strings.TrimSpace(strings.Join([]string{serviceNameFilter(normalized), countTypeFilter(normalizedType)}, "\n"))
+	filter := strings.TrimSpace(strings.Join([]string{serviceDomainFilter(normalized), countTypeFilter(normalizedType)}, "\n"))
 	return fmt.Sprintf(`%s
 %s
-| stats count(*) as count by logType, level, http.statusCode
+| stats count(*) as count by service.domain, service.name, service.domainCode, logType, http.statusCode
 | sort count desc
 | limit 50`, countFields, filter), nil
 }
@@ -155,10 +143,10 @@ func BuildTopQuery(service, by string, limit int) (string, error) {
 	limit32 := security.ClampLimit(limit, 10, 20)
 	return fmt.Sprintf(`%s
 %s
-| filter logType = "API_ERROR" or level = "ERROR" or http.statusCode >= 400
+| filter logType in ["API_ERROR", "EVENT_ERROR"]
 | stats count(*) as count by %s
 | sort count desc
-| limit %d`, fields, serviceNameFilter(normalized), groupBy, limit32), nil
+| limit %d`, fields, serviceDomainFilter(normalized), groupBy, limit32), nil
 }
 
 func BuildSlowQuery(service string, thresholdMs, limit int) (string, error) {
@@ -167,15 +155,28 @@ func BuildSlowQuery(service string, thresholdMs, limit int) (string, error) {
 		return "", err
 	}
 	limit32 := security.ClampLimit(limit, 10, 20)
-	thresholdFilter := ""
+	thresholdFilter := `| filter logType = "API_SLOW"`
 	if thresholdMs > 0 {
-		thresholdFilter = fmt.Sprintf("\n| filter http.latencyMs >= %d", thresholdMs)
+		thresholdFilter = fmt.Sprintf(`| filter logType = "API_SLOW" or http.latencyMs >= %d`, thresholdMs)
 	}
 	return fmt.Sprintf(`%s
 %s
-| filter logType = "API" or logType = "API_ERROR"%s
+%s
 | sort http.latencyMs desc
-| limit %d`, slowFields, serviceNameFilter(normalized), thresholdFilter, limit32), nil
+| limit %d`, slowFields, serviceDomainFilter(normalized), thresholdFilter, limit32), nil
+}
+
+func BuildSecurityQuery(service string, limit int) (string, error) {
+	normalized, err := normalizeQueryService(service)
+	if err != nil {
+		return "", err
+	}
+	limit32 := security.ClampLimit(limit, 10, 20)
+	return fmt.Sprintf(`%s
+%s
+| filter logType = "SECURITY"
+| sort @timestamp desc
+| limit %d`, recentFields, serviceDomainFilter(normalized), limit32), nil
 }
 
 func BuildAssignmentsQuery() string {
@@ -194,10 +195,10 @@ func BuildAssignmentQuery(assignmentID string) (string, error) {
 	}
 	quoted := regexpQuoteForLogsInsights(assignmentID)
 	return fmt.Sprintf(`%s
-| filter service.name = "report-service"
-| filter @message like /%s/
+%s
+| filter http.path like /%s/ or http.route like /%s/ or tags like /%s/
 | sort @timestamp desc
-| limit 20`, recentFields, quoted), nil
+| limit 20`, recentFields, serviceDomainFilter("report"), quoted, quoted, quoted), nil
 }
 
 func BuildAlertQuery(service string) (string, error) {
@@ -207,9 +208,9 @@ func BuildAlertQuery(service string) (string, error) {
 	}
 	return fmt.Sprintf(`%s
 %s
-| filter logType = "API_ERROR" or level = "ERROR" or http.statusCode >= 500
+| filter logType = "EVENT_ERROR" or (logType = "API_ERROR" and http.statusCode >= 500) or response.error.code like /^[0-9][78][0-9]{3}$/ or response.error.code like /^21[78][0-9]{2}$/
 | sort @timestamp desc
-| limit 50`, slowFields, serviceNameFilter(normalized)), nil
+| limit 50`, slowFields, serviceDomainFilter(normalized)), nil
 }
 
 func regexpQuoteForLogsInsights(value string) string {
@@ -240,7 +241,7 @@ func BuildLastLogQuery(service string) (string, error) {
 	return fmt.Sprintf(`fields @timestamp, service.name, level, logType
 %s
 | sort @timestamp desc
-| limit 1`, serviceNameFilter(normalized)), nil
+| limit 1`, serviceDomainFilter(normalized)), nil
 }
 
 func TimeRange(since time.Duration) (int64, int64) {
@@ -256,12 +257,21 @@ func normalizeQueryService(service string) (string, error) {
 	return normalized, nil
 }
 
-func serviceNameFilter(service string) string {
+func serviceDomainFilter(service string) string {
 	if service == "all" {
 		return ""
 	}
-	if service == "report" {
-		return `| filter service.name = "report-service"`
+	switch service {
+	case "gateway":
+		return `| filter service.domain = "gateway" or service.domainCode = 1 or service.name = "gateway"`
+	case "report":
+		return `| filter service.domain = "report" or service.domainCode = 4 or service.name = "web-service" or service.name = "report-service"`
+	case "auth":
+		return `| filter service.domain = "auth" or service.domainCode = 2 or service.name = "auth-service"`
+	case "online-judge":
+		return `| filter service.domain = "judge" or service.domainCode = 5 or service.name = "online-judge-service" or service.name = "judge-service"`
+	case "post":
+		return `| filter service.domain = "blog" or service.domainCode = 6 or service.name = "post-service" or service.name = "blog-service"`
 	}
 	return ""
 }
@@ -271,7 +281,7 @@ func countTypeFilter(countType string) string {
 	case "api":
 		return `| filter logType = "API" or logType = "API_ERROR"`
 	case "error":
-		return `| filter logType = "API_ERROR" or level = "WARN" or level = "ERROR"`
+		return `| filter logType in ["API_ERROR", "EVENT_ERROR"]`
 	case "4xx":
 		return `| filter http.statusCode >= 400 and http.statusCode < 500`
 	case "5xx":

@@ -55,6 +55,12 @@ var (
 
 func NormalizeService(service string) (string, bool) {
 	normalized := strings.ToLower(strings.TrimSpace(service))
+	switch normalized {
+	case "judge":
+		normalized = "online-judge"
+	case "blog":
+		normalized = "post"
+	}
 	_, ok := allowedServices[normalized]
 	return normalized, ok
 }

@@ -10,8 +10,10 @@ var allowedOutputFields = map[string]struct{}{
 	"@timestamp":             {},
 	"env":                    {},
 	"service.name":           {},
+	"service.domain":         {},
 	"service.domainCode":     {},
 	"service.version":        {},
+	"service.instanceId":     {},
 	"level":                  {},
 	"logType":                {},
 	"trace.traceId":          {},
@@ -36,6 +38,7 @@ var allowedOutputFields = map[string]struct{}{
 
 var forbiddenFieldFragments = []string{
 	"password",
+	"passwordconfirm",
 	"accesstoken",
 	"refreshtoken",
 	"token",
@@ -61,7 +64,7 @@ var forbiddenFieldFragments = []string{
 	"request.body",
 }
 
-var sensitiveKeyPattern = regexp.MustCompile(`(?i)("?(password|accessToken|refreshToken|authorization|authenticate|salt|secret|credentials?|cookie|session|privateTestCases|hiddenTestCases|expectedOutput|userCode|sourceCode|response\.data|request\.body|token|code)"?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}]+)`)
+var sensitiveKeyPattern = regexp.MustCompile(`(?i)("?(password|passwordConfirm|accessToken|refreshToken|authorization|authenticate|salt|secret|credentials?|cookie|session|privateTestCases|hiddenTestCases|expectedOutput|userCode|sourceCode|response\.data|request\.body|token|code)"?\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,}]+)`)
 
 func AllowedOutputFields() []string {
 	fields := make([]string, 0, len(allowedOutputFields))
@@ -87,6 +90,7 @@ func SanitizeText(value string) string {
 		return ""
 	}
 	value = regexp.MustCompile(`(?i)authorization:\s*bearer\s+[^\s,}]+`).ReplaceAllString(value, "authorization: [REDACTED]")
+	value = regexp.MustCompile(`(?i)\bbearer\s+[a-z0-9._~+/-]+=*`).ReplaceAllString(value, "Bearer [REDACTED]")
 	value = regexp.MustCompile(`(?i)authorization:\s*[^\s,}]+`).ReplaceAllString(value, "authorization: [REDACTED]")
 	value = sensitiveKeyPattern.ReplaceAllString(value, `${1}[REDACTED]`)
 	return value

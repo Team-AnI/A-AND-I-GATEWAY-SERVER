@@ -25,8 +25,8 @@ func TestBuildQueriesUseAllowlistedValues(t *testing.T) {
 	if strings.Contains(query, "request.body") || strings.Contains(query, "response.data") {
 		t.Fatalf("query should not select raw sensitive fields: %s", query)
 	}
-	if !strings.Contains(query, `service.name = "report-service"`) {
-		t.Fatalf("report query should filter report-service: %s", query)
+	if !strings.Contains(query, `service.domain = "report"`) {
+		t.Fatalf("report query should filter report domain: %s", query)
 	}
 	traceQuery, err := BuildTraceQuery("trace_123")
 	if err != nil {
@@ -34,6 +34,9 @@ func TestBuildQueriesUseAllowlistedValues(t *testing.T) {
 	}
 	if !strings.Contains(traceQuery, `trace.traceId = "trace_123"`) {
 		t.Fatalf("trace id not included after validation: %s", traceQuery)
+	}
+	if strings.Contains(traceQuery, ` or traceId = "trace_123"`) {
+		t.Fatalf("trace query should not use raw traceId fallback: %s", traceQuery)
 	}
 }
 
@@ -76,13 +79,54 @@ func TestLogGroupsForReport(t *testing.T) {
 	}
 }
 
-func TestBuildErrorsQueryIncludesWarn(t *testing.T) {
+func TestBuildErrorsQueryUsesV2ErrorTypes(t *testing.T) {
 	query := BuildErrorsQuery("report", 20)
-	if !strings.Contains(query, `level = "WARN"`) {
-		t.Fatalf("WARN should be included in errors query: %s", query)
+	for _, forbidden := range []string{`level = "WARN"`, `level = "ERROR"`, `http.statusCode >= 400`} {
+		if strings.Contains(query, forbidden) {
+			t.Fatalf("errors query should not use legacy predicate %s: %s", forbidden, query)
+		}
 	}
-	if !strings.Contains(query, `service.name = "report-service"`) {
-		t.Fatalf("report errors query should filter report-service: %s", query)
+	if !strings.Contains(query, `logType in ["API_ERROR", "EVENT_ERROR"]`) {
+		t.Fatalf("errors query should filter V2 error logTypes: %s", query)
+	}
+	if !strings.Contains(query, `service.domain = "report"`) {
+		t.Fatalf("report errors query should filter report domain: %s", query)
+	}
+}
+
+func TestBuildAuthQueriesUseV2ServiceFields(t *testing.T) {
+	errorsQuery := BuildErrorsQuery("auth", 20)
+	for _, want := range []string{`logType in ["API_ERROR", "EVENT_ERROR"]`, `service.domain = "auth"`, `service.domainCode = 2`} {
+		if !strings.Contains(errorsQuery, want) {
+			t.Fatalf("auth errors query missing %q: %s", want, errorsQuery)
+		}
+	}
+	if strings.Contains(errorsQuery, "request.body") || strings.Contains(errorsQuery, "response.data") || strings.Contains(errorsQuery, "@message") {
+		t.Fatalf("auth errors query selected raw sensitive fields: %s", errorsQuery)
+	}
+	securityQuery, err := BuildSecurityQuery("auth", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`logType = "SECURITY"`, `service.domain = "auth"`, `service.domainCode = 2`} {
+		if !strings.Contains(securityQuery, want) {
+			t.Fatalf("auth security query missing %q: %s", want, securityQuery)
+		}
+	}
+}
+
+func TestBuildAuthAlertQueryIncludesAuthCategoryCodes(t *testing.T) {
+	query, err := BuildAlertQuery("auth")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`service.domain = "auth"`, `response.error.code like /^21[78][0-9]{2}$/`, `http.statusCode >= 500`} {
+		if !strings.Contains(query, want) {
+			t.Fatalf("auth alert query missing %q: %s", want, query)
+		}
+	}
+	if strings.Contains(query, "request.body") || strings.Contains(query, "response.data") || strings.Contains(query, "@message") {
+		t.Fatalf("auth alert query selected raw sensitive fields: %s", query)
 	}
 }
 
@@ -111,8 +155,8 @@ func TestBuildDashboardQueriesUseSafeV2Fields(t *testing.T) {
 			t.Fatalf("dashboard query selected forbidden field %s: %s", forbidden, query)
 		}
 	}
-	if !strings.Contains(query, `service.name = "report-service"`) {
-		t.Fatalf("report dashboard query should filter report-service: %s", query)
+	if !strings.Contains(query, `service.domain = "report"`) {
+		t.Fatalf("report dashboard query should filter report domain: %s", query)
 	}
 	countQuery, err := BuildCountQuery("report", "5xx")
 	if err != nil {
@@ -148,8 +192,11 @@ func TestBuildAssignmentQueriesUseSafeReportFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(detailQuery, `service.name = "report-service"`) || !strings.Contains(detailQuery, "8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111") {
+	if !strings.Contains(detailQuery, `service.domain = "report"`) || !strings.Contains(detailQuery, "8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111") {
 		t.Fatalf("assignment query should target validated assignment id: %s", detailQuery)
+	}
+	if strings.Contains(detailQuery, "@message") {
+		t.Fatalf("assignment query should not use raw message fallback: %s", detailQuery)
 	}
 	if _, err := BuildAssignmentQuery("bad/id"); err == nil {
 		t.Fatal("unsafe assignment id accepted")

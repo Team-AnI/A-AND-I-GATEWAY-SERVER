@@ -11,6 +11,7 @@ import (
 	cw "github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/cloudwatch"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/config"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/opslog"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
@@ -27,6 +28,8 @@ type Alert struct {
 	Error       int
 	Traces      []string
 	Resolved    bool
+	V2Log       *opslog.V2OpsLog
+	V2Decision  opslog.AlertDecision
 }
 
 func (s *Service) alertLoop(ctx context.Context) {
@@ -74,18 +77,6 @@ func (s *Service) PollAlerts(ctx context.Context) error {
 
 func (s *Service) collectAlerts(ctx context.Context) []Alert {
 	var alerts []Alert
-	if names, err := s.alarms.AlarmNames(ctx); err == nil {
-		for _, name := range names {
-			alerts = append(alerts, Alert{
-				Fingerprint: fmt.Sprintf("prod:cloudwatch:alarm:%s:-", name),
-				Service:     "cloudwatch",
-				AlertType:   "alarm",
-				Severity:    "P0",
-				Reason:      "CloudWatch alarm is ALARM",
-				Path:        name,
-			})
-		}
-	}
 	registry := s.cfg.ServiceRegistry
 	if len(registry) == 0 {
 		registry = config.BuildServiceRegistry(s.cfg.LogGroups, s.cfg.HealthURLs)
@@ -95,89 +86,60 @@ func (s *Service) collectAlerts(ctx context.Context) []Alert {
 		if !isServiceOpsConnected(service) {
 			continue
 		}
-		healthStatus := s.health.Check(ctx, service.Name)
-		s.updateHealthDownCount(service.Name, strings.EqualFold(healthStatus.State, "DOWN"))
-		if s.healthDownCount(service.Name) >= s.cfg.Alert.HealthDownConsecutive && s.cfg.Alert.HealthDownConsecutive > 0 {
-			alerts = append(alerts, Alert{
-				Fingerprint: fmt.Sprintf("prod:%s:health-down:-:-", service.Name),
-				Service:     service.Name,
-				AlertType:   "health-down",
-				Severity:    "P0",
-				Reason:      fmt.Sprintf("health check %d회 연속 실패", s.cfg.Alert.HealthDownConsecutive),
-			})
-		}
 		if strings.TrimSpace(service.LogGroup) == "" || !queries.Allow() {
 			continue
 		}
-		query, err := cw.BuildDashboardSummaryQuery(service.Name)
+		query, err := cw.BuildAlertQuery(service.Name)
 		if err != nil {
 			continue
 		}
 		rows, err := s.logs.Query(ctx, []string{service.LogGroup}, query, 5*time.Minute, 100)
 		if err != nil {
-			status := logStatusFromQueryError(err)
-			alerts = append(alerts, Alert{
-				Fingerprint: fmt.Sprintf("prod:%s:log-query-%s:-:-", service.Name, strings.ToLower(status)),
-				Service:     service.Name,
-				AlertType:   "log-query-failed",
-				Severity:    "P1",
-				Reason:      "CloudWatch 로그 조회 실패: " + status,
-			})
 			continue
 		}
-		if len(rows) == 0 && s.cfg.Alert.NoLogsMinutes > 0 {
-			noLogs := s.cfg.Alert.NoLogsMinutes <= 5
-			if !noLogs && queries.Allow() {
-				lastQuery, err := cw.BuildLastLogQuery(service.Name)
-				if err == nil {
-					lastRows, err := s.logs.Query(ctx, []string{service.LogGroup}, lastQuery, time.Duration(s.cfg.Alert.NoLogsMinutes)*time.Minute, 1)
-					noLogs = err == nil && len(lastRows) == 0
-				}
-			}
-			if noLogs {
-				alerts = append(alerts, Alert{
-					Fingerprint: fmt.Sprintf("prod:%s:no-logs:-:-", service.Name),
-					Service:     service.Name,
-					AlertType:   "no-logs",
-					Severity:    "P1",
-					Reason:      fmt.Sprintf("최근 %d분 로그 없음", s.cfg.Alert.NoLogsMinutes),
-				})
+		for _, row := range rows {
+			alert := makeV2Alert(row)
+			if alert.Fingerprint == "" {
 				continue
 			}
-		}
-		summary := formatting.SummarizeRows(rows)
-		if dbConnectionErrors(rows) > 0 {
-			alerts = append(alerts, makeAlert(service.Name, "db-connection", rows, summary))
-		}
-		if summary.FiveXX >= s.cfg.Alert.FiveXXThreshold5m && s.cfg.Alert.FiveXXThreshold5m > 0 {
-			alerts = append(alerts, makeAlert(service.Name, "5xx", rows, summary))
-		}
-		if summary.Error >= s.cfg.Alert.ErrorThreshold5m && s.cfg.Alert.ErrorThreshold5m > 0 {
-			alerts = append(alerts, makeAlert(service.Name, "error", rows, summary))
-		}
-		if service.Name == "report" && copyAPIFiveXX(rows) >= s.cfg.Alert.CopyAPIFiveXXThreshold5m && s.cfg.Alert.CopyAPIFiveXXThreshold5m > 0 {
-			alerts = append(alerts, makeAlert(service.Name, "copy-api-5xx", rows, summary))
+			alerts = append(alerts, alert)
 		}
 	}
 	return alerts
 }
 
-func makeAlert(service, alertType string, rows []map[string]string, summary formatting.LogSummary) Alert {
-	path, code := topPathAndCode(rows)
-	if path == "" {
-		path = "-"
+func makeV2Alert(row map[string]string) Alert {
+	log := opslog.RowToV2OpsLog(row)
+	decision := opslog.DecideV2Alert(log)
+	if !decision.Alert {
+		return Alert{}
 	}
+	traceID := ""
+	if log.Trace != nil {
+		traceID = strings.TrimSpace(log.Trace.TraceID)
+	}
+	path := ""
+	if log.HTTP != nil {
+		path = firstNonEmpty(log.HTTP.Route, log.HTTP.Path)
+	}
+	code := ""
+	if log.Response != nil && log.Response.Error != nil && log.Response.Error.Code != 0 {
+		code = strconv.Itoa(log.Response.Error.Code)
+	}
+	fpKey := firstNonEmpty(traceID, strings.Join([]string{log.Timestamp, log.LogType, path, code}, ":"))
 	return Alert{
-		Fingerprint: fmt.Sprintf("prod:%s:%s:%s:%s", service, alertType, path, code),
-		Service:     service,
-		AlertType:   alertType,
-		Severity:    alertSeverity(alertType),
-		Reason:      alertReason(alertType),
+		Fingerprint: fmt.Sprintf("prod:%s:v2:%s:%s", decision.Domain, log.LogType, fpKey),
+		Service:     decision.Domain,
+		AlertType:   "v2-log",
+		Severity:    decision.Severity,
+		Reason:      decision.Reason,
 		Path:        path,
 		ErrorCode:   code,
-		FiveXX:      summary.FiveXX,
-		Error:       summary.Error,
-		Traces:      traces(rows, 3),
+		FiveXX:      boolCount(log.HTTP != nil && log.HTTP.StatusCode >= 500),
+		Error:       1,
+		Traces:      traces([]map[string]string{row}, 1),
+		V2Log:       &log,
+		V2Decision:  decision,
 	}
 }
 
@@ -391,6 +353,9 @@ func validRoleID(value string) bool {
 }
 
 func formatAlert(alert Alert, mention string) string {
+	if alert.AlertType == "v2-log" && alert.V2Log != nil {
+		return formatting.TruncateDiscordMessage(opslog.FormatV2Alert(*alert.V2Log, alert.V2Decision, mention))
+	}
 	var b strings.Builder
 	b.WriteString(mention)
 	icon := "⚠️"
@@ -429,15 +394,6 @@ func formatAlert(alert Alert, mention string) string {
 		fmt.Fprintf(&b, "/ops trace trace_id:%s", alert.Traces[0])
 	}
 	return formatting.TruncateDiscordMessage(b.String())
-}
-
-func alertSeverity(alertType string) string {
-	switch alertType {
-	case "5xx", "health-down", "db-connection", "copy-api-5xx", "alarm":
-		return "P0"
-	default:
-		return "P1"
-	}
 }
 
 func alertReason(alertType string) string {
@@ -486,26 +442,10 @@ func displayServiceName(service string) string {
 }
 
 func serviceAlertSummary(alert Alert) string {
-	return fmt.Sprintf("%s %s - %s", displayServiceName(alert.Service), alertStatus(alert), alertReasonText(alert))
-}
-
-func topPathAndCode(rows []map[string]string) (string, string) {
-	counts := map[string]int{}
-	codes := map[string]string{}
-	best := ""
-	for _, row := range rows {
-		path := row["http.path"]
-		if path == "" {
-			continue
-		}
-		key := path
-		counts[key] += countValue(row)
-		codes[key] = row["response.error.code"]
-		if best == "" || counts[key] > counts[best] {
-			best = key
-		}
+	if alert.AlertType == "v2-log" {
+		return fmt.Sprintf("%s %s - %s", displayServiceName(alert.Service), alert.Severity, alert.Reason)
 	}
-	return best, codes[best]
+	return fmt.Sprintf("%s %s - %s", displayServiceName(alert.Service), alertStatus(alert), alertReasonText(alert))
 }
 
 func traces(rows []map[string]string, limit int) []string {
@@ -528,56 +468,9 @@ func traces(rows []map[string]string, limit int) []string {
 	return result
 }
 
-func dbConnectionErrors(rows []map[string]string) int {
-	count := 0
-	for _, row := range rows {
-		text := strings.ToLower(strings.Join([]string{
-			row["message"],
-			row["response.error.message"],
-			row["response.error.value"],
-			row["response.error.code"],
-		}, " "))
-		if strings.Contains(text, "db connection") ||
-			strings.Contains(text, "database connection") ||
-			strings.Contains(text, "connection refused") ||
-			strings.Contains(text, "sql") && strings.Contains(text, "connection") {
-			count += countValue(row)
-		}
-	}
-	return count
-}
-
-func copyAPIFiveXX(rows []map[string]string) int {
-	count := 0
-	for _, row := range rows {
-		if !strings.Contains(row["http.path"], "/assignments/copy") {
-			continue
-		}
-		if strings.HasPrefix(row["http.statusCode"], "5") {
-			count += countValue(row)
-		}
-	}
-	return count
-}
-
-func (s *Service) updateHealthDownCount(service string, down bool) {
-	_ = s.store.Update(func(data *state.Data) {
-		if down {
-			data.HealthDownCounts[service]++
-			return
-		}
-		data.HealthDownCounts[service] = 0
-	})
-}
-
-func (s *Service) healthDownCount(service string) int {
-	return s.store.Snapshot().HealthDownCounts[service]
-}
-
-func countValue(row map[string]string) int {
-	count, err := strconv.Atoi(strings.TrimSpace(row["count"]))
-	if err != nil || count <= 0 {
+func boolCount(value bool) int {
+	if value {
 		return 1
 	}
-	return count
+	return 0
 }

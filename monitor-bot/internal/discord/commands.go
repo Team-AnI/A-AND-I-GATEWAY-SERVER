@@ -56,8 +56,8 @@ func (e *RegistrationError) Error() string {
 
 func Definitions() []commandDefinition {
 	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
-	reportServiceChoices := choices("report")
-	reportOrAllChoices := choices("all", "report")
+	connectedServiceChoices := choices("gateway", "auth", "report")
+	connectedOrAllChoices := choices("all", "gateway", "auth", "report")
 	reportSinceChoices := choices("15m", "30m", "1h")
 	watchScopeChoices := choices("all", "service")
 	watchIntervalChoices := choices("1m", "3m", "5m", "10m", "15m")
@@ -67,7 +67,7 @@ func Definitions() []commandDefinition {
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
 	serviceViewChoices := choices("summary", "health")
-	logModeChoices := choices("recent", "errors", "slow")
+	logModeChoices := choices("recent", "errors", "slow", "security")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
 	return []commandDefinition{
@@ -76,12 +76,12 @@ func Definitions() []commandDefinition {
 				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("service", "특정 서비스 상세 상태", []commandOption{
-				stringOption("service", "조회할 서비스", true, reportServiceChoices),
+				stringOption("service", "조회할 서비스", true, connectedServiceChoices),
 				stringOption("view", "상세 보기", false, serviceViewChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("logs", "로그 조회와 집계", []commandOption{
-				stringOption("service", "조회할 서비스", true, reportOrAllChoices),
+				stringOption("service", "조회할 서비스", true, connectedOrAllChoices),
 				stringOption("mode", "조회 모드", false, logModeChoices),
 				stringOption("level", "로그 레벨", false, levelChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),

@@ -100,7 +100,7 @@ func (s *Service) WatchDashboardScope(ctx context.Context, channelID, scope, ser
 			return "", fmt.Errorf("지원하지 않는 service입니다")
 		}
 		service = normalized
-		if service != "report" {
+		if !isServiceOpsNameConnected(service) {
 			return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NOT_CONNECTED\ncatalog에는 표시되지만 자동 dashboard 조회 대상은 아닙니다.", service), nil
 		}
 	}
@@ -362,7 +362,7 @@ func (s *Service) dashboardInputsForRegistry(ctx context.Context, since time.Dur
 			Alarm:       serviceHasAlarm(service.Name, alarmNames),
 		}
 		if !isServiceOpsConnected(service) {
-			input.LogStatus = "NO_LOGS"
+			input.LogStatus = "NO_V2_LOG"
 			input.Alarm = false
 			inputs = append(inputs, input)
 			continue
@@ -398,7 +398,7 @@ func (s *Service) dashboardInputsForRegistry(ctx context.Context, since time.Dur
 		}
 		input.Rows = rows
 		if len(rows) == 0 {
-			input.LogStatus = "NO_LOGS"
+			input.LogStatus = "NO_V2_LOG"
 		} else {
 			input.LogStatus = "OK"
 		}
@@ -408,7 +408,11 @@ func (s *Service) dashboardInputsForRegistry(ctx context.Context, since time.Dur
 }
 
 func isServiceOpsConnected(service config.ServiceDefinition) bool {
-	return service.Name == "report"
+	return isServiceOpsNameConnected(service.Name)
+}
+
+func isServiceOpsNameConnected(service string) bool {
+	return service == "gateway" || service == "auth" || service == "report"
 }
 
 func logStatusFromQueryError(err error) string {
