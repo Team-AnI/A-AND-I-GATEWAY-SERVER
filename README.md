@@ -8,7 +8,7 @@
 
 ```json
 {
-  "success": "SUCCESS",
+  "success": true,
   "data": {
     "...": "..."
   },
@@ -21,7 +21,7 @@
 
 ```json
 {
-  "success": "SUCCESS",
+  "success": false,
   "data": null,
   "error": {
     "code": 13001,

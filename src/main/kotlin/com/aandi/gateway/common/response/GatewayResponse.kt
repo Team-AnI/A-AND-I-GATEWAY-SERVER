@@ -4,11 +4,10 @@ import org.springframework.http.HttpStatus
 import java.time.OffsetDateTime
 import java.time.ZoneId
 
-private const val RESPONSE_SUCCESS = "SUCCESS"
 private val KOREA_ZONE_ID: ZoneId = ZoneId.of("Asia/Seoul")
 
 data class GatewayResponse<T>(
-    val success: String = RESPONSE_SUCCESS,
+    val success: Boolean,
     val data: T?,
     val error: GatewayErrorPayload?,
     val timestamp: OffsetDateTime = OffsetDateTime.now(KOREA_ZONE_ID)
@@ -16,6 +15,7 @@ data class GatewayResponse<T>(
     companion object {
         fun <T> success(data: T): GatewayResponse<T> {
             return GatewayResponse(
+                success = true,
                 data = data,
                 error = null
             )
@@ -23,6 +23,7 @@ data class GatewayResponse<T>(
 
         fun error(errorCode: GatewayErrorCode): GatewayResponse<Nothing> {
             return GatewayResponse(
+                success = false,
                 data = null,
                 error = GatewayErrorPayload(
                     code = errorCode.code,
