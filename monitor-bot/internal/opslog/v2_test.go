@@ -78,9 +78,13 @@ func TestDecideV2AlertUsesBlogCommonOverrideCodes(t *testing.T) {
 		mention  bool
 		category int
 	}{
+		{64801, SeverityHigh, false, 4},
+		{64805, SeverityHigh, false, 4},
+		{68801, SeverityCrit, true, 8},
 		{60701, SeverityHigh, false, 7},
 		{90701, SeverityHigh, false, 7},
 		{90801, SeverityCrit, true, 8},
+		{98801, SeverityCrit, true, 8},
 	}
 	for _, tc := range cases {
 		log := V2OpsLog{
@@ -93,6 +97,42 @@ func TestDecideV2AlertUsesBlogCommonOverrideCodes(t *testing.T) {
 		if !decision.Alert || decision.Mention != tc.mention || decision.Severity != tc.severity || decision.ErrorCode.CategoryCode != tc.category {
 			t.Fatalf("code %d decision = %#v", tc.code, decision)
 		}
+	}
+}
+
+func TestDecideV2AlertUsesExplicitAuthSeverityCodes(t *testing.T) {
+	cases := []struct {
+		code     int
+		severity string
+		mention  bool
+	}{
+		{21701, SeverityHigh, false},
+		{21801, SeverityCrit, true},
+	}
+	for _, tc := range cases {
+		log := V2OpsLog{
+			LogType:  "API_ERROR",
+			Service:  V2Service{Name: "auth-service", Domain: "auth", DomainCode: 2},
+			HTTP:     &V2HTTP{StatusCode: 500},
+			Response: &V2Response{Error: &V2Error{Code: tc.code}},
+		}
+		decision := DecideV2Alert(log)
+		if !decision.Alert || decision.Mention != tc.mention || decision.Severity != tc.severity {
+			t.Fatalf("code %d decision = %#v", tc.code, decision)
+		}
+	}
+}
+
+func TestDecideV2AlertHTTP500WithoutExplicitCriticalIsHighNoMention(t *testing.T) {
+	log := V2OpsLog{
+		LogType:  "API_ERROR",
+		Service:  V2Service{Name: "blog-service", Domain: "blog", DomainCode: 6},
+		HTTP:     &V2HTTP{StatusCode: 500},
+		Response: &V2Response{Error: &V2Error{Code: 90899}},
+	}
+	decision := DecideV2Alert(log)
+	if !decision.Alert || decision.Mention || decision.Severity != SeverityHigh {
+		t.Fatalf("unexpected HTTP 500 decision: %#v", decision)
 	}
 }
 

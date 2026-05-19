@@ -120,6 +120,47 @@ var errorCodeOverrides = map[int]ErrorCodeInfo{
 	90801: overrideErrorCode(9, 8, 1),
 }
 
+var explicitCriticalCodes = map[int]struct{}{
+	18801: {},
+	21801: {},
+	28101: {},
+	38101: {},
+	38801: {},
+	48801: {},
+	54801: {},
+	68801: {},
+	90801: {},
+	98801: {},
+}
+
+var knownHighCodes = map[int]struct{}{
+	21701: {},
+	34801: {},
+	34802: {},
+	44701: {},
+	44801: {},
+	44802: {},
+	44803: {},
+	44804: {},
+	44805: {},
+	44806: {},
+	44807: {},
+	54701: {},
+	54702: {},
+	54703: {},
+	54802: {},
+	54803: {},
+	54804: {},
+	54805: {},
+	60701: {},
+	64801: {},
+	64802: {},
+	64803: {},
+	64804: {},
+	64805: {},
+	90701: {},
+}
+
 func ParseV2Log(rawMessage string) ParseResult {
 	rawMessage = strings.TrimSpace(rawMessage)
 	if rawMessage == "" {
@@ -216,36 +257,22 @@ func ResolveServiceDomainFromFields(row map[string]string) string {
 
 func DecideV2Alert(log V2OpsLog) AlertDecision {
 	info := ErrorCodeInfo{ServiceName: UnknownErrCode, CategoryName: UnknownErrCode}
+	code := 0
 	if log.Response != nil && log.Response.Error != nil && log.Response.Error.Code != 0 {
-		info = ParseErrorCode(log.Response.Error.Code)
+		code = log.Response.Error.Code
+		info = ParseErrorCode(code)
 	}
 	logType := strings.ToUpper(strings.TrimSpace(log.LogType))
-	explicitCritical := strings.EqualFold(strings.TrimSpace(log.Level), SeverityCrit)
-	internalError := info.Valid && info.CategoryCode == 8
+	severity := ResolveV2Severity(log, info)
+	explicitCritical := severity == SeverityCrit
+	_, highCode := knownHighCodes[code]
 	externalSystem := info.Valid && info.CategoryCode == 7
 	httpServerError := log.HTTP != nil && log.HTTP.StatusCode >= 500
-	severity := SeverityUnk
-	switch {
-	case explicitCritical || internalError:
-		severity = SeverityCrit
-	case externalSystem:
-		severity = SeverityHigh
-	case httpServerError:
-		severity = SeverityHigh
-	case logType == "EVENT_ERROR":
-		severity = SeverityHigh
-	case logType == "API_SLOW":
-		severity = SeverityMed
-	case logType == "SECURITY":
-		severity = SeverityMed
-	case info.Valid && info.CategoryCode >= 1 && info.CategoryCode <= 6:
-		severity = SeverityLow
-	}
 	alert := explicitCritical ||
 		logType == "EVENT_ERROR" ||
 		(logType == "API_ERROR" && httpServerError) ||
 		externalSystem ||
-		internalError
+		highCode
 	decision := AlertDecision{
 		Alert:         alert,
 		Mention:       alert && severity == SeverityCrit,
@@ -257,10 +284,10 @@ func DecideV2Alert(log V2OpsLog) AlertDecision {
 	switch {
 	case explicitCritical:
 		decision.Reason = "critical"
-	case internalError:
-		decision.Reason = "internal_error"
 	case externalSystem:
 		decision.Reason = "external_system"
+	case highCode:
+		decision.Reason = "operation_failure"
 	case logType == "EVENT_ERROR":
 		decision.Reason = "EVENT_ERROR"
 	case httpServerError:
@@ -269,6 +296,36 @@ func DecideV2Alert(log V2OpsLog) AlertDecision {
 		decision.Reason = "aggregate_only"
 	}
 	return decision
+}
+
+func ResolveV2Severity(log V2OpsLog, info ErrorCodeInfo) string {
+	code := 0
+	if log.Response != nil && log.Response.Error != nil {
+		code = log.Response.Error.Code
+	}
+	logType := strings.ToUpper(strings.TrimSpace(log.LogType))
+	switch {
+	case strings.EqualFold(strings.TrimSpace(log.Level), SeverityCrit):
+		return SeverityCrit
+	case hasCode(explicitCriticalCodes, code):
+		return SeverityCrit
+	case info.Valid && info.CategoryCode == 7:
+		return SeverityHigh
+	case hasCode(knownHighCodes, code):
+		return SeverityHigh
+	case logType == "EVENT_ERROR":
+		return SeverityHigh
+	case logType == "API_ERROR" && log.HTTP != nil && log.HTTP.StatusCode >= 500:
+		return SeverityHigh
+	case logType == "API_SLOW":
+		return SeverityMed
+	case logType == "SECURITY":
+		return SeverityMed
+	case info.Valid && info.CategoryCode >= 1 && info.CategoryCode <= 6:
+		return SeverityLow
+	default:
+		return SeverityUnk
+	}
 }
 
 func RowToV2OpsLog(row map[string]string) V2OpsLog {
@@ -383,6 +440,11 @@ func overrideErrorCode(serviceCode, categoryCode, detailCode int) ErrorCodeInfo 
 		CategoryName: categoryCodeNames[categoryCode],
 		DetailCode:   detailCode,
 	}
+}
+
+func hasCode(codes map[int]struct{}, code int) bool {
+	_, ok := codes[code]
+	return ok
 }
 
 func normalizeServiceName(name string) string {

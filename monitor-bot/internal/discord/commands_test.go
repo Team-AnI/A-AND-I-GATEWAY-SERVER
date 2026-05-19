@@ -70,6 +70,9 @@ func TestOpsConnectedServiceChoices(t *testing.T) {
 		t.Fatalf("dashboard since choices = %#v", got)
 	}
 	logs := findSubcommand(t, command, "logs")
+	if findOption(t, logs.Options, "service").Required {
+		t.Fatal("logs service option should be optional and default to all")
+	}
 	if got := choiceNames(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,blog" {
 		t.Fatalf("logs service choice names = %#v", got)
 	}

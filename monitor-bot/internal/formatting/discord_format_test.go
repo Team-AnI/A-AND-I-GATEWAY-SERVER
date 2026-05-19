@@ -399,12 +399,17 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	got := HelpText()
 	for _, want := range []string{
 		"A&I Ops Incident Flow",
+		"Core",
 		"/ops dashboard since:30m",
-		"/ops logs service:all mode:errors since:15m limit:10",
-		"/ops logs service:blog mode:errors since:30m limit:10",
-		"/ops logs service:auth mode:slow since:30m limit:10",
+		"/ops service service:blog view:summary",
+		"/ops logs mode:errors since:15m limit:10",
 		"/ops watch scope:all channel:#ops interval:5m",
 		"/ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10",
+		"Advanced",
+		"/ops trace trace_id:<traceId>",
+		"/ops alarms state:ALARM",
+		"/ops storage view:usage",
+		"/ops assignments course:<courseSlug> status:all",
 		"Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.",
 		"Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.",
 	} {
@@ -412,7 +417,7 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 			t.Fatalf("help text missing %q: %s", want, got)
 		}
 	}
-	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy", "/ops storage view:usage", "/ops assignments course:", "/ops assignment-check course:", "/ops submissions course:", "/ops trace trace_id:<traceId>"} {
+	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy"} {
 		if strings.Contains(got, legacy) {
 			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
 		}

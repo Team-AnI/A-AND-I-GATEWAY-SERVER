@@ -81,7 +81,7 @@ func Definitions() []commandDefinition {
 				stringOption("since", "조회 기간", false, reportSinceChoices),
 			}),
 			subcommandOption("logs", "로그 조회와 집계", []commandOption{
-				stringOption("service", "조회할 서비스", true, connectedOrAllChoices),
+				stringOption("service", "조회할 서비스", false, connectedOrAllChoices),
 				stringOption("mode", "조회 모드", false, logModeChoices),
 				stringOption("level", "로그 레벨", false, levelChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),

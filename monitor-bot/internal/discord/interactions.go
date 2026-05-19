@@ -355,7 +355,11 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 }
 
 func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	service, ok := security.NormalizeServiceOrAll(optionStringFromOptions(subcommand.Options, "service"))
+	serviceOption := optionStringFromOptions(subcommand.Options, "service")
+	if serviceOption == "" {
+		serviceOption = "all"
+	}
+	service, ok := security.NormalizeServiceOrAll(serviceOption)
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
