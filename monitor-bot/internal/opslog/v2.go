@@ -114,6 +114,12 @@ var categoryCodeNames = map[int]string{
 	8: "internal_error",
 }
 
+var errorCodeOverrides = map[int]ErrorCodeInfo{
+	60701: overrideErrorCode(6, 7, 1),
+	90701: overrideErrorCode(9, 7, 1),
+	90801: overrideErrorCode(9, 8, 1),
+}
+
 func ParseV2Log(rawMessage string) ParseResult {
 	rawMessage = strings.TrimSpace(rawMessage)
 	if rawMessage == "" {
@@ -140,6 +146,9 @@ func isV2Shape(log V2OpsLog) bool {
 }
 
 func ParseErrorCode(code int) ErrorCodeInfo {
+	if info, ok := errorCodeOverrides[code]; ok {
+		return info
+	}
 	if code < 10000 || code > 99999 {
 		return ErrorCodeInfo{ServiceName: UnknownErrCode, CategoryName: UnknownErrCode}
 	}
@@ -210,42 +219,51 @@ func DecideV2Alert(log V2OpsLog) AlertDecision {
 	if log.Response != nil && log.Response.Error != nil && log.Response.Error.Code != 0 {
 		info = ParseErrorCode(log.Response.Error.Code)
 	}
+	logType := strings.ToUpper(strings.TrimSpace(log.LogType))
+	explicitCritical := strings.EqualFold(strings.TrimSpace(log.Level), SeverityCrit)
+	internalError := info.Valid && info.CategoryCode == 8
+	externalSystem := info.Valid && info.CategoryCode == 7
+	httpServerError := log.HTTP != nil && log.HTTP.StatusCode >= 500
 	severity := SeverityUnk
 	switch {
-	case info.Valid && info.CategoryCode == 8:
+	case explicitCritical || internalError:
 		severity = SeverityCrit
-	case info.Valid && info.CategoryCode == 7:
+	case externalSystem:
 		severity = SeverityHigh
-	case log.HTTP != nil && log.HTTP.StatusCode >= 500:
+	case httpServerError:
 		severity = SeverityHigh
-	case log.LogType == "EVENT_ERROR":
+	case logType == "EVENT_ERROR":
 		severity = SeverityHigh
-	case log.LogType == "API_SLOW":
+	case logType == "API_SLOW":
 		severity = SeverityMed
-	case log.LogType == "SECURITY":
+	case logType == "SECURITY":
 		severity = SeverityMed
 	case info.Valid && info.CategoryCode >= 1 && info.CategoryCode <= 6:
 		severity = SeverityLow
 	}
-	alert := log.LogType == "EVENT_ERROR" ||
-		(log.LogType == "API_ERROR" && log.HTTP != nil && log.HTTP.StatusCode >= 500) ||
-		(info.Valid && (info.CategoryCode == 7 || info.CategoryCode == 8))
+	alert := explicitCritical ||
+		logType == "EVENT_ERROR" ||
+		(logType == "API_ERROR" && httpServerError) ||
+		externalSystem ||
+		internalError
 	decision := AlertDecision{
 		Alert:         alert,
-		Mention:       info.Valid && info.CategoryCode == 8 || severity == SeverityCrit,
+		Mention:       alert && severity == SeverityCrit,
 		AggregateOnly: !alert,
 		Severity:      severity,
 		ErrorCode:     info,
 		Domain:        ResolveServiceDomain(log),
 	}
 	switch {
-	case log.LogType == "EVENT_ERROR":
-		decision.Reason = "EVENT_ERROR"
-	case info.Valid && info.CategoryCode == 8:
+	case explicitCritical:
+		decision.Reason = "critical"
+	case internalError:
 		decision.Reason = "internal_error"
-	case info.Valid && info.CategoryCode == 7:
+	case externalSystem:
 		decision.Reason = "external_system"
-	case log.HTTP != nil && log.HTTP.StatusCode >= 500:
+	case logType == "EVENT_ERROR":
+		decision.Reason = "EVENT_ERROR"
+	case httpServerError:
 		decision.Reason = "http_5xx"
 	default:
 		decision.Reason = "aggregate_only"
@@ -354,6 +372,17 @@ func domainFromCode(code int) string {
 		return ""
 	}
 	return serviceCodeNames[code]
+}
+
+func overrideErrorCode(serviceCode, categoryCode, detailCode int) ErrorCodeInfo {
+	return ErrorCodeInfo{
+		Valid:        true,
+		ServiceCode:  serviceCode,
+		ServiceName:  serviceCodeNames[serviceCode],
+		CategoryCode: categoryCode,
+		CategoryName: categoryCodeNames[categoryCode],
+		DetailCode:   detailCode,
+	}
 }
 
 func normalizeServiceName(name string) string {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/opslog"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
 
@@ -95,6 +96,89 @@ func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}
+	}
+}
+
+func TestHighServiceAlertDoesNotMentionOperatorRole(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "blog", "service.name": "blog-service", "logType": "API_ERROR", "http.statusCode": "502", "http.route": "/v2/blogs", "response.error.code": "60701", "trace.traceId": "trace-blog"},
+	}})
+	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[4:5]
+	service.cfg.DiscordAllowedRoleIDs = []string{"1234567890"}
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("expected one alert, got %d", fakeDiscord.sends)
+	}
+	content := fakeDiscord.sentContents[0]
+	if strings.Contains(content, "<@&1234567890>") {
+		t.Fatalf("HIGH alert must not mention role: %s", content)
+	}
+	if !strings.Contains(content, "API_ERROR | blog") || !strings.Contains(content, "external_system") {
+		t.Fatalf("unexpected HIGH alert content: %s", content)
+	}
+}
+
+func TestCriticalAlertUsesStateRoleBeforeAllowedRole(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(data *state.Data) {
+		data.ServiceAlerts.RoleID = "9999999999"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "auth", "service.name": "auth-service", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/auth/login", "response.error.code": "28101", "trace.traceId": "trace-auth"},
+	}})
+	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[1:2]
+	service.cfg.DiscordAllowedRoleIDs = []string{"1234567890"}
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	content := fakeDiscord.sentContents[0]
+	if !strings.Contains(content, "<@&9999999999>") || strings.Contains(content, "<@&1234567890>") {
+		t.Fatalf("critical alert should use state role first: %s", content)
+	}
+}
+
+func TestAllowedRoleFallbackOnlyAppliesToCritical(t *testing.T) {
+	critical := Alert{
+		AlertType: "v2-log",
+		V2Log: &opslog.V2OpsLog{
+			LogType:  "API_ERROR",
+			Service:  opslog.V2Service{Name: "auth-service", Domain: "auth"},
+			HTTP:     &opslog.V2HTTP{StatusCode: 500},
+			Response: &opslog.V2Response{Error: &opslog.V2Error{Code: 28101}},
+		},
+		V2Decision: opslog.AlertDecision{Alert: true, Mention: true, Severity: opslog.SeverityCrit, Domain: "auth"},
+	}
+	high := critical
+	high.V2Log = &opslog.V2OpsLog{
+		LogType:  "API_ERROR",
+		Service:  opslog.V2Service{Name: "blog-service", Domain: "blog"},
+		HTTP:     &opslog.V2HTTP{StatusCode: 502},
+		Response: &opslog.V2Response{Error: &opslog.V2Error{Code: 60701}},
+	}
+	high.V2Decision = opslog.AlertDecision{Alert: true, Mention: false, Severity: opslog.SeverityHigh, Domain: "blog"}
+
+	if content := formatAlert(critical, "<@&1234567890>\n"); !strings.Contains(content, "<@&1234567890>") {
+		t.Fatalf("critical alert should include fallback mention: %s", content)
+	}
+	if content := formatAlert(high, "<@&1234567890>\n"); strings.Contains(content, "<@&1234567890>") {
+		t.Fatalf("HIGH alert should not include fallback mention: %s", content)
 	}
 }
 

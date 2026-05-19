@@ -55,7 +55,7 @@ func TestBuildRecentAndErrorsQueriesApplyLimit(t *testing.T) {
 }
 
 func TestLogGroupsForServiceAllowlist(t *testing.T) {
-	groups := map[string]string{"gateway": "/a-and-i/gateway", "auth": "/a-and-i/auth"}
+	groups := map[string]string{"gateway": "/a-and-i/gateway", "auth": "/a-and-i/auth", "post": "/a-and-i/prod/tech-blog"}
 	got, err := LogGroupsForService(groups, "gateway")
 	if err != nil {
 		t.Fatal(err)
@@ -65,6 +65,13 @@ func TestLogGroupsForServiceAllowlist(t *testing.T) {
 	}
 	if _, err := LogGroupsForService(groups, "redis"); err == nil {
 		t.Fatal("unsupported service accepted")
+	}
+	got, err = LogGroupsForService(groups, "blog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0] != "/a-and-i/prod/tech-blog" {
+		t.Fatalf("blog alias should use post log group: %#v", got)
 	}
 }
 
@@ -115,18 +122,60 @@ func TestBuildAuthQueriesUseV2ServiceFields(t *testing.T) {
 	}
 }
 
-func TestBuildAuthAlertQueryIncludesAuthCategoryCodes(t *testing.T) {
+func TestServiceDomainFiltersUseV2ServiceFields(t *testing.T) {
+	auth := serviceDomainFilter("auth")
+	for _, want := range []string{`service.domain = "auth"`, `service.domainCode = 2`, `service.name = "auth-service"`} {
+		if !strings.Contains(auth, want) {
+			t.Fatalf("auth filter missing %q: %s", want, auth)
+		}
+	}
+	post := serviceDomainFilter("post")
+	for _, want := range []string{`service.domain = "blog"`, `service.domainCode = 6`, `service.name = "post-service"`, `service.name = "blog-service"`} {
+		if !strings.Contains(post, want) {
+			t.Fatalf("post filter missing %q: %s", want, post)
+		}
+	}
+}
+
+func TestBuildAlertQueryIncludesImmediateV2Candidates(t *testing.T) {
 	query, err := BuildAlertQuery("auth")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`service.domain = "auth"`, `response.error.code like /^21[78][0-9]{2}$/`, `http.statusCode >= 500`} {
+	for _, want := range []string{`service.domain = "auth"`, `logType = "EVENT_ERROR"`, `response.error.code like /^[0-9][78][0-9]{3}$/`, `response.error.code like /^21[78][0-9]{2}$/`, `http.statusCode >= 500`} {
 		if !strings.Contains(query, want) {
 			t.Fatalf("auth alert query missing %q: %s", want, query)
 		}
 	}
+	for _, want := range []string{"60701", "90701", "90801"} {
+		if !strings.Contains(query, want) {
+			t.Fatalf("alert query missing override code %s: %s", want, query)
+		}
+	}
 	if strings.Contains(query, "request.body") || strings.Contains(query, "response.data") || strings.Contains(query, "@message") {
 		t.Fatalf("auth alert query selected raw sensitive fields: %s", query)
+	}
+}
+
+func TestBuildBlogQueriesUseV2ServiceFields(t *testing.T) {
+	recentQuery, err := BuildRecentLogsQuery("blog", "ERROR", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slowQuery, err := BuildSlowQuery("post", 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	securityQuery, err := BuildSecurityQuery("blog", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, query := range map[string]string{"recent": recentQuery, "slow": slowQuery, "security": securityQuery} {
+		for _, want := range []string{`service.domain = "blog"`, `service.domainCode = 6`, `service.name = "post-service"`, `service.name = "blog-service"`} {
+			if !strings.Contains(query, want) {
+				t.Fatalf("%s blog query missing %q: %s", name, want, query)
+			}
+		}
 	}
 }
 

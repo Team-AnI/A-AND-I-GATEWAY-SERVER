@@ -235,7 +235,7 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 	}
 	b.WriteString("\n상세 확인\n")
 	b.WriteString("/ops logs service:report mode:errors since:" + since + " limit:10\n")
-	b.WriteString("/ops logs service:report mode:slow since:" + since + " limit:10\n")
+	b.WriteString("/ops logs service:blog mode:slow since:" + since + " limit:10\n")
 	b.WriteString("/ops trace trace_id:<traceId>")
 	return TruncateDiscordMessage(b.String())
 }
@@ -624,16 +624,16 @@ func HelpText() string {
 2. 전체 서비스 에러 빠른 확인
    /ops logs service:all mode:errors since:15m limit:10
 3. 특정 서비스 에러 분석
-   /ops logs service:report mode:errors since:30m limit:10
+   /ops logs service:blog mode:errors since:30m limit:10
 4. 느린 API 확인
-   /ops logs service:report mode:slow since:30m limit:10
+   /ops logs service:auth mode:slow since:30m limit:10
 
 Automation setup
 - /ops watch scope:all channel:#ops interval:5m
 - /ops alert action:channel channel:#ops-alerts
 - /ops alert action:role role:@운영팀
 - /ops alert action:on
-- /ops logs-watch service:report mode:errors channel:#report-logs interval:5m since:30m limit:10
+- /ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10
 - /ops logs-watches
 
 Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.
@@ -789,7 +789,9 @@ func dashboardServiceName(service, displayName string) string {
 	switch normalized {
 	case "online-judge":
 		return "judge"
-	case "gateway", "auth", "report", "post":
+	case "post":
+		return "blog"
+	case "gateway", "auth", "report":
 		return normalized
 	default:
 		name := strings.ToLower(strings.TrimSpace(firstNonEmpty(displayName, service)))

@@ -89,12 +89,23 @@ func TestDashboardQueriesOnlyV2ConnectedServices(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := newTestService(store, logs)
-	service.cfg.Dashboard.MaxCloudWatchQueries = 3
+	service.cfg.Dashboard.MaxCloudWatchQueries = 4
 
 	_ = service.RenderDashboard(context.Background(), "30m", 5*time.Minute)
 
-	if logs.calls != 3 {
-		t.Fatalf("expected gateway/auth/report CloudWatch queries, got %d", logs.calls)
+	if logs.calls != 4 {
+		t.Fatalf("expected gateway/auth/report/blog CloudWatch queries, got %d", logs.calls)
+	}
+}
+
+func TestServiceOpsConnectionRegistry(t *testing.T) {
+	for _, service := range []string{"auth", "post"} {
+		if !isServiceOpsNameConnected(service) {
+			t.Fatalf("%s should be connected", service)
+		}
+	}
+	if isServiceOpsNameConnected("online-judge") {
+		t.Fatal("online-judge should remain catalog-only")
 	}
 }
 
@@ -121,6 +132,56 @@ func TestWatchDashboardScopeStoresServiceWatch(t *testing.T) {
 	}
 	if fakeDiscord.sends != 1 {
 		t.Fatalf("expected dashboard message creation, got sends=%d", fakeDiscord.sends)
+	}
+}
+
+func TestWatchDashboardScopeAcceptsBlogAlias(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API"}}})
+	service.discord = &fakeDiscord{}
+
+	result, err := service.WatchDashboardScope(context.Background(), "channel-1", "service", "blog", 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result, "service:blog") {
+		t.Fatalf("expected blog display in result: %s", result)
+	}
+	if _, ok := store.Snapshot().ServiceDashboards["service:post"]; !ok {
+		t.Fatal("blog dashboard watch should store canonical post key")
+	}
+}
+
+func TestRenderServiceDashboardForAuthAndBlog(t *testing.T) {
+	for _, serviceName := range []string{"auth", "blog"} {
+		store := state.NewStore(filepath.Join(t.TempDir(), serviceName+".json"))
+		if err := store.Load(); err != nil {
+			t.Fatal(err)
+		}
+		service := newTestService(store, &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API"}}})
+		content := service.RenderServiceDashboard(context.Background(), serviceName, "30m", 5*time.Minute)
+		if strings.Contains(content, "not connected") || strings.Contains(content, "NOT_CONNECTED") {
+			t.Fatalf("%s dashboard should be connected: %s", serviceName, content)
+		}
+	}
+}
+
+func TestRenderServiceDashboardMissingConfigShowsNotConfigured(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.LogGroups["post"] = ""
+	service.cfg.HealthURLs["post"] = ""
+	service.cfg.ServiceRegistry = config.BuildServiceRegistry(service.cfg.LogGroups, service.cfg.HealthURLs)
+
+	content := service.RenderServiceDashboard(context.Background(), "blog", "30m", 5*time.Minute)
+	if !strings.Contains(content, "NOCFG") {
+		t.Fatalf("missing blog config should render NOT_CONFIGURED: %s", content)
 	}
 }
 

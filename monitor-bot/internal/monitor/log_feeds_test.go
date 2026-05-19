@@ -38,6 +38,28 @@ func TestWatchLogFeedStoresBaselineWithoutSendingOldLogs(t *testing.T) {
 	}
 }
 
+func TestWatchLogFeedAcceptsBlogAliasAndStoresCanonicalKey(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{
+		{"@timestamp": "2026-05-13T17:00:00+09:00", "trace.traceId": "trace-blog", "http.path": "/v2/blogs", "http.statusCode": "500"},
+	}})
+
+	result, err := service.WatchLogFeed(context.Background(), "channel-1", "blog", "errors", "30m", 5*time.Minute, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result, "service: blog") {
+		t.Fatalf("expected blog display in result: %s", result)
+	}
+	feed := store.Snapshot().LogFeeds["post:errors"]
+	if feed.Service != "post" || len(feed.Fingerprints) != 1 {
+		t.Fatalf("blog alias should store canonical post feed: %#v", feed)
+	}
+}
+
 func TestWatchLogFeedRejectsUnconnectedService(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {

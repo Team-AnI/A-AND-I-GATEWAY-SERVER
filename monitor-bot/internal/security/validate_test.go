@@ -13,6 +13,21 @@ func TestValidateServiceAllowlist(t *testing.T) {
 	}
 }
 
+func TestNormalizeServiceAliases(t *testing.T) {
+	cases := map[string]string{
+		"blog":  "post",
+		"post":  "post",
+		"auth":  "auth",
+		"judge": "online-judge",
+	}
+	for input, want := range cases {
+		got, ok := NormalizeService(input)
+		if !ok || got != want {
+			t.Fatalf("NormalizeService(%q) = %q %t, want %q true", input, got, ok, want)
+		}
+	}
+}
+
 func TestNormalizeServiceOrAll(t *testing.T) {
 	if got, ok := NormalizeServiceOrAll("all"); !ok || got != "all" {
 		t.Fatalf("expected all to be accepted, got %q ok=%v", got, ok)

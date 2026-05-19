@@ -55,9 +55,9 @@ func (e *RegistrationError) Error() string {
 }
 
 func Definitions() []commandDefinition {
-	serviceChoices := choices("gateway", "auth", "report", "online-judge", "post")
-	connectedServiceChoices := choices("gateway", "auth", "report")
-	connectedOrAllChoices := choices("all", "gateway", "auth", "report")
+	connectedServiceChoices := namedChoices(choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"))
+	connectedOrAllChoices := namedChoices(choice("all"), choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"))
+	alarmServiceChoices := namedChoices(choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"), choice("online-judge"))
 	reportSinceChoices := choices("15m", "30m", "1h")
 	watchScopeChoices := choices("all", "service")
 	watchIntervalChoices := choices("1m", "3m", "5m", "10m", "15m")
@@ -90,12 +90,12 @@ func Definitions() []commandDefinition {
 			subcommandOption("watch", "서비스 대시보드 자동 갱신 등록", []commandOption{
 				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
 				channelOption("channel", "대시보드를 고정할 채널", false),
-				stringOption("service", "서비스 범위일 때 대상 서비스", false, serviceChoices),
+				stringOption("service", "서비스 범위일 때 대상 서비스", false, connectedServiceChoices),
 				stringOption("interval", "업데이트 주기", false, watchIntervalChoices),
 			}),
 			subcommandOption("unwatch", "서비스 대시보드 자동 갱신 중지", []commandOption{
 				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
-				stringOption("service", "서비스 범위일 때 대상 서비스", false, serviceChoices),
+				stringOption("service", "서비스 범위일 때 대상 서비스", false, connectedServiceChoices),
 			}),
 			subcommandOption("watches", "등록된 서비스 대시보드 목록", nil),
 			subcommandOption("alert", "서비스 알림 설정", []commandOption{
@@ -103,16 +103,16 @@ func Definitions() []commandDefinition {
 				channelOption("channel", "알림 채널", false),
 				roleOption("role", "멘션할 운영자 역할", false),
 			}),
-			subcommandOption("logs-watch", "Report 로그 피드 등록", []commandOption{
-				stringOption("service", "피드 서비스", true, serviceChoices),
+			subcommandOption("logs-watch", "로그 피드 등록", []commandOption{
+				stringOption("service", "피드 서비스", true, connectedServiceChoices),
 				stringOption("mode", "피드 모드", true, logModeChoices),
 				channelOption("channel", "로그 피드를 보낼 채널", false),
 				stringOption("interval", "조회 주기", false, watchIntervalChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
 			}),
-			subcommandOption("logs-unwatch", "Report 로그 피드 중지", []commandOption{
-				stringOption("service", "피드 서비스", true, serviceChoices),
+			subcommandOption("logs-unwatch", "로그 피드 중지", []commandOption{
+				stringOption("service", "피드 서비스", true, connectedServiceChoices),
 				stringOption("mode", "피드 모드", true, logModeChoices),
 			}),
 			subcommandOption("logs-watches", "등록된 로그 피드 목록", nil),
@@ -140,7 +140,7 @@ func Definitions() []commandDefinition {
 			}),
 			subcommandOption("alarms", "CloudWatch alarm 조회", []commandOption{
 				stringOption("state", "alarm 상태", false, alarmStateChoices),
-				stringOption("service", "서비스 필터", false, serviceChoices),
+				stringOption("service", "서비스 필터", false, alarmServiceChoices),
 			}),
 			subcommandOption("storage", "CloudWatch log 사용량과 retention", []commandOption{
 				stringOption("view", "storage 보기", false, storageViewChoices),
@@ -231,9 +231,21 @@ func subcommandOption(name, description string, options []commandOption) command
 func choices(values ...string) []commandChoice {
 	result := make([]commandChoice, 0, len(values))
 	for _, value := range values {
-		result = append(result, commandChoice{Name: value, Value: value})
+		result = append(result, choice(value))
 	}
 	return result
+}
+
+func namedChoices(values ...commandChoice) []commandChoice {
+	return values
+}
+
+func choice(value string) commandChoice {
+	return commandChoice{Name: value, Value: value}
+}
+
+func choiceAlias(name, value string) commandChoice {
+	return commandChoice{Name: name, Value: value}
 }
 
 func integerChoices(values ...int) []commandChoice {
