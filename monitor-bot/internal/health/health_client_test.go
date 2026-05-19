@@ -2,6 +2,8 @@ package health
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -23,5 +25,20 @@ func TestCheckReturnsUnknownWhenHealthURLIsUnreachable(t *testing.T) {
 
 	if got.State != "UNKNOWN" {
 		t.Fatalf("expected UNKNOWN for unreachable health URL, got %#v", got)
+	}
+}
+
+func TestCheckTreatsOKHealthStatusAsUp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer server.Close()
+	client := NewClient(map[string]string{"post": server.URL + "/health"}, time.Second)
+
+	got := client.Check(context.Background(), "post")
+
+	if got.State != "UP" || got.Detail != "ok" {
+		t.Fatalf("expected UP for ok health status, got %#v", got)
 	}
 }

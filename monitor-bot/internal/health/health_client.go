@@ -49,12 +49,15 @@ func (c *Client) Check(ctx context.Context, service string) formatting.ServiceSt
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err == nil && payload.Status != "" {
 		detail = payload.Status
 	}
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 && strings.EqualFold(payload.Status, "UP") {
-		state = "UP"
-	} else if resp.StatusCode >= 200 && resp.StatusCode < 300 && payload.Status == "" {
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 && isHealthyStatus(payload.Status) {
 		state = "UP"
 	}
 	return formatting.ServiceStatus{Service: service, State: state, Detail: detail}
+}
+
+func isHealthyStatus(status string) bool {
+	status = strings.TrimSpace(status)
+	return status == "" || strings.EqualFold(status, "UP") || strings.EqualFold(status, "OK")
 }
 
 func (c *Client) CheckAll(ctx context.Context, services []string) []formatting.ServiceStatus {
