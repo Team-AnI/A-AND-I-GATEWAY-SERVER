@@ -625,6 +625,9 @@ Core
 - /ops logs mode:errors since:15m limit:10
 - /ops watch scope:all channel:#ops interval:5m
 - /ops alert action:channel channel:#ops-alerts
+- /ops alert action:role role:@운영팀
+- /ops alert action:on
+- /ops alert action:status
 - /ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10
 
 Advanced

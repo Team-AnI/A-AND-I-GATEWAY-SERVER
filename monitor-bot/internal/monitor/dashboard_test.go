@@ -34,10 +34,14 @@ func (f fakeAlarms) AlarmNames(context.Context) ([]string, error) {
 
 type fakeDiscord struct {
 	sends        int
+	roleSends    int
 	edits        int
 	sentContents []string
+	roleContents []string
 	editContents []string
 	sentChannels []string
+	roleChannels []string
+	roleIDs      []string
 	editChannels []string
 }
 
@@ -45,6 +49,14 @@ func (f *fakeDiscord) SendChannelMessage(_ context.Context, _ *http.Client, _ st
 	f.sends++
 	f.sentChannels = append(f.sentChannels, channelID)
 	f.sentContents = append(f.sentContents, content)
+	return discord.Message{ID: "created-message"}, nil
+}
+
+func (f *fakeDiscord) SendChannelMessageWithRoleMention(_ context.Context, _ *http.Client, _ string, channelID string, content string, roleID string) (discord.Message, error) {
+	f.roleSends++
+	f.roleChannels = append(f.roleChannels, channelID)
+	f.roleContents = append(f.roleContents, "<@&"+roleID+">\n"+content)
+	f.roleIDs = append(f.roleIDs, roleID)
 	return discord.Message{ID: "created-message"}, nil
 }
 

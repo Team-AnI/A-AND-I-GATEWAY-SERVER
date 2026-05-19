@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 )
 
@@ -197,6 +198,9 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	if !findOption(t, alert.Options, "action").Required {
 		t.Fatal("alert action must be required")
 	}
+	if got := choiceValues(findOption(t, alert.Options, "action").Choices); strings.Join(got, ",") != "channel,role,role-clear,on,off,status,test" {
+		t.Fatalf("alert action choices = %#v", got)
+	}
 	if channel := findOption(t, alert.Options, "channel"); channel.Type != 7 || channel.Required {
 		t.Fatalf("alert channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
@@ -230,6 +234,23 @@ func TestDefinitionsPayloadMarshals(t *testing.T) {
 	}
 	if !strings.Contains(string(payload), `"name":"blog","value":"post"`) {
 		t.Fatalf("blog display/post value choice missing from payload: %s", payload)
+	}
+	if !strings.Contains(string(payload), `"name":"role"`) || !strings.Contains(string(payload), `"type":8`) {
+		t.Fatalf("alert role option missing from payload: %s", payload)
+	}
+}
+
+func TestOpsHelpIncludesAlertRoleSetupPath(t *testing.T) {
+	help := formatting.HelpText()
+	for _, want := range []string{
+		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:role role:@운영팀",
+		"/ops alert action:on",
+		"/ops alert action:status",
+	} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("help missing %q: %s", want, help)
+		}
 	}
 }
 

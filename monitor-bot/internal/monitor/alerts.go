@@ -195,29 +195,32 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 }
 
 func (s *Service) sendAlert(ctx context.Context, alert Alert) error {
-	mention := ""
+	content := formatAlert(alert, "")
 	if shouldMentionAlert(alert) {
-		mention = s.alertRoleMention()
+		if roleID := s.alertMentionRoleID(); roleID != "" {
+			_, err := s.discord.SendChannelMessageWithRoleMention(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content, roleID)
+			return err
+		}
 	}
-	content := formatAlert(alert, mention)
 	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content)
 	return err
 }
 
-func (s *Service) alertRoleMention() string {
+func (s *Service) alertMentionRoleID() string {
 	if roleID := strings.TrimSpace(s.store.Snapshot().ServiceAlerts.RoleID); roleID != "" {
 		if validRoleID(roleID) {
-			return "<@&" + roleID + ">\n"
+			return roleID
 		}
+		return ""
 	}
 	if len(s.cfg.DiscordAllowedRoleIDs) == 0 {
 		return ""
 	}
 	roleID := strings.TrimSpace(s.cfg.DiscordAllowedRoleIDs[0])
-	if roleID == "" {
+	if !validRoleID(roleID) {
 		return ""
 	}
-	return "<@&" + roleID + ">\n"
+	return roleID
 }
 
 func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID string) (string, error) {
@@ -304,6 +307,8 @@ func (s *Service) FormatAlertStatus() string {
 	}
 	if roleID == "" {
 		b.WriteString("role mention: none\n")
+	} else if !validRoleID(roleID) {
+		b.WriteString("role mention: INVALID_CONFIGURED_ROLE\n")
 	} else {
 		fmt.Fprintf(&b, "role mention: <@&%s>\n", roleID)
 	}

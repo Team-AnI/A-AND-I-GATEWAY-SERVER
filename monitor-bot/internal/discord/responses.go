@@ -23,8 +23,9 @@ type interactionResponse struct {
 }
 
 type interactionCallback struct {
-	Content string `json:"content,omitempty"`
-	Flags   int    `json:"flags,omitempty"`
+	Content         string           `json:"content,omitempty"`
+	Flags           int              `json:"flags,omitempty"`
+	AllowedMentions *allowedMentions `json:"allowed_mentions,omitempty"`
 }
 
 func pongResponse() interactionResponse {
@@ -38,7 +39,7 @@ func messageResponse(content string, ephemeral bool) interactionResponse {
 	}
 	return interactionResponse{
 		Type: InteractionResponseChannelMessage,
-		Data: &interactionCallback{Content: formatting.TruncateDiscordMessage(content), Flags: flags},
+		Data: &interactionCallback{Content: formatting.TruncateDiscordMessage(content), Flags: flags, AllowedMentions: suppressMentions()},
 	}
 }
 
@@ -61,7 +62,7 @@ func SendFollowUp(ctx context.Context, client *http.Client, applicationID, token
 	if ephemeral {
 		flags = MessageFlagEphemeral
 	}
-	payload, err := json.Marshal(interactionCallback{Content: formatting.TruncateDiscordMessage(content), Flags: flags})
+	payload, err := json.Marshal(interactionCallback{Content: formatting.TruncateDiscordMessage(content), Flags: flags, AllowedMentions: suppressMentions()})
 	if err != nil {
 		return err
 	}

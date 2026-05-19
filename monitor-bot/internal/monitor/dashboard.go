@@ -46,6 +46,7 @@ type ReportAdminAPI interface {
 
 type DiscordMessenger interface {
 	SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (discord.Message, error)
+	SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error)
 	EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error
 }
 
@@ -53,6 +54,10 @@ type discordAPI struct{}
 
 func (discordAPI) SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (discord.Message, error) {
 	return discord.SendChannelMessage(ctx, client, botToken, channelID, content)
+}
+
+func (discordAPI) SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error) {
+	return discord.SendChannelMessageWithRoleMention(ctx, client, botToken, channelID, content, roleID)
 }
 
 func (discordAPI) EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error {
