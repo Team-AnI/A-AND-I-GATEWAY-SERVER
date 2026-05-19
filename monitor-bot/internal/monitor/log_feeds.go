@@ -22,7 +22,7 @@ func (s *Service) WatchLogFeed(ctx context.Context, channelID, service, mode, si
 		return "", fmt.Errorf("지원하지 않는 service입니다")
 	}
 	if !isServiceOpsNameConnected(normalized) {
-		return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NO_V2_LOG\nlogs-watch는 현재 gateway/auth/report V2 로그만 지원합니다.", normalized), nil
+		return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NO_V2_LOG\nlogs-watch는 현재 gateway/auth/report/blog V2 로그만 지원합니다.", displayServiceName(normalized)), nil
 	}
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	switch mode {
@@ -67,7 +67,7 @@ func (s *Service) WatchLogFeed(ctx context.Context, channelID, service, mode, si
 	}); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("✅ 로그 피드 등록 완료\n\nservice: %s\nmode: %s\ninterval: %s\nsince: %s\nlimit: %d개\n\n기존 로그는 baseline으로 저장했고, 이후 새 항목부터 이 채널에 전송합니다.", normalized, mode, formatKoreanDuration(interval), since, limit), nil
+	return fmt.Sprintf("✅ 로그 피드 등록 완료\n\nservice: %s\nmode: %s\ninterval: %s\nsince: %s\nlimit: %d개\n\n기존 로그는 baseline으로 저장했고, 이후 새 항목부터 이 채널에 전송합니다.", displayServiceName(normalized), mode, formatKoreanDuration(interval), since, limit), nil
 }
 
 func (s *Service) UnwatchLogFeed(ctx context.Context, service, mode string) (string, error) {
@@ -250,15 +250,16 @@ func logFeedFingerprint(service, mode string, row map[string]string) string {
 }
 
 func formatLogFeedMessage(service, mode string, rows []map[string]string, limit int) string {
-	title := "🚨 " + service + " ERROR 로그 감지"
+	displayService := displayServiceName(service)
+	title := "🚨 " + displayService + " ERROR 로그 감지"
 	if mode == "slow" {
-		title = "🐢 " + service + " 느린 API 감지"
+		title = "🐢 " + displayService + " 느린 API 감지"
 	}
 	if mode == "recent" {
-		title = "🧾 " + service + " 최근 로그 감지"
+		title = "🧾 " + displayService + " 최근 로그 감지"
 	}
 	if mode == "security" {
-		title = "🛡️ " + service + " 보안 로그 감지"
+		title = "🛡️ " + displayService + " 보안 로그 감지"
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n\n", title)
@@ -285,7 +286,7 @@ func formatLogFeedMessage(service, mode string, rows []map[string]string, limit 
 	if len(rows) > 0 && strings.TrimSpace(rows[0]["trace.traceId"]) != "" {
 		fmt.Fprintf(&b, "/ops trace trace_id:%s\n", security.SanitizeText(rows[0]["trace.traceId"]))
 	}
-	fmt.Fprintf(&b, "/ops logs service:%s mode:%s since:30m limit:10", service, mode)
+	fmt.Fprintf(&b, "/ops logs service:%s mode:%s since:30m limit:10", displayService, mode)
 	return formatting.TruncateDiscordMessage(b.String())
 }
 

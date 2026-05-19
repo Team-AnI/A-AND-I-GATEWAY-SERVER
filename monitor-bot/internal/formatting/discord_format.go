@@ -235,7 +235,7 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 	}
 	b.WriteString("\n상세 확인\n")
 	b.WriteString("/ops logs service:report mode:errors since:" + since + " limit:10\n")
-	b.WriteString("/ops logs service:report mode:slow since:" + since + " limit:10\n")
+	b.WriteString("/ops logs service:blog mode:slow since:" + since + " limit:10\n")
 	b.WriteString("/ops trace trace_id:<traceId>")
 	return TruncateDiscordMessage(b.String())
 }
@@ -619,26 +619,27 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 func HelpText() string {
 	return strings.TrimSpace(`A&I Ops Incident Flow
 
-1. 전체 상태 확인
-   /ops dashboard since:30m
-2. 전체 서비스 에러 빠른 확인
-   /ops logs service:all mode:errors since:15m limit:10
-3. 특정 서비스 에러 분석
-   /ops logs service:report mode:errors since:30m limit:10
-4. 느린 API 확인
-   /ops logs service:report mode:slow since:30m limit:10
-
-Automation setup
+Core
+- /ops dashboard since:30m
+- /ops service service:blog view:summary
+- /ops logs mode:errors since:15m limit:10
 - /ops watch scope:all channel:#ops interval:5m
 - /ops alert action:channel channel:#ops-alerts
 - /ops alert action:role role:@운영팀
 - /ops alert action:on
-- /ops logs-watch service:report mode:errors channel:#report-logs interval:5m since:30m limit:10
-- /ops logs-watches
+- /ops alert action:status
+- /ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10
+
+Advanced
+- /ops trace trace_id:<traceId>
+- /ops alarms state:ALARM
+- /ops storage view:usage
+- /ops assignments course:<courseSlug> status:all
+- /ops assignment-check course:<courseSlug> id:<assignmentId>
+- /ops submissions course:<courseSlug> assignment:<assignmentId>
 
 Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.
-Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.
-수동 assignment 명령은 알림 이후 상세 확인 또는 fallback 용도입니다.`)
+Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.`)
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {
@@ -789,7 +790,9 @@ func dashboardServiceName(service, displayName string) string {
 	switch normalized {
 	case "online-judge":
 		return "judge"
-	case "gateway", "auth", "report", "post":
+	case "post":
+		return "blog"
+	case "gateway", "auth", "report":
 		return normalized
 	default:
 		name := strings.ToLower(strings.TrimSpace(firstNonEmpty(displayName, service)))

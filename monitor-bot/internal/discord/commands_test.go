@@ -2,6 +2,7 @@ package discord
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
 )
 
@@ -59,7 +61,7 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 	}
 }
 
-func TestOpsReportPhaseChoices(t *testing.T) {
+func TestOpsConnectedServiceChoices(t *testing.T) {
 	command, err := findCommand("ops")
 	if err != nil {
 		t.Fatal(err)
@@ -69,12 +71,21 @@ func TestOpsReportPhaseChoices(t *testing.T) {
 		t.Fatalf("dashboard since choices = %#v", got)
 	}
 	logs := findSubcommand(t, command, "logs")
-	if got := choiceValues(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report" {
-		t.Fatalf("logs service choices = %#v", got)
+	if findOption(t, logs.Options, "service").Required {
+		t.Fatal("logs service option should be optional and default to all")
+	}
+	if got := choiceNames(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,blog" {
+		t.Fatalf("logs service choice names = %#v", got)
+	}
+	if got := choiceValues(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,post" {
+		t.Fatalf("logs service choice values = %#v", got)
 	}
 	service := findSubcommand(t, command, "service")
-	if got := choiceValues(findOption(t, service.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report" {
-		t.Fatalf("service choices = %#v", got)
+	if got := choiceNames(findOption(t, service.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
+		t.Fatalf("service choice names = %#v", got)
+	}
+	if got := choiceValues(findOption(t, service.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,post" {
+		t.Fatalf("service choice values = %#v", got)
 	}
 	assignments := findSubcommand(t, command, "assignments")
 	if course := findOption(t, assignments.Options, "course"); !course.Required {
@@ -180,9 +191,15 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	if channel := findOption(t, watch.Options, "channel"); channel.Type != 7 || channel.Required {
 		t.Fatalf("watch channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
+	if got := choiceNames(findOption(t, watch.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
+		t.Fatalf("watch service choices = %#v", got)
+	}
 	alert := findSubcommand(t, command, "alert")
 	if !findOption(t, alert.Options, "action").Required {
 		t.Fatal("alert action must be required")
+	}
+	if got := choiceValues(findOption(t, alert.Options, "action").Choices); strings.Join(got, ",") != "channel,role,role-clear,on,off,status,test" {
+		t.Fatalf("alert action choices = %#v", got)
 	}
 	if channel := findOption(t, alert.Options, "channel"); channel.Type != 7 || channel.Required {
 		t.Fatalf("alert channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
@@ -194,8 +211,46 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	if !findOption(t, logsWatch.Options, "service").Required || !findOption(t, logsWatch.Options, "mode").Required {
 		t.Fatal("logs-watch service/mode options must be required")
 	}
+	if got := choiceNames(findOption(t, logsWatch.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
+		t.Fatalf("logs-watch service choices = %#v", got)
+	}
 	if channel := findOption(t, logsWatch.Options, "channel"); channel.Type != 7 || channel.Required {
 		t.Fatalf("logs-watch channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
+	}
+	logsUnwatch := findSubcommand(t, command, "logs-unwatch")
+	if got := choiceNames(findOption(t, logsUnwatch.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
+		t.Fatalf("logs-unwatch service choices = %#v", got)
+	}
+	alarms := findSubcommand(t, command, "alarms")
+	if got := choiceNames(findOption(t, alarms.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog,online-judge" {
+		t.Fatalf("alarms service choices = %#v", got)
+	}
+}
+
+func TestDefinitionsPayloadMarshals(t *testing.T) {
+	payload, err := json.Marshal(Definitions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(payload), `"name":"blog","value":"post"`) {
+		t.Fatalf("blog display/post value choice missing from payload: %s", payload)
+	}
+	if !strings.Contains(string(payload), `"name":"role"`) || !strings.Contains(string(payload), `"type":8`) {
+		t.Fatalf("alert role option missing from payload: %s", payload)
+	}
+}
+
+func TestOpsHelpIncludesAlertRoleSetupPath(t *testing.T) {
+	help := formatting.HelpText()
+	for _, want := range []string{
+		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:role role:@운영팀",
+		"/ops alert action:on",
+		"/ops alert action:status",
+	} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("help missing %q: %s", want, help)
+		}
 	}
 }
 
@@ -417,6 +472,14 @@ func choiceValues(choices []commandChoice) []string {
 	values := make([]string, 0, len(choices))
 	for _, choice := range choices {
 		values = append(values, fmt.Sprint(choice.Value))
+	}
+	return values
+}
+
+func choiceNames(choices []commandChoice) []string {
+	values := make([]string, 0, len(choices))
+	for _, choice := range choices {
+		values = append(values, choice.Name)
 	}
 	return values
 }

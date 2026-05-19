@@ -36,7 +36,7 @@ func LogGroupsForOptionalService(logGroups map[string]string, service string, ma
 	if maxGroups <= 0 {
 		maxGroups = 5
 	}
-	order := []string{"gateway", "auth", "report", "online-judge", "post"}
+	order := []string{"gateway", "auth", "report", "post"}
 	groups := make([]string, 0, len(order))
 	for _, name := range order {
 		if group := strings.TrimSpace(logGroups[name]); group != "" {
@@ -208,7 +208,7 @@ func BuildAlertQuery(service string) (string, error) {
 	}
 	return fmt.Sprintf(`%s
 %s
-| filter logType = "EVENT_ERROR" or (logType = "API_ERROR" and http.statusCode >= 500) or response.error.code like /^[0-9][78][0-9]{3}$/ or response.error.code like /^21[78][0-9]{2}$/
+| filter logType = "EVENT_ERROR" or (logType = "API_ERROR" and http.statusCode >= 500) or response.error.code like /^[0-9][78][0-9]{3}$/ or response.error.code like /^21[78][0-9]{2}$/ or response.error.code in [60701, 90701, 90801]
 | sort @timestamp desc
 | limit 50`, slowFields, serviceDomainFilter(normalized)), nil
 }

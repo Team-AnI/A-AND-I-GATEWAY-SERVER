@@ -195,25 +195,32 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 }
 
 func (s *Service) sendAlert(ctx context.Context, alert Alert) error {
-	content := formatAlert(alert, s.alertRoleMention())
+	content := formatAlert(alert, "")
+	if shouldMentionAlert(alert) {
+		if roleID := s.alertMentionRoleID(); roleID != "" {
+			_, err := s.discord.SendChannelMessageWithRoleMention(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content, roleID)
+			return err
+		}
+	}
 	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content)
 	return err
 }
 
-func (s *Service) alertRoleMention() string {
+func (s *Service) alertMentionRoleID() string {
 	if roleID := strings.TrimSpace(s.store.Snapshot().ServiceAlerts.RoleID); roleID != "" {
 		if validRoleID(roleID) {
-			return "<@&" + roleID + ">\n"
+			return roleID
 		}
+		return ""
 	}
 	if len(s.cfg.DiscordAllowedRoleIDs) == 0 {
 		return ""
 	}
 	roleID := strings.TrimSpace(s.cfg.DiscordAllowedRoleIDs[0])
-	if roleID == "" {
+	if !validRoleID(roleID) {
 		return ""
 	}
-	return "<@&" + roleID + ">\n"
+	return roleID
 }
 
 func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID string) (string, error) {
@@ -274,7 +281,7 @@ func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID 
 		if target == "" {
 			return "", fmt.Errorf("alert channel이 설정되지 않았습니다. 먼저 /ops alert action:channel 을 실행하세요")
 		}
-		content := s.alertRoleMention() + "✅ 서비스 알림 테스트\n\n서비스 운영 알림 채널 설정이 정상입니다.\n이 메시지는 테스트입니다."
+		content := "✅ 서비스 알림 테스트\n\n서비스 운영 알림 채널 설정이 정상입니다.\nrole mention은 CRITICAL alert에서만 적용됩니다."
 		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, target, content); err != nil {
 			return "", err
 		}
@@ -300,6 +307,8 @@ func (s *Service) FormatAlertStatus() string {
 	}
 	if roleID == "" {
 		b.WriteString("role mention: none\n")
+	} else if !validRoleID(roleID) {
+		b.WriteString("role mention: INVALID_CONFIGURED_ROLE\n")
 	} else {
 		fmt.Fprintf(&b, "role mention: <@&%s>\n", roleID)
 	}
@@ -357,7 +366,9 @@ func formatAlert(alert Alert, mention string) string {
 		return formatting.TruncateDiscordMessage(opslog.FormatV2Alert(*alert.V2Log, alert.V2Decision, mention))
 	}
 	var b strings.Builder
-	b.WriteString(mention)
+	if shouldMentionAlert(alert) {
+		b.WriteString(mention)
+	}
 	icon := "⚠️"
 	title := "서비스 에러 증가 감지"
 	if alert.Severity == "P0" {
@@ -438,7 +449,17 @@ func displayServiceName(service string) string {
 	if service == "report" {
 		return "report/web"
 	}
+	if service == "post" {
+		return "blog"
+	}
 	return service
+}
+
+func shouldMentionAlert(alert Alert) bool {
+	if alert.AlertType == "v2-log" {
+		return alert.V2Decision.Alert && alert.V2Decision.Mention && alert.V2Decision.Severity == opslog.SeverityCrit
+	}
+	return alert.Severity == opslog.SeverityCrit || alert.Severity == "P0"
 }
 
 func serviceAlertSummary(alert Alert) string {

@@ -60,6 +60,82 @@ func TestDecideV2AlertHighForAuthExternalError(t *testing.T) {
 	}
 }
 
+func TestDecideV2AlertHighForEventError(t *testing.T) {
+	log := V2OpsLog{
+		LogType: "EVENT_ERROR",
+		Service: V2Service{Name: "blog-service", Domain: "blog", DomainCode: 6},
+	}
+	decision := DecideV2Alert(log)
+	if !decision.Alert || decision.Mention || decision.Severity != SeverityHigh || decision.Reason != "EVENT_ERROR" {
+		t.Fatalf("unexpected event decision: %#v", decision)
+	}
+}
+
+func TestDecideV2AlertUsesBlogCommonOverrideCodes(t *testing.T) {
+	cases := []struct {
+		code     int
+		severity string
+		mention  bool
+		category int
+	}{
+		{64801, SeverityHigh, false, 4},
+		{64805, SeverityHigh, false, 4},
+		{68801, SeverityCrit, true, 8},
+		{60701, SeverityHigh, false, 7},
+		{90701, SeverityHigh, false, 7},
+		{90801, SeverityCrit, true, 8},
+		{98801, SeverityCrit, true, 8},
+	}
+	for _, tc := range cases {
+		log := V2OpsLog{
+			LogType:  "API_ERROR",
+			Service:  V2Service{Name: "blog-service", Domain: "blog", DomainCode: 6},
+			HTTP:     &V2HTTP{StatusCode: 400},
+			Response: &V2Response{Error: &V2Error{Code: tc.code}},
+		}
+		decision := DecideV2Alert(log)
+		if !decision.Alert || decision.Mention != tc.mention || decision.Severity != tc.severity || decision.ErrorCode.CategoryCode != tc.category {
+			t.Fatalf("code %d decision = %#v", tc.code, decision)
+		}
+	}
+}
+
+func TestDecideV2AlertUsesExplicitAuthSeverityCodes(t *testing.T) {
+	cases := []struct {
+		code     int
+		severity string
+		mention  bool
+	}{
+		{21701, SeverityHigh, false},
+		{21801, SeverityCrit, true},
+	}
+	for _, tc := range cases {
+		log := V2OpsLog{
+			LogType:  "API_ERROR",
+			Service:  V2Service{Name: "auth-service", Domain: "auth", DomainCode: 2},
+			HTTP:     &V2HTTP{StatusCode: 500},
+			Response: &V2Response{Error: &V2Error{Code: tc.code}},
+		}
+		decision := DecideV2Alert(log)
+		if !decision.Alert || decision.Mention != tc.mention || decision.Severity != tc.severity {
+			t.Fatalf("code %d decision = %#v", tc.code, decision)
+		}
+	}
+}
+
+func TestDecideV2AlertHTTP500WithoutExplicitCriticalIsHighNoMention(t *testing.T) {
+	log := V2OpsLog{
+		LogType:  "API_ERROR",
+		Service:  V2Service{Name: "blog-service", Domain: "blog", DomainCode: 6},
+		HTTP:     &V2HTTP{StatusCode: 500},
+		Response: &V2Response{Error: &V2Error{Code: 90899}},
+	}
+	decision := DecideV2Alert(log)
+	if !decision.Alert || decision.Mention || decision.Severity != SeverityHigh {
+		t.Fatalf("unexpected HTTP 500 decision: %#v", decision)
+	}
+}
+
 func TestDecideV2AlertAuthClientErrorsAggregateOnly(t *testing.T) {
 	for _, log := range []V2OpsLog{
 		{
@@ -73,6 +149,24 @@ func TestDecideV2AlertAuthClientErrorsAggregateOnly(t *testing.T) {
 			Service:  V2Service{Name: "auth-service", Domain: "auth"},
 			HTTP:     &V2HTTP{StatusCode: 400},
 			Response: &V2Response{Error: &V2Error{Code: 21301}},
+		},
+		{
+			LogType:  "API_ERROR",
+			Service:  V2Service{Name: "auth-service", Domain: "auth"},
+			HTTP:     &V2HTTP{StatusCode: 403},
+			Response: &V2Response{Error: &V2Error{Code: 22101}},
+		},
+		{
+			LogType:  "API_ERROR",
+			Service:  V2Service{Name: "auth-service", Domain: "auth"},
+			HTTP:     &V2HTTP{StatusCode: 404},
+			Response: &V2Response{Error: &V2Error{Code: 35101}},
+		},
+		{
+			LogType:  "API_ERROR",
+			Service:  V2Service{Name: "auth-service", Domain: "auth"},
+			HTTP:     &V2HTTP{StatusCode: 409},
+			Response: &V2Response{Error: &V2Error{Code: 24601}},
 		},
 	} {
 		decision := DecideV2Alert(log)
@@ -104,6 +198,21 @@ func TestResolveServiceDomain(t *testing.T) {
 	}
 	if got := ResolveServiceDomain(V2OpsLog{Service: V2Service{Name: "auth-service"}}); got != "auth" {
 		t.Fatalf("domain = %q, want auth", got)
+	}
+	if got := ResolveServiceDomain(V2OpsLog{Service: V2Service{Domain: "blog"}}); got != "blog" {
+		t.Fatalf("domain = %q, want blog", got)
+	}
+	if got := ResolveServiceDomain(V2OpsLog{Service: V2Service{DomainCode: 6}}); got != "blog" {
+		t.Fatalf("domain code = %q, want blog", got)
+	}
+	if got := ResolveServiceDomain(V2OpsLog{Service: V2Service{Name: "post-service"}}); got != "blog" {
+		t.Fatalf("post-service domain = %q, want blog", got)
+	}
+	if got := ResolveServiceDomain(V2OpsLog{Service: V2Service{Name: "auth-service"}}); got != "auth" {
+		t.Fatalf("auth-service domain = %q, want auth", got)
+	}
+	if got := ResolveServiceDomain(V2OpsLog{Service: V2Service{DomainCode: 2}}); got != "auth" {
+		t.Fatalf("auth domain code = %q, want auth", got)
 	}
 	if got := ResolveServiceDomainFromFields(map[string]string{"service.domain": "auth"}); got != "auth" {
 		t.Fatalf("field domain = %q, want auth", got)

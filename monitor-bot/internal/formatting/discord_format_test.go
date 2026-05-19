@@ -189,22 +189,22 @@ func TestFormatDashboardShowsUnknownNoLogsAndNotConfigured(t *testing.T) {
 		},
 		{
 			Service:     "post",
-			DisplayName: "post",
+			DisplayName: "blog",
 			Health:      ServiceStatus{Service: "post", State: "NOT_CONFIGURED"},
 			LogStatus:   "NOT_CONFIGURED",
 		},
 	}, nil)
-	for _, expected := range []string{"gateway", "auth", "judge", "post", "UNK", "NOLOG", "NOCFG", "18m"} {
+	for _, expected := range []string{"gateway", "auth", "judge", "blog", "UNK", "NOLOG", "NOCFG", "18m"} {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("dashboard missing %q: %s", expected, got)
 		}
 	}
-	for _, long := range []string{"online-judge", "UNKNOWN", "NO_LOGS", "NOT_CONFIGURED", "Last log"} {
+	for _, long := range []string{"online-judge", "UNKNOWN", "NO_LOGS", "NOT_CONFIGURED", "Last log", "post"} {
 		if strings.Contains(got, long) {
 			t.Fatalf("dashboard should use compact labels and omit %q: %s", long, got)
 		}
 	}
-	if strings.Index(got, "gateway") > strings.Index(got, "auth") || strings.Index(got, "auth") > strings.Index(got, "judge") || strings.Index(got, "judge") > strings.Index(got, "post") {
+	if strings.Index(got, "gateway") > strings.Index(got, "auth") || strings.Index(got, "auth") > strings.Index(got, "judge") || strings.Index(got, "judge") > strings.Index(got, "blog") {
 		t.Fatalf("dashboard did not preserve registry order: %s", got)
 	}
 }
@@ -399,12 +399,21 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	got := HelpText()
 	for _, want := range []string{
 		"A&I Ops Incident Flow",
+		"Core",
 		"/ops dashboard since:30m",
-		"/ops logs service:all mode:errors since:15m limit:10",
-		"/ops logs service:report mode:errors since:30m limit:10",
-		"/ops logs service:report mode:slow since:30m limit:10",
+		"/ops service service:blog view:summary",
+		"/ops logs mode:errors since:15m limit:10",
 		"/ops watch scope:all channel:#ops interval:5m",
-		"/ops logs-watch service:report mode:errors channel:#report-logs interval:5m since:30m limit:10",
+		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:role role:@운영팀",
+		"/ops alert action:on",
+		"/ops alert action:status",
+		"/ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10",
+		"Advanced",
+		"/ops trace trace_id:<traceId>",
+		"/ops alarms state:ALARM",
+		"/ops storage view:usage",
+		"/ops assignments course:<courseSlug> status:all",
 		"Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.",
 		"Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.",
 	} {
@@ -412,7 +421,7 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 			t.Fatalf("help text missing %q: %s", want, got)
 		}
 	}
-	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy", "/ops storage view:usage", "/ops assignments course:", "/ops assignment-check course:", "/ops submissions course:", "/ops trace trace_id:<traceId>"} {
+	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy"} {
 		if strings.Contains(got, legacy) {
 			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
 		}

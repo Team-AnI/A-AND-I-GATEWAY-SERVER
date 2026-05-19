@@ -26,6 +26,14 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: monitor-bot/go.mod
+
+      - name: Run monitor-bot tests
+        run: cd monitor-bot && go test ./...
+
       - name: Build JAR
         run: ./gradlew build -x test
 

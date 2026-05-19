@@ -46,6 +46,7 @@ type ReportAdminAPI interface {
 
 type DiscordMessenger interface {
 	SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (discord.Message, error)
+	SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error)
 	EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error
 }
 
@@ -53,6 +54,10 @@ type discordAPI struct{}
 
 func (discordAPI) SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (discord.Message, error) {
 	return discord.SendChannelMessage(ctx, client, botToken, channelID, content)
+}
+
+func (discordAPI) SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error) {
+	return discord.SendChannelMessageWithRoleMention(ctx, client, botToken, channelID, content, roleID)
 }
 
 func (discordAPI) EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error {
@@ -101,7 +106,7 @@ func (s *Service) WatchDashboardScope(ctx context.Context, channelID, scope, ser
 		}
 		service = normalized
 		if !isServiceOpsNameConnected(service) {
-			return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NOT_CONNECTED\ncatalog에는 표시되지만 자동 dashboard 조회 대상은 아닙니다.", service), nil
+			return fmt.Sprintf("⚠️ 아직 연동되지 않은 서비스입니다\n\nservice: %s\n상태: NOT_CONNECTED\ncatalog에는 표시되지만 자동 dashboard 조회 대상은 아닙니다.", displayServiceName(service)), nil
 		}
 	}
 	if interval <= 0 {
@@ -130,7 +135,7 @@ func (s *Service) WatchDashboardScope(ctx context.Context, channelID, scope, ser
 	}
 	scopeLabel := "all"
 	if scope == "service" {
-		scopeLabel = "service:" + service
+		scopeLabel = "service:" + displayServiceName(service)
 	}
 	return fmt.Sprintf("✅ 서비스 대시보드 등록 완료\n\nscope: %s\n채널: 현재 채널\n업데이트 주기: %s\n방식: 기존 메시지 자동 갱신", scopeLabel, formatKoreanDuration(interval)), nil
 }
@@ -412,7 +417,7 @@ func isServiceOpsConnected(service config.ServiceDefinition) bool {
 }
 
 func isServiceOpsNameConnected(service string) bool {
-	return service == "gateway" || service == "auth" || service == "report"
+	return service == "gateway" || service == "auth" || service == "report" || service == "post"
 }
 
 func logStatusFromQueryError(err error) string {

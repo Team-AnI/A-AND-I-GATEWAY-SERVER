@@ -25,7 +25,7 @@ const (
 	maxBodyBytes                      = 64 * 1024
 )
 
-var serviceOrder = []string{"gateway", "report", "auth", "online-judge", "post"}
+var serviceOrder = []string{"gateway", "auth", "report", "post", "online-judge"}
 
 type Handler struct {
 	cfg          config.Config
@@ -334,7 +334,7 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 		return "지원하지 않는 service입니다."
 	}
 	if !isOpsV2Service(service) {
-		return "status: NO_V2_LOG\nservice: " + service + "\nkey findings: V2 로그 전환 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops dashboard since:30m`"
+		return "status: NO_V2_LOG\nservice: " + opsDisplayServiceName(service) + "\nkey findings: V2 로그 연동 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops dashboard since:30m`"
 	}
 	view := optionStringFromOptions(subcommand.Options, "view")
 	if view == "" {
@@ -348,19 +348,23 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 	case "summary":
 		return h.serviceCommand(ctx, interactionForCommand("service", withDefaultOptions(subcommand.Options, map[string]string{"since": since})))
 	case "health":
-		return withNext(formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)}), "/ops logs service:"+service+" mode:errors")
+		return withNext(formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)}), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors")
 	default:
 		return "지원하지 않는 service view입니다. 상태는 `/ops service view:summary|health`, 로그 분석은 `/ops logs`를 사용하세요."
 	}
 }
 
 func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	service, ok := security.NormalizeServiceOrAll(optionStringFromOptions(subcommand.Options, "service"))
+	serviceOption := optionStringFromOptions(subcommand.Options, "service")
+	if serviceOption == "" {
+		serviceOption = "all"
+	}
+	service, ok := security.NormalizeServiceOrAll(serviceOption)
 	if !ok {
 		return "지원하지 않는 service입니다."
 	}
 	if service != "all" && !isOpsV2Service(service) {
-		return "status: NO_V2_LOG\nservice: " + service + "\nkey findings: V2 로그 전환 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops logs service:report mode:errors since:30m limit:10`"
+		return "status: NO_V2_LOG\nservice: " + opsDisplayServiceName(service) + "\nkey findings: V2 로그 연동 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops logs service:report mode:errors since:30m limit:10`"
 	}
 	mode := optionStringFromOptions(subcommand.Options, "mode")
 	if mode == "" {
@@ -385,14 +389,14 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("since", since),
 			stringInteractionOption("level", level),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+service+" mode:errors", "/ops service service:"+service)
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops service service:"+opsDisplayServiceName(service))
 	case "errors":
 		if service == "all" && !sinceAllowsAllQuery(since) {
 			return allServiceSinceGuardMessage()
 		}
 		next := []string{"/ops dashboard since:" + since}
 		if service != "all" {
-			next = append(next, "/ops logs service:"+service+" mode:recent level:ERROR", "/ops service service:"+service)
+			next = append(next, "/ops logs service:"+opsDisplayServiceName(service)+" mode:recent level:ERROR", "/ops service service:"+opsDisplayServiceName(service))
 		}
 		return withNext(h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
 			stringInteractionOption("since", since),
@@ -408,7 +412,7 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("since", since),
 			stringInteractionOption("by", "path"),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+service+" mode:errors", "/ops trace trace_id:<traceId>")
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
 	case "slow":
 		if service == "all" {
 			return allServiceGuardMessage()
@@ -417,7 +421,7 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+service+" mode:errors", "/ops trace trace_id:<traceId>")
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
 	case "security":
 		if service == "all" {
 			return allServiceGuardMessage()
@@ -426,7 +430,7 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+service+" mode:errors", "/ops trace trace_id:<traceId>")
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
 	default:
 		return "지원하지 않는 logs mode입니다."
 	}
@@ -475,7 +479,7 @@ func (h *Handler) dashboardCommand(ctx context.Context, interaction Interaction)
 			Alarm:       serviceHasAlarm(service.Name, alarmNames),
 		}
 		if !isOpsV2Service(service.Name) {
-			input.Health = formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected in Phase 1"}
+			input.Health = formatting.ServiceStatus{Service: service.Name, State: "UNKNOWN", Detail: "not connected for V2 logs"}
 			input.LogStatus = "NO_V2_LOG"
 			inputs = append(inputs, input)
 			continue
@@ -1011,7 +1015,14 @@ func (h *Handler) traceCommand(ctx context.Context, interaction Interaction) str
 }
 
 func isOpsV2Service(service string) bool {
-	return service == "gateway" || service == "auth" || service == "report"
+	return service == "gateway" || service == "auth" || service == "report" || service == "post"
+}
+
+func opsDisplayServiceName(service string) string {
+	if service == "post" {
+		return "blog"
+	}
+	return service
 }
 
 func (h *Handler) retentionCommand(ctx context.Context, title string) string {
