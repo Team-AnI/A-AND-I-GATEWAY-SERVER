@@ -1,8 +1,9 @@
 package com.aandi.gateway.security
 
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.springframework.core.Ordered
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
@@ -16,7 +17,8 @@ import org.slf4j.LoggerFactory
 
 @Component
 class GatewayRequestPolicyFilter(
-    private val policy: SecurityPolicyProperties
+    private val policy: SecurityPolicyProperties,
+    private val responseWriter: GatewayResponseWriter
 ) : WebFilter, Ordered {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -28,10 +30,23 @@ class GatewayRequestPolicyFilter(
         parser.parse("/v1/posts"),
         parser.parse("/v1/posts/{postId}"),
         parser.parse("/v1/posts/images"),
+        parser.parse("/v2/me"),
         parser.parse("/v2/post"),
         parser.parse("/v2/post/{postId}"),
         parser.parse("/v2/post/images"),
-        parser.parse("/v2/post/images/**")
+        parser.parse("/v2/post/images/**"),
+        parser.parse("/v2/posts"),
+        parser.parse("/v2/posts/{postId}"),
+        parser.parse("/v2/posts/images"),
+        parser.parse("/v2/blogs"),
+        parser.parse("/v2/blogs/{blogId}"),
+        parser.parse("/v2/lectures"),
+        parser.parse("/v2/lectures/{lectureId}")
+    )
+
+    private val actuatorHealthPaths: List<PathPattern> = listOf(
+        parser.parse("/actuator/health"),
+        parser.parse("/actuator/health/**")
     )
 
     private val allowRules: List<AllowRule> = listOf(
@@ -103,6 +118,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v1/submissions/{submissionId}/stream")),
         AllowRule(HttpMethod.POST, parser.parse("/v1/posts/images")),
         AllowRule(HttpMethod.GET, parser.parse("/api/ping/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/ping")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/ping/**")),
         AllowRule(HttpMethod.GET, parser.parse("/")),
         AllowRule(HttpMethod.GET, parser.parse("/index.html")),
         AllowRule(HttpMethod.GET, parser.parse("/v3/api-docs/**")),
@@ -122,21 +139,49 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/v3/api-docs/**")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health/**")),
-        AllowRule(HttpMethod.GET, parser.parse("/actuator/info")),
         AllowRule(HttpMethod.POST, parser.parse("/internal/v1/cache/invalidation")),
-        // Legacy v2 routing
+        // v2 routing
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/login")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/refresh")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/logout")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/activate")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/auth/me")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/auth/me")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/auth/me")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/auth/me/password")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/auth/admin/ping")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/auth/admin/users")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/admin/users")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/admin/users/sync")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/auth/admin/invite-mail")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v2/auth/admin/users/role")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/auth/admin/users/**")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/auth/admin/users/{id}/reset-password")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v2/auth/admin/users")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v2/auth/admin/users/{id}")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/auth/users")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/auth/users/**")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/auth/users")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/auth/users/**")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/auth/users")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/auth/users/**")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/auth/users")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/auth/users/**")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/auth/users")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/auth/users/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/me")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/me")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/me/profile-image/upload-url")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/me/password")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/users/lookup")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/ping")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/users")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/admin/users")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/admin/invite-mail")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/admin/users/{id}/password/reset")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/users/{id}/role")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/users/{id}")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/users/{id}")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/drafts")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/drafts/**")),
@@ -180,6 +225,7 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/admin/courses/{courseSlug}/assignments")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/{assignmentId}/submission-statuses")),
@@ -199,12 +245,69 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.PATCH, parser.parse("/v1/report/**")),
         AllowRule(HttpMethod.DELETE, parser.parse("/v1/report/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/report")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/report/**")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/report")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/report/allReport")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/report/{id}")),
-        AllowRule(HttpMethod.PUT, parser.parse("/v2/report/{id}")),
-        AllowRule(HttpMethod.DELETE, parser.parse("/v2/report/{id}")),
-        AllowRule(HttpMethod.POST, parser.parse("/v2/post/images"))
+        AllowRule(HttpMethod.POST, parser.parse("/v2/report/**")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/report/**")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/report/**")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/report/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/post/images")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/post/images/**")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/post/images")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/post/images/**")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/post/images")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/post/images/**")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/post/images")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/post/images/**")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/post/images")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/post/images/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/posts")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/posts")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/posts/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/posts/scheduled/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/posts/drafts")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/posts/drafts/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/posts/{postId}")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/posts/{postId}")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/posts/{postId}")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/posts/{postId}/collaborators")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/posts/images")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/blogs")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/scheduled/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/drafts")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/drafts/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/blogs/{blogId}")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/blogs/{blogId}")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/blogs/{blogId}")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/lectures")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/scheduled/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/drafts")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/drafts/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/{lectureId}")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/lectures/{lectureId}")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/lectures/{lectureId}")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/online-judge/submissions")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/problems/{problemId}/submissions/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/admin/submissions")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/admin/testcases")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/submissions/{submissionId}")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/submissions/{submissionId}/stream")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/submissions")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/problems/{problemId}/submissions/me")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/submissions")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/testcases")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}/stream"))
+    )
+
+    private val denyRules: List<AllowRule> = listOf(
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy"))
     )
 
     override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 20
@@ -217,6 +320,10 @@ class GatewayRequestPolicyFilter(
             return chain.filter(exchange)
         }
 
+        if (isActuatorHealth(request.method, path)) {
+            return chain.filter(exchange)
+        }
+
         if (policy.enforceHttps && !isHttps(exchange)) {
             log.warn(
                 "Rejecting request due to HTTPS policy: method={}, path={}, host={}, forwardedProto={}, remoteAddress={}",
@@ -226,7 +333,7 @@ class GatewayRequestPolicyFilter(
                 request.headers.getFirst("X-Forwarded-Proto"),
                 request.remoteAddress?.address?.hostAddress
             )
-            return reject(exchange, HttpStatus.FORBIDDEN)
+            return reject(exchange, GatewayErrorCode.HTTPS_REQUIRED)
         }
 
         if (policy.allowedHosts.isNotEmpty()) {
@@ -243,16 +350,35 @@ class GatewayRequestPolicyFilter(
                     policy.allowPrivateIpHost,
                     request.remoteAddress?.address?.hostAddress
                 )
-                return reject(exchange, HttpStatus.FORBIDDEN)
+                return reject(exchange, GatewayErrorCode.HOST_NOT_ALLOWED)
             }
         }
 
-        if (policy.enforceMethodPathAllowlist && allowRules.none { it.matches(request.method, path) }) {
-            return reject(exchange, HttpStatus.NOT_FOUND)
+        if (policy.enforceMethodPathAllowlist) {
+            if (denyRules.any { it.matches(request.method, path) }) {
+                log.warn(
+                    "Rejecting request due to explicit deny policy: method={}, path={}, host={}, remoteAddress={}",
+                    request.method,
+                    path.value(),
+                    request.headers.host?.hostString,
+                    request.remoteAddress?.address?.hostAddress
+                )
+                return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+            }
+            if (allowRules.none { it.matches(request.method, path) }) {
+                log.warn(
+                    "Rejecting request due to allowlist policy: method={}, path={}, host={}, remoteAddress={}",
+                    request.method,
+                    path.value(),
+                    request.headers.host?.hostString,
+                    request.remoteAddress?.address?.hostAddress
+                )
+                return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+            }
         }
 
         if (policy.enforceJsonContentType && requiresJsonContentType(request.method) && !isJsonRequest(request, path)) {
-            return reject(exchange, HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+            return reject(exchange, GatewayErrorCode.JSON_CONTENT_TYPE_REQUIRED)
         }
 
         return chain.filter(exchange)
@@ -275,17 +401,12 @@ class GatewayRequestPolicyFilter(
         return contentType != null && (contentType.isCompatibleWith(MediaType.APPLICATION_JSON) || contentType.subtype.endsWith("+json"))
     }
 
-    private fun reject(exchange: ServerWebExchange, status: HttpStatus): Mono<Void> {
-        val response = exchange.response
-        response.statusCode = status
-        val origin = exchange.request.headers.origin
-        if (!origin.isNullOrBlank()) {
-            response.headers.set("Access-Control-Allow-Origin", origin)
-            if (response.headers.getFirst("Vary") == null) {
-                response.headers.add("Vary", "Origin")
-            }
-        }
-        return response.setComplete()
+    private fun isActuatorHealth(method: HttpMethod?, path: org.springframework.http.server.PathContainer): Boolean {
+        return method == HttpMethod.GET && actuatorHealthPaths.any { it.matches(path) }
+    }
+
+    private fun reject(exchange: ServerWebExchange, errorCode: GatewayErrorCode): Mono<Void> {
+        return responseWriter.writeError(exchange, errorCode)
     }
 
     private fun isPrivateIpHost(host: String): Boolean {

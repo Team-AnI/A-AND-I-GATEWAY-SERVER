@@ -1,5 +1,7 @@
 package com.aandi.gateway.security
 
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,7 +33,10 @@ import javax.crypto.spec.SecretKeySpec
 
 @Configuration
 @EnableWebFluxSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val responseWriter: GatewayResponseWriter,
+    private val bearerTokenAuthenticationConverter: GatewayBearerTokenAuthenticationConverter
+) {
 
     @Bean
     fun corsConfigurationSource(
@@ -72,60 +77,65 @@ class SecurityConfig {
                 it.pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Public endpoints
                 it.pathMatchers(HttpMethod.POST, "/v1/auth/**").permitAll()
-                it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/activate").permitAll()
+                it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/v2/auth/logout", "/activate", "/v2/activate").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/internal/v1/cache/invalidation").permitAll()
-                it.pathMatchers("/api/ping/**").permitAll()
+                it.pathMatchers("/api/ping/**", "/v2/ping/**").permitAll()
                 it.pathMatchers("/", "/index.html").permitAll()
                 it.pathMatchers("/v3/api-docs/**").permitAll()
                 it.pathMatchers("/v2/*/v3/api-docs", "/v2/*/v3/api-docs/**").permitAll()
                 it.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**", "/v2/swagger-ui/index.html", "/v2/swagger-ui/**").permitAll()
-                it.pathMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                it.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
 
                 // Auth service role-based endpoints
-                it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.POST, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.PATCH, "/v1/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me", "/v2/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/me", "/v2/auth/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.PATCH, "/v1/me", "/v2/auth/me", "/v2/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v2/me/profile-image/upload-url").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/me/password").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.PATCH, "/v2/me/password").hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v1/admin/courses").hasRole("ADMIN")
-                it.pathMatchers("/v1/admin", "/v1/admin/**", "/v2/auth/admin/**").hasRole("ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v2/users/lookup").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers("/v1/admin", "/v1/admin/**", "/v2/auth/admin/**", "/v2/admin/**").hasRole("ADMIN")
                 it.pathMatchers("/v2/post/admin/courses", "/v2/post/admin/courses/**").hasRole("ADMIN")
                 it.pathMatchers("/v2/admin/courses", "/v2/admin/courses/**").hasRole("ADMIN")
+                it.pathMatchers("/v2/online-judge/admin/**").hasRole("ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v1/courses", "/v1/courses/**", "/v2/post/courses", "/v2/post/courses/**")
                     .hasAnyRole("USER", "ORGANIZER", "ADMIN")
                 it.pathMatchers(HttpMethod.GET, "/v2/courses", "/v2/courses/**", "/v2/assignments/*/course")
                     .hasAnyRole("USER", "ORGANIZER", "ADMIN")
-                it.pathMatchers("/v1/report", "/v1/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers("/v2/submissions/**", "/v2/problems/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers("/v1/report", "/v1/report/**", "/v2/report", "/v2/report/**").hasAnyRole("USER", "ORGANIZER", "ADMIN")
 
                 // Blog policy
                 it.pathMatchers(HttpMethod.GET, "/v1/posts/drafts", "/v1/posts/drafts/**", "/v2/post/drafts", "/v2/post/drafts/**")
                     .hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v2/posts/drafts", "/v2/posts/drafts/**", "/v2/blogs/drafts", "/v2/blogs/drafts/**", "/v2/lectures/drafts", "/v2/lectures/drafts/**")
+                    .hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v2/posts/me", "/v2/posts/scheduled/me", "/v2/blogs/me", "/v2/blogs/scheduled/me", "/v2/lectures/me", "/v2/lectures/scheduled/me")
+                    .hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v2/posts", "/v2/posts/*", "/v2/lectures", "/v2/lectures/*")
+                    .hasAnyRole("USER", "ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.GET, "/v2/blogs", "/v2/blogs/*").permitAll()
                 it.pathMatchers(HttpMethod.GET, "/v1/posts", "/v1/posts/*", "/v2/post", "/v2/post/*").permitAll()
-                it.pathMatchers(HttpMethod.POST, "/v1/posts", "/v2/post").hasAnyRole("ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.PATCH, "/v1/posts/*", "/v2/post/*").hasAnyRole("ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.DELETE, "/v1/posts/*", "/v2/post/*").hasAnyRole("ORGANIZER", "ADMIN")
-                it.pathMatchers(HttpMethod.POST, "/v1/posts/images", "/v2/post/images").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/posts", "/v2/post", "/v2/posts", "/v2/blogs", "/v2/lectures").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.PATCH, "/v1/posts/*", "/v2/post/*", "/v2/posts/*", "/v2/blogs/*", "/v2/lectures/*").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.DELETE, "/v1/posts/*", "/v2/post/*", "/v2/posts/*", "/v2/blogs/*", "/v2/lectures/*").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v2/posts/*/collaborators").hasAnyRole("ORGANIZER", "ADMIN")
+                it.pathMatchers(HttpMethod.POST, "/v1/posts/images", "/v2/post/images", "/v2/post/images/**", "/v2/posts/images").hasAnyRole("ORGANIZER", "ADMIN")
 
                 // Any other route requires authentication
                 it.anyExchange().authenticated()
             }
             .exceptionHandling { exceptions ->
                 exceptions.authenticationEntryPoint { exchange, _ ->
-                    val response = exchange.response
-                    response.statusCode = HttpStatus.UNAUTHORIZED
-                    applyCorsHeaders(exchange)
-                    response.headers.contentType = MediaType.APPLICATION_JSON
-                    val body = "{\"message\":\"Unauthorized\"}".toByteArray()
-                    response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
+                    responseWriter.writeError(exchange, GatewayErrorCode.AUTHENTICATION_FAILED)
                 }
                 exceptions.accessDeniedHandler { exchange, _ ->
-                    val response = exchange.response
-                    response.statusCode = HttpStatus.FORBIDDEN
-                    applyCorsHeaders(exchange)
-                    response.headers.contentType = MediaType.APPLICATION_JSON
-                    val body = "{\"message\":\"Forbidden\"}".toByteArray()
-                    response.writeWith(Mono.just(response.bufferFactory().wrap(body)))
+                    responseWriter.writeError(exchange, GatewayErrorCode.ACCESS_DENIED)
                 }
             }
             .oauth2ResourceServer { oauth2 ->
+                oauth2.bearerTokenConverter(bearerTokenAuthenticationConverter)
                 oauth2.jwt { jwt ->
                     jwt.jwtDecoder(jwtDecoder)
                     jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())
@@ -176,19 +186,6 @@ class SecurityConfig {
             val role = UserRole.fromClaim(jwt.getClaimAsString("role"))
             val authorities = role?.grantedAuthorities() ?: listOf(SimpleGrantedAuthority("ROLE_USER"))
             Mono.just(JwtAuthenticationToken(jwt, authorities, jwt.subject))
-        }
-    }
-
-    private fun applyCorsHeaders(exchange: ServerWebExchange) {
-        val origin = exchange.request.headers.origin?.trim().orEmpty()
-        if (origin.isBlank()) {
-            return
-        }
-
-        val headers = exchange.response.headers
-        headers.set("Access-Control-Allow-Origin", origin)
-        if (headers.getFirst("Vary") == null) {
-            headers.add("Vary", "Origin")
         }
     }
 }
