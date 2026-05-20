@@ -209,12 +209,13 @@ func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interv
 		sinceLabel = "30m"
 		since, _ = security.ParseSince(sinceLabel)
 	}
+	now := time.Now()
 	alarmNames, err := s.alarms.AlarmNames(ctx)
 	if err != nil {
 		alarmNames = nil
 	}
 	inputs := s.dashboardInputs(ctx, since, alarmNames, s.cfg.Dashboard.MaxCloudWatchQueries)
-	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, time.Now(), interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5, sinceLabel))
+	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, now, interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5, sinceLabel, since, now))
 }
 
 func (s *Service) RefreshDashboard(ctx context.Context) error {
@@ -343,8 +344,11 @@ func (s *Service) RenderServiceDashboard(ctx context.Context, service, sinceLabe
 		if item.Name != normalized {
 			continue
 		}
+		now := time.Now()
+		snapshot := s.store.Snapshot()
+		recentAlerts := filterRecentServiceAlertsByService(snapshot.RecentServiceAlerts, normalized)
 		inputs := s.dashboardInputsForRegistry(ctx, since, []string{}, s.cfg.Dashboard.MaxCloudWatchQueries, []config.ServiceDefinition{item})
-		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, time.Now(), interval, recentServiceAlertLines(s.store.Snapshot().RecentServiceAlerts, 5, sinceLabel))
+		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, now, interval, recentServiceAlertLines(recentAlerts, 5, sinceLabel, since, now))
 	}
 	return "service registry에 없는 서비스입니다."
 }
@@ -452,16 +456,46 @@ type serviceAlertGroup struct {
 	TotalTraceCount int
 }
 
-func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int, since string) []string {
+func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int, sinceLabel string, since time.Duration, now time.Time) []string {
 	if limit <= 0 {
 		limit = 5
 	}
-	groups := groupRecentServiceAlerts(events, limit)
+	groups := groupRecentServiceAlerts(filterRecentServiceAlertsByWindow(events, since, now), limit)
 	lines := make([]string, 0, len(groups))
 	for _, group := range groups {
-		lines = append(lines, formatServiceAlertGroup(group, since))
+		lines = append(lines, formatServiceAlertGroup(group, sinceLabel))
 	}
 	return lines
+}
+
+func filterRecentServiceAlertsByWindow(events []state.ServiceAlertEventState, since time.Duration, now time.Time) []state.ServiceAlertEventState {
+	if since <= 0 {
+		since = 30 * time.Minute
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	filtered := make([]state.ServiceAlertEventState, 0, len(events))
+	for _, event := range events {
+		if event.CreatedAt.IsZero() {
+			continue
+		}
+		if now.Sub(event.CreatedAt) <= since {
+			filtered = append(filtered, event)
+		}
+	}
+	return filtered
+}
+
+func filterRecentServiceAlertsByService(events []state.ServiceAlertEventState, service string) []state.ServiceAlertEventState {
+	service = canonicalRecentServiceName(service)
+	filtered := make([]state.ServiceAlertEventState, 0, len(events))
+	for _, event := range events {
+		if canonicalRecentServiceName(event.Service) == service {
+			filtered = append(filtered, event)
+		}
+	}
+	return filtered
 }
 
 func groupRecentServiceAlerts(events []state.ServiceAlertEventState, limit int) []serviceAlertGroup {
@@ -610,7 +644,7 @@ func formatServiceAlertGroup(group serviceAlertGroup, since string) string {
 		}
 		b.WriteString("\n")
 	}
-	service := security.SanitizeText(firstNonEmpty(group.Service, "gateway"))
+	service := security.SanitizeText(firstNonEmpty(canonicalRecentServiceName(group.Service), "gateway"))
 	mode := "errors"
 	if strings.EqualFold(group.Severity, "CRITICAL") || strings.Contains(strings.ToLower(group.Summary), "critical") {
 		mode = "critical"
@@ -624,6 +658,16 @@ func formatServiceAlertGroup(group serviceAlertGroup, since string) string {
 
 func formatDashboardClock(value time.Time) string {
 	return value.In(time.FixedZone("KST", 9*60*60)).Format("15:04")
+}
+
+func canonicalRecentServiceName(service string) string {
+	normalized := strings.ToLower(strings.TrimSpace(service))
+	switch normalized {
+	case "blog":
+		return "post"
+	default:
+		return normalized
+	}
 }
 
 func (s *Service) dashboardInterval(snapshot state.Data) time.Duration {

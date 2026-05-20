@@ -406,6 +406,16 @@ func TestAssignmentDashboardReusesMessageIDAndLimitsRecentEvents(t *testing.T) {
 	if !strings.Contains(content, "📌 A&I 과제 운영 대시보드") || !strings.Contains(content, "상세 확인") {
 		t.Fatalf("dashboard should be Korean single-message format: %s", content)
 	}
+	for _, want := range []string{"/ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis", "/ops assignment course:<courseSlug> id:<assignmentId> view:events", "/ops assignment course:<courseSlug> id:<assignmentId> action:submissions", "/ops logs service:report mode:events query:<assignmentId> since:24h limit:20"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("dashboard footer missing explicit placeholder %q: %s", want, content)
+		}
+	}
+	for _, forbidden := range []string{"/ops assignment course: id:", "query: since", "/ops assignment-events", "/ops submissions course:", "/ops trace trace_id:"} {
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("dashboard footer should not contain empty/legacy command %q: %s", forbidden, content)
+		}
+	}
 }
 
 func TestAssignmentDashboardGroupsRecentIssueEvents(t *testing.T) {
@@ -456,6 +466,9 @@ func TestAssignmentDashboardWarnGroupUsesDiagnosisAndAck(t *testing.T) {
 		if !strings.Contains(content, want) {
 			t.Fatalf("warn assignment dashboard missing %q: %s", want, content)
 		}
+	}
+	if strings.Contains(content, "reason:\n") || strings.HasSuffix(content, "reason:") {
+		t.Fatalf("warn assignment dashboard should not contain bare reason placeholder: %s", content)
 	}
 }
 

@@ -238,8 +238,8 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 		}
 	}
 	b.WriteString("\n상세 확인\n")
-	b.WriteString("/ops logs service:report mode:errors since:" + since + " limit:10\n")
-	b.WriteString("/ops logs service:blog mode:slow since:" + since + " limit:10\n")
+	b.WriteString("/ops logs service:<service> mode:errors since:" + since + " limit:10\n")
+	b.WriteString("/ops logs service:<service> mode:critical since:" + since + " limit:10\n")
 	b.WriteString("/ops logs mode:trace query:<traceId>")
 	return TruncateDiscordMessage(b.String())
 }

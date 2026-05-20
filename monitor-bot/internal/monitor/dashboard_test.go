@@ -124,7 +124,7 @@ func TestRecentServiceAlertsGroupIncidentsWithTraceDrilldown(t *testing.T) {
 		Health:    formatting.ServiceStatus{Service: "gateway", State: "UP"},
 		LogStatus: "OK",
 		Rows:      []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}},
-	}}, nil, base, 5*time.Minute, recentServiceAlertLines(events, 5, "30m"))
+	}}, nil, base, 5*time.Minute, recentServiceAlertLines(events, 5, "30m", 30*time.Minute, base))
 	for _, want := range []string{"gateway CRITICAL - critical ×4", "latest=14:09 first=14:04", "traces: trace-a, trace-b, trace-c (+1)", "/ops logs service:gateway mode:critical since:30m limit:10", "/ops logs mode:trace query:trace-a"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("grouped service dashboard missing %q: %s", want, got)
@@ -144,7 +144,7 @@ func TestRecentServiceAlertsKeepDistinctIncidentKeysAndHandleMissingTrace(t *tes
 		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/reports\x0018801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", CreatedAt: base},
 		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/auth\x0021801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-auth"}, CreatedAt: base.Add(-time.Minute)},
 	}
-	lines := recentServiceAlertLines(events, 5, "30m")
+	lines := recentServiceAlertLines(events, 5, "30m", 30*time.Minute, base)
 	if len(lines) != 2 {
 		t.Fatalf("different incident keys should stay separate: %#v", lines)
 	}
@@ -160,9 +160,86 @@ func TestRecentServiceAlertsFallbackGroupsLegacyState(t *testing.T) {
 		{Fingerprint: "fp-trace-1", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", CreatedAt: base},
 		{Fingerprint: "fp-trace-2", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", CreatedAt: base.Add(-time.Minute)},
 	}
-	lines := recentServiceAlertLines(events, 5, "30m")
+	lines := recentServiceAlertLines(events, 5, "30m", 30*time.Minute, base)
 	if len(lines) != 1 || !strings.Contains(lines[0], "×2") {
 		t.Fatalf("legacy state without incident key should group by summary: %#v", lines)
+	}
+}
+
+func TestDashboardRecentServiceAlertsRespectSinceWindow(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := store.Update(func(data *state.Data) {
+		data.RecentServiceAlerts = []state.ServiceAlertEventState{
+			{IncidentKey: "gateway-new", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - current", TraceIDs: []string{"trace-new"}, CreatedAt: now.Add(-10 * time.Minute)},
+			{IncidentKey: "gateway-old", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - old", TraceIDs: []string{"trace-old"}, CreatedAt: now.Add(-2 * time.Hour)},
+			{IncidentKey: "gateway-zero", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - zero"},
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}}})
+	content := service.RenderDashboard(context.Background(), "30m", 5*time.Minute)
+	for _, want := range []string{"gateway CRITICAL - current", "/ops logs mode:trace query:trace-new"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("dashboard should include recent alert %q: %s", want, content)
+		}
+	}
+	for _, forbidden := range []string{"gateway CRITICAL - old", "trace-old", "gateway CRITICAL - zero"} {
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("dashboard should filter out old/zero-time alert %q: %s", forbidden, content)
+		}
+	}
+}
+
+func TestServiceDashboardFiltersRecentAlertsByService(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := store.Update(func(data *state.Data) {
+		data.RecentServiceAlerts = []state.ServiceAlertEventState{
+			{IncidentKey: "gateway", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-gateway"}, CreatedAt: now.Add(-10 * time.Minute)},
+			{IncidentKey: "report", Service: "report", Severity: "CRITICAL", AlertType: "v2-log", Summary: "report CRITICAL - critical", TraceIDs: []string{"trace-report"}, CreatedAt: now.Add(-5 * time.Minute)},
+			{IncidentKey: "blog", Service: "blog", Severity: "HIGH", AlertType: "v2-log", Summary: "blog HIGH - external_system", TraceIDs: []string{"trace-blog"}, CreatedAt: now.Add(-3 * time.Minute)},
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}}})
+	content := service.RenderServiceDashboard(context.Background(), "report", "30m", 5*time.Minute)
+	if !strings.Contains(content, "report CRITICAL - critical") || !strings.Contains(content, "/ops logs mode:trace query:trace-report") {
+		t.Fatalf("service dashboard should include matching report alert: %s", content)
+	}
+	if strings.Contains(content, "gateway CRITICAL - critical") || strings.Contains(content, "trace-gateway") || strings.Contains(content, "blog HIGH - external_system") {
+		t.Fatalf("service dashboard should not include other service alerts: %s", content)
+	}
+	blogContent := service.RenderServiceDashboard(context.Background(), "blog", "30m", 5*time.Minute)
+	if !strings.Contains(blogContent, "blog HIGH - external_system") || !strings.Contains(blogContent, "/ops logs service:post mode:errors since:30m limit:10") {
+		t.Fatalf("blog service dashboard should include canonical post command: %s", blogContent)
+	}
+}
+
+func TestServiceDashboardFooterUsesExplicitPlaceholders(t *testing.T) {
+	got := formatting.FormatDashboardWithMetaAndAlerts("30m", []formatting.DashboardServiceInput{{
+		Service:   "gateway",
+		Health:    formatting.ServiceStatus{Service: "gateway", State: "UP"},
+		LogStatus: "OK",
+		Rows:      []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}},
+	}}, nil, time.Now(), 5*time.Minute, nil)
+	for _, want := range []string{"/ops logs service:<service> mode:errors since:30m limit:10", "/ops logs service:<service> mode:critical since:30m limit:10", "/ops logs mode:trace query:<traceId>"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("dashboard footer missing %q: %s", want, got)
+		}
+	}
+	for _, forbidden := range []string{"/ops logs mode:trace query:\n", "/ops trace trace_id:"} {
+		if strings.Contains(got, forbidden) {
+			t.Fatalf("dashboard footer should not contain empty/legacy command %q: %s", forbidden, got)
+		}
 	}
 }
 
