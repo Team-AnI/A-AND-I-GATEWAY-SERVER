@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	recentFields     = `fields @timestamp, level, logType, env, service.name, service.domain, service.domainCode, service.version, service.instanceId, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
-	traceFields      = `fields @timestamp, level, logType, service.name, service.domain, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
-	errorFields      = `fields service.domain, service.name, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, trace.traceId, logType, message`
-	assignmentFields = `fields service.name, http.method, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, tags`
-	countFields      = `fields service.domain, service.name, service.domainCode, logType, http.statusCode`
-	slowFields       = `fields @timestamp, level, logType, service.domain, service.name, service.domainCode, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, response.error.alert, message`
+	recentFields          = `fields @timestamp, level, logType, env, service.name, service.domain, service.domainCode, service.version, service.instanceId, trace.traceId, trace.requestId, event.eventType, assignmentId, request.pathVariables.assignmentId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
+	traceFields           = `fields @timestamp, level, logType, service.name, service.domain, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
+	errorFields           = `fields service.domain, service.name, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, trace.traceId, logType, message`
+	assignmentFields      = `fields service.name, http.method, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, tags`
+	assignmentAuditFields = `fields @timestamp, logType, service.name, service.domain, service.domainCode, event.eventType, event.resourceType, event.resourceId, event.assignmentId, event.courseSlug, event.title, event.occurredAt, assignmentId, courseSlug, assignment.assignmentId, assignment.courseSlug, assignment.title, assignment.status, request.pathVariables.assignmentId, request.pathVariables.courseSlug, request.pathVariables.course, actor.userId, actor.id, actor.role, actor.name, actor.displayName, actor.loginId, trace.traceId, trace.requestId, http.path, http.route, changedFields, changes, tags`
+	countFields           = `fields service.domain, service.name, service.domainCode, logType, http.statusCode`
+	slowFields            = `fields @timestamp, level, logType, service.domain, service.name, service.domainCode, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.error.code, response.error.value, response.error.message, response.error.alert, message`
 )
 
 func LogGroupsForService(logGroups map[string]string, service string) ([]string, error) {
@@ -53,6 +54,10 @@ func LogGroupsForOptionalService(logGroups map[string]string, service string, ma
 }
 
 func BuildRecentLogsQuery(service, level string, limit int) (string, error) {
+	return BuildRecentLogsQueryWithSearch(service, level, "", limit)
+}
+
+func BuildRecentLogsQueryWithSearch(service, level, search string, limit int) (string, error) {
 	normalizedService, ok := security.NormalizeService(service)
 	if !ok {
 		return "", fmt.Errorf("unsupported service: %s", service)
@@ -61,13 +66,24 @@ func BuildRecentLogsQuery(service, level string, limit int) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unsupported level: %s", level)
 	}
+	searchFilter := ""
+	search = strings.TrimSpace(search)
+	if search != "" {
+		if !security.ValidateLogSearchQuery(search) {
+			return "", fmt.Errorf("invalid query")
+		}
+		quoted := regexpQuoteForLogsInsights(search)
+		searchFilter = fmt.Sprintf(`
+| filter trace.traceId = "%[1]s" or trace.requestId = "%[1]s" or event.eventType = "%[1]s" or assignmentId = "%[1]s" or request.pathVariables.assignmentId = "%[1]s" or response.error.code = "%[1]s" or response.error.value = "%[1]s" or http.path like /%[2]s/ or http.route like /%[2]s/ or @message like /%[2]s/`, search, quoted)
+	}
 	limit32 := security.ClampLimit(limit, 20, 100)
 	return fmt.Sprintf(`%s
 %s
 | filter logType != "" and service.name != ""
 | filter level = "%s"
+%s
 | sort @timestamp desc
-| limit %d`, recentFields, serviceDomainFilter(normalizedService), normalized, limit32), nil
+| limit %d`, recentFields, serviceDomainFilter(normalizedService), normalized, searchFilter, limit32), nil
 }
 
 func BuildTraceQuery(traceID string) (string, error) {
@@ -201,6 +217,27 @@ func BuildAssignmentQuery(assignmentID string) (string, error) {
 | limit 20`, recentFields, serviceDomainFilter("report"), quoted, quoted, quoted), nil
 }
 
+func BuildAssignmentAuditEventsQuery(search string, limit int) (string, error) {
+	searchFilter := ""
+	search = strings.TrimSpace(search)
+	if search != "" {
+		if !security.ValidateLogSearchQuery(search) {
+			return "", fmt.Errorf("invalid query")
+		}
+		quoted := regexpQuoteForLogsInsights(search)
+		searchFilter = fmt.Sprintf(`
+| filter trace.traceId = "%[1]s" or trace.requestId = "%[1]s" or event.eventType = "%[1]s" or actor.userId = "%[1]s" or actor.id = "%[1]s" or event.assignmentId = "%[1]s" or event.resourceId = "%[1]s" or assignmentId = "%[1]s" or assignment.assignmentId = "%[1]s" or request.pathVariables.assignmentId = "%[1]s" or event.courseSlug = "%[1]s" or assignment.courseSlug = "%[1]s" or courseSlug = "%[1]s" or request.pathVariables.courseSlug = "%[1]s" or request.pathVariables.course = "%[1]s" or http.path like /%[2]s/ or http.route like /%[2]s/`, search, quoted)
+	}
+	limit32 := security.ClampLimit(limit, 20, 100)
+	return fmt.Sprintf(`%s
+%s
+| filter logType = "EVENT"
+| filter event.eventType in ["ASSIGNMENT_CREATED", "ASSIGNMENT_UPDATED", "ASSIGNMENT_DELETED", "ASSIGNMENT_PUBLISHED", "ASSIGNMENT_UNPUBLISHED"]
+%s
+| sort @timestamp desc
+| limit %d`, assignmentAuditFields, serviceDomainFilter("report"), searchFilter, limit32), nil
+}
+
 func BuildAlertQuery(service string) (string, error) {
 	normalized, err := normalizeQueryService(service)
 	if err != nil {
@@ -229,6 +266,7 @@ func regexpQuoteForLogsInsights(value string) string {
 		`{`, `\{`,
 		`}`, `\}`,
 		`|`, `\|`,
+		`/`, `\/`,
 	)
 	return replacer.Replace(value)
 }

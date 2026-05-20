@@ -63,6 +63,7 @@ type AlertConfig struct {
 	HealthDownConsecutive    int
 	NoLogsMinutes            int
 	CopyAPIFiveXXThreshold5m int
+	AssignmentStaleGrace     time.Duration
 }
 
 func Load() Config {
@@ -121,6 +122,7 @@ func Load() Config {
 			HealthDownConsecutive:    envInt("ALERT_HEALTH_DOWN_CONSECUTIVE", 2),
 			NoLogsMinutes:            envInt("ALERT_NO_LOGS_MINUTES", 30),
 			CopyAPIFiveXXThreshold5m: envInt("ALERT_COPY_API_5XX_THRESHOLD_5M", 1),
+			AssignmentStaleGrace:     time.Duration(envInt("ASSIGNMENT_STALE_GRACE_DAYS", 7)) * 24 * time.Hour,
 		},
 	}
 }

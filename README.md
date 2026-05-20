@@ -1,5 +1,14 @@
 # A-AND-I-REPORT-GATEWAY-SERVER
 
+## Discord Monitor Bot
+
+운영 Discord bot은 Go HTTP Interactions sidecar로 Gateway JVM 프로세스와 분리되어 있습니다. 자세한 운영 문서는 [monitor-bot/README.md](monitor-bot/README.md)와 [docs/discord-monitor-bot.md](docs/discord-monitor-bot.md)를 봅니다.
+
+- monitor-bot is read-only for assignment operations.
+- The bot never creates/updates/deletes/publishes assignments.
+- Assignment audit notifications come from Report V2 EVENT logs.
+- CRITICAL server alerts can route to a separate critical channel and mention the configured role.
+
 ## API Response Contract
 
 이 게이트웨이에서 발생하는 **모든 응답과 에러는 반드시 아래 공통 응답 형식**을 따라야 합니다.

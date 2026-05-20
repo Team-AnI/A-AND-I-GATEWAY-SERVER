@@ -51,13 +51,15 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "watch", "unwatch", "watches", "alert", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment", "assignment-check", "submissions", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "logs", "alert", "assignment", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
 	}
-	if got["copy"] {
-		t.Fatal("copy subcommand should not be registered")
+	for _, forbidden := range []string{"service", "trace", "watch", "unwatch", "watches", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment-check", "submissions", "alarms", "storage", "copy", "assignment-events", "assignment-ack", "assignment-unack"} {
+		if got[forbidden] {
+			t.Fatalf("%s subcommand should not be registered", forbidden)
+		}
 	}
 }
 
@@ -74,45 +76,43 @@ func TestOpsConnectedServiceChoices(t *testing.T) {
 	if findOption(t, logs.Options, "service").Required {
 		t.Fatal("logs service option should be optional and default to all")
 	}
+	if findOption(t, logs.Options, "query").Required {
+		t.Fatal("logs query option should be optional")
+	}
+	if got := choiceValues(findOption(t, logs.Options, "since").Choices); strings.Join(got, ",") != "15m,30m,1h,24h" {
+		t.Fatalf("logs since choices = %#v", got)
+	}
 	if got := choiceNames(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,blog" {
 		t.Fatalf("logs service choice names = %#v", got)
 	}
 	if got := choiceValues(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,post" {
 		t.Fatalf("logs service choice values = %#v", got)
 	}
-	service := findSubcommand(t, command, "service")
-	if got := choiceNames(findOption(t, service.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
-		t.Fatalf("service choice names = %#v", got)
-	}
-	if got := choiceValues(findOption(t, service.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,post" {
-		t.Fatalf("service choice values = %#v", got)
-	}
-	assignments := findSubcommand(t, command, "assignments")
-	if course := findOption(t, assignments.Options, "course"); !course.Required {
-		t.Fatal("assignments course option must be required")
-	}
-	if got := choiceValues(findOption(t, assignments.Options, "status").Choices); strings.Join(got, ",") != "all,published,draft,scheduled" {
-		t.Fatalf("assignments status choices = %#v", got)
-	}
-	assignmentsAll := findSubcommand(t, command, "assignments-all")
-	if got := choiceValues(findOption(t, assignmentsAll.Options, "window").Choices); strings.Join(got, ",") != "today,this-week" {
-		t.Fatalf("assignments-all window choices = %#v", got)
-	}
 	assignment := findSubcommand(t, command, "assignment")
-	if course := findOption(t, assignment.Options, "course"); !course.Required {
-		t.Fatal("assignment course option must be required")
+	if course := findOption(t, assignment.Options, "course"); course.Required {
+		t.Fatal("assignment course option should be optional for scope:all")
 	}
 	idOption := findOption(t, assignment.Options, "id")
-	if !idOption.Required {
-		t.Fatal("assignment id option must be required")
+	if idOption.Required {
+		t.Fatal("assignment id option should be optional for list actions")
 	}
-	assignmentCheck := findSubcommand(t, command, "assignment-check")
-	if !findOption(t, assignmentCheck.Options, "course").Required || !findOption(t, assignmentCheck.Options, "id").Required {
-		t.Fatal("assignment-check course/id options must be required")
+	if got := choiceValues(findOption(t, assignment.Options, "view").Choices); strings.Join(got, ",") != "summary,diagnosis,raw,events" {
+		t.Fatalf("assignment view choices = %#v", got)
 	}
-	submissions := findSubcommand(t, command, "submissions")
-	if !findOption(t, submissions.Options, "course").Required || !findOption(t, submissions.Options, "assignment").Required {
-		t.Fatal("submissions course/assignment options must be required")
+	if got := choiceValues(findOption(t, assignment.Options, "action").Choices); strings.Join(got, ",") != "list,check,submissions,ack,unack" {
+		t.Fatalf("assignment action choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, assignment.Options, "scope").Choices); strings.Join(got, ",") != "course,all" {
+		t.Fatalf("assignment scope choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, assignment.Options, "status").Choices); strings.Join(got, ",") != "all,published,draft,scheduled" {
+		t.Fatalf("assignment status choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, assignment.Options, "window").Choices); strings.Join(got, ",") != "today,this-week" {
+		t.Fatalf("assignment window choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, assignment.Options, "event").Choices); strings.Join(got, ",") != "publish-delayed,draft-past-start,stale-draft,invalid-time,missing-problem,grading-failed" {
+		t.Fatalf("assignment event choices = %#v", got)
 	}
 }
 
@@ -141,6 +141,23 @@ func TestOpsLogsLimitChoices(t *testing.T) {
 	}
 }
 
+func TestOpsHelpHasTopicAndCommandOptions(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	help := findSubcommand(t, command, "help")
+	if got := choiceValues(findOption(t, help.Options, "topic").Choices); strings.Join(got, ",") != "overview,dashboard,logs,alerts,assignments,routing,audit,troubleshooting" {
+		t.Fatalf("help topic choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, help.Options, "command").Choices); strings.Join(got, ",") != "dashboard,logs,alert,assignment,help" {
+		t.Fatalf("help command choices = %#v", got)
+	}
+	if findOption(t, help.Options, "query").Required {
+		t.Fatal("help query must be optional")
+	}
+}
+
 func TestDefinitionsOnlyRegisterOpsCommand(t *testing.T) {
 	commands := Definitions()
 	if len(commands) != 1 || commands[0].Name != "ops" {
@@ -148,17 +165,20 @@ func TestDefinitionsOnlyRegisterOpsCommand(t *testing.T) {
 	}
 }
 
-func TestOpsServiceViewsStayStateFocused(t *testing.T) {
+func TestOpsDashboardAbsorbsServiceAndWatchOptions(t *testing.T) {
 	command, err := findCommand("ops")
 	if err != nil {
 		t.Fatal(err)
 	}
-	serviceCommand := findSubcommand(t, command, "service")
-	viewOption := findOption(t, serviceCommand.Options, "view")
-	got := choiceValues(viewOption.Choices)
-	want := []string{"summary", "health"}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("/ops service view choices = %#v, want %#v", got, want)
+	dashboard := findSubcommand(t, command, "dashboard")
+	if got := choiceValues(findOption(t, dashboard.Options, "action").Choices); strings.Join(got, ",") != "view,watch,unwatch,status" {
+		t.Fatalf("/ops dashboard action choices = %#v", got)
+	}
+	if got := choiceNames(findOption(t, dashboard.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
+		t.Fatalf("/ops dashboard service choices = %#v", got)
+	}
+	if channel := findOption(t, dashboard.Options, "channel"); channel.Type != 7 || channel.Required {
+		t.Fatalf("/ops dashboard channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
 }
 
@@ -170,29 +190,32 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 	logsCommand := findSubcommand(t, command, "logs")
 	modeOption := findOption(t, logsCommand.Options, "mode")
 	got := choiceValues(modeOption.Choices)
-	want := []string{"recent", "errors", "slow", "security"}
+	want := []string{"recent", "errors", "critical", "slow", "security", "events", "trace"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops logs mode choices = %#v, want %#v", got, want)
 	}
+	if got := choiceValues(findOption(t, logsCommand.Options, "action").Choices); strings.Join(got, ",") != "view,watch,unwatch,watches" {
+		t.Fatalf("/ops logs action choices = %#v", got)
+	}
 }
 
-func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
+func TestNoAssignmentWriteCommandsRegistered(t *testing.T) {
 	command, err := findCommand("ops")
 	if err != nil {
 		t.Fatal(err)
 	}
-	watch := findSubcommand(t, command, "watch")
-	if !findOption(t, watch.Options, "scope").Required {
-		t.Fatal("watch scope must be required")
+	for _, option := range command.Options {
+		switch option.Name {
+		case "assignment-create", "assignment-update", "assignment-delete", "assignment-publish", "assignment-unpublish":
+			t.Fatalf("assignment write command must not be registered: %s", option.Name)
+		}
 	}
-	if got := choiceValues(findOption(t, watch.Options, "interval").Choices); strings.Join(got, ",") != "1m,3m,5m,10m,15m" {
-		t.Fatalf("watch interval choices = %#v", got)
-	}
-	if channel := findOption(t, watch.Options, "channel"); channel.Type != 7 || channel.Required {
-		t.Fatalf("watch channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
-	}
-	if got := choiceNames(findOption(t, watch.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
-		t.Fatalf("watch service choices = %#v", got)
+}
+
+func TestOpsAlertAndWatchOptionsRegistered(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
 	}
 	alert := findSubcommand(t, command, "alert")
 	if !findOption(t, alert.Options, "action").Required {
@@ -201,29 +224,21 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	if got := choiceValues(findOption(t, alert.Options, "action").Choices); strings.Join(got, ",") != "channel,role,role-clear,on,off,status,test" {
 		t.Fatalf("alert action choices = %#v", got)
 	}
+	if got := choiceValues(findOption(t, alert.Options, "target").Choices); strings.Join(got, ",") != "all,general,critical" {
+		t.Fatalf("alert target choices = %#v", got)
+	}
 	if channel := findOption(t, alert.Options, "channel"); channel.Type != 7 || channel.Required {
 		t.Fatalf("alert channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
 	if role := findOption(t, alert.Options, "role"); role.Type != 8 {
 		t.Fatalf("alert role option must be role type, got %d", role.Type)
 	}
-	logsWatch := findSubcommand(t, command, "logs-watch")
-	if !findOption(t, logsWatch.Options, "service").Required || !findOption(t, logsWatch.Options, "mode").Required {
-		t.Fatal("logs-watch service/mode options must be required")
+	logs := findSubcommand(t, command, "logs")
+	if channel := findOption(t, logs.Options, "channel"); channel.Type != 7 || channel.Required {
+		t.Fatalf("logs channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
-	if got := choiceNames(findOption(t, logsWatch.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
-		t.Fatalf("logs-watch service choices = %#v", got)
-	}
-	if channel := findOption(t, logsWatch.Options, "channel"); channel.Type != 7 || channel.Required {
-		t.Fatalf("logs-watch channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
-	}
-	logsUnwatch := findSubcommand(t, command, "logs-unwatch")
-	if got := choiceNames(findOption(t, logsUnwatch.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog" {
-		t.Fatalf("logs-unwatch service choices = %#v", got)
-	}
-	alarms := findSubcommand(t, command, "alarms")
-	if got := choiceNames(findOption(t, alarms.Options, "service").Choices); strings.Join(got, ",") != "gateway,auth,report,blog,online-judge" {
-		t.Fatalf("alarms service choices = %#v", got)
+	if got := choiceValues(findOption(t, logs.Options, "interval").Choices); strings.Join(got, ",") != "1m,3m,5m,10m,15m" {
+		t.Fatalf("logs interval choices = %#v", got)
 	}
 }
 
@@ -238,15 +253,20 @@ func TestDefinitionsPayloadMarshals(t *testing.T) {
 	if !strings.Contains(string(payload), `"name":"role"`) || !strings.Contains(string(payload), `"type":8`) {
 		t.Fatalf("alert role option missing from payload: %s", payload)
 	}
+	if !strings.Contains(string(payload), `"name":"target"`) || !strings.Contains(string(payload), `"value":"critical"`) {
+		t.Fatalf("alert target option missing from payload: %s", payload)
+	}
 }
 
 func TestOpsHelpIncludesAlertRoleSetupPath(t *testing.T) {
-	help := formatting.HelpText()
+	help := formatting.HelpTextFor("alerts", "", "")
 	for _, want := range []string{
-		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:channel target:all channel:#ops-alerts",
+		"/ops alert action:channel target:general channel:#ops-log",
+		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
-		"/ops alert action:on",
 		"/ops alert action:status",
+		"/ops alert action:test target:critical",
 	} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help missing %q: %s", want, help)
@@ -295,7 +315,7 @@ func TestAppendTraceNextOnlyWhenRowsContainTraceID(t *testing.T) {
 		t.Fatalf("trace next should be hidden without trace id: %s", withoutTrace)
 	}
 	withTrace := appendTraceNext("content", []map[string]string{{"trace.traceId": "abc-123"}})
-	if !strings.Contains(withTrace, "/ops trace trace_id:abc-123") {
+	if !strings.Contains(withTrace, "/ops logs mode:trace query:abc-123") {
 		t.Fatalf("trace next should be shown when trace exists: %s", withTrace)
 	}
 }

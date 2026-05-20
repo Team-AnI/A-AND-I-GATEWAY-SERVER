@@ -21,6 +21,7 @@ var (
 		"30m": 30 * time.Minute,
 		"1h":  time.Hour,
 		"3h":  3 * time.Hour,
+		"24h": 24 * time.Hour,
 	}
 	allowedLevels = map[string]struct{}{
 		"INFO":  {},
@@ -41,6 +42,7 @@ var (
 	}
 	traceIDPattern            = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,128}$`)
 	courseSlugPattern         = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,128}$`)
+	logSearchQueryPattern     = regexp.MustCompile(`^[a-zA-Z0-9._:/-]{1,160}$`)
 	allowedAssignmentStatuses = map[string]struct{}{
 		"all":       {},
 		"published": {},
@@ -107,6 +109,10 @@ func ValidateTraceID(traceID string) bool {
 
 func ValidateAssignmentID(assignmentID string) bool {
 	return traceIDPattern.MatchString(strings.TrimSpace(assignmentID))
+}
+
+func ValidateLogSearchQuery(query string) bool {
+	return logSearchQueryPattern.MatchString(strings.TrimSpace(query))
 }
 
 func ValidateCourseSlug(courseSlug string) bool {

@@ -44,6 +44,8 @@ func TestStorePersistsServiceOpsState(t *testing.T) {
 		data.ServiceDashboards["service:report"] = ServiceDashboard{Scope: "service", Service: "report", ChannelID: "channel", MessageID: "message", IntervalSec: 300}
 		data.ServiceAlerts.Enabled = true
 		data.ServiceAlerts.ChannelID = "alert-channel"
+		data.ServiceAlerts.GeneralChannelID = "general-channel"
+		data.ServiceAlerts.CriticalChannelID = "critical-channel"
 		data.ServiceAlerts.RoleID = "123456"
 		data.ServiceAlerts.LastSent["report:5xx"] = time.Now()
 		data.LogFeeds["report:errors"] = LogFeed{Service: "report", Mode: "errors", ChannelID: "log-channel", Fingerprints: map[string]time.Time{"fp": time.Now()}}
@@ -59,7 +61,7 @@ func TestStorePersistsServiceOpsState(t *testing.T) {
 	if got.ServiceDashboards["service:report"].MessageID != "message" {
 		t.Fatalf("dashboard watch was not persisted: %#v", got.ServiceDashboards)
 	}
-	if !got.ServiceAlerts.Enabled || got.ServiceAlerts.RoleID != "123456" {
+	if !got.ServiceAlerts.Enabled || got.ServiceAlerts.RoleID != "123456" || got.ServiceAlerts.GeneralChannelID != "general-channel" || got.ServiceAlerts.CriticalChannelID != "critical-channel" {
 		t.Fatalf("service alert config was not persisted: %#v", got.ServiceAlerts)
 	}
 	if got.LogFeeds["report:errors"].Fingerprints["fp"].IsZero() {

@@ -57,95 +57,68 @@ func (e *RegistrationError) Error() string {
 func Definitions() []commandDefinition {
 	connectedServiceChoices := namedChoices(choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"))
 	connectedOrAllChoices := namedChoices(choice("all"), choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"))
-	alarmServiceChoices := namedChoices(choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"), choice("online-judge"))
 	reportSinceChoices := choices("15m", "30m", "1h")
-	watchScopeChoices := choices("all", "service")
+	logSinceChoices := choices("15m", "30m", "1h", "24h")
 	watchIntervalChoices := choices("1m", "3m", "5m", "10m", "15m")
+	dashboardActionChoices := choices("view", "watch", "unwatch", "status")
 	alertActionChoices := choices("channel", "role", "role-clear", "on", "off", "status", "test")
+	alertTargetChoices := choices("all", "general", "critical")
 	assignmentStatusChoices := choices("all", "published", "draft", "scheduled")
 	assignmentWindowChoices := choices("today", "this-week")
+	assignmentViewChoices := choices("summary", "diagnosis", "raw", "events")
+	assignmentActionChoices := choices("list", "check", "submissions", "ack", "unack")
+	assignmentScopeChoices := choices("course", "all")
+	assignmentEventChoices := choices("publish-delayed", "draft-past-start", "stale-draft", "invalid-time", "missing-problem", "grading-failed")
+	assignmentAckUntilChoices := choices("1h", "6h", "1d", "7d", "forever")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
-	serviceViewChoices := choices("summary", "health")
-	logModeChoices := choices("recent", "errors", "slow", "security")
-	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
-	storageViewChoices := choices("usage", "retention")
+	logModeChoices := choices("recent", "errors", "critical", "slow", "security", "events", "trace")
+	logActionChoices := choices("view", "watch", "unwatch", "watches")
+	helpTopicChoices := choices("overview", "dashboard", "logs", "alerts", "assignments", "routing", "audit", "troubleshooting")
+	helpCommandChoices := choices("dashboard", "logs", "alert", "assignment", "help")
 	return []commandDefinition{
 		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
-			subcommandOption("dashboard", "전체 서비스 운영 대시보드", []commandOption{
+			subcommandOption("dashboard", "서비스 상태와 dashboard watch", []commandOption{
+				stringOption("action", "view/watch/unwatch/status", false, dashboardActionChoices),
+				stringOption("service", "조회할 서비스", false, connectedServiceChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),
-			}),
-			subcommandOption("service", "특정 서비스 상세 상태", []commandOption{
-				stringOption("service", "조회할 서비스", true, connectedServiceChoices),
-				stringOption("view", "상세 보기", false, serviceViewChoices),
-				stringOption("since", "조회 기간", false, reportSinceChoices),
+				channelOption("channel", "대시보드를 고정할 채널", false),
+				stringOption("interval", "업데이트 주기", false, watchIntervalChoices),
 			}),
 			subcommandOption("logs", "로그 조회와 집계", []commandOption{
+				stringOption("action", "view/watch/unwatch/watches", false, logActionChoices),
 				stringOption("service", "조회할 서비스", false, connectedOrAllChoices),
 				stringOption("mode", "조회 모드", false, logModeChoices),
 				stringOption("level", "로그 레벨", false, levelChoices),
-				stringOption("since", "조회 기간", false, reportSinceChoices),
+				stringOption("since", "조회 기간", false, logSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
+				stringOption("query", "traceId, assignmentId, eventType, errorCode 검색어", false, nil),
+				channelOption("channel", "로그 피드를 보낼 채널", false),
+				stringOption("interval", "조회 주기", false, watchIntervalChoices),
 			}),
-			subcommandOption("watch", "서비스 대시보드 자동 갱신 등록", []commandOption{
-				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
-				channelOption("channel", "대시보드를 고정할 채널", false),
-				stringOption("service", "서비스 범위일 때 대상 서비스", false, connectedServiceChoices),
-				stringOption("interval", "업데이트 주기", false, watchIntervalChoices),
-			}),
-			subcommandOption("unwatch", "서비스 대시보드 자동 갱신 중지", []commandOption{
-				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
-				stringOption("service", "서비스 범위일 때 대상 서비스", false, connectedServiceChoices),
-			}),
-			subcommandOption("watches", "등록된 서비스 대시보드 목록", nil),
 			subcommandOption("alert", "서비스 알림 설정", []commandOption{
 				stringOption("action", "알림 설정 동작", true, alertActionChoices),
+				stringOption("target", "general=운영 로그, critical=장애 알림, all=둘 다", false, alertTargetChoices),
 				channelOption("channel", "알림 채널", false),
 				roleOption("role", "멘션할 운영자 역할", false),
 			}),
-			subcommandOption("logs-watch", "로그 피드 등록", []commandOption{
-				stringOption("service", "피드 서비스", true, connectedServiceChoices),
-				stringOption("mode", "피드 모드", true, logModeChoices),
-				channelOption("channel", "로그 피드를 보낼 채널", false),
-				stringOption("interval", "조회 주기", false, watchIntervalChoices),
-				stringOption("since", "조회 기간", false, reportSinceChoices),
-				integerOption("limit", "출력 개수", false, limitChoices),
-			}),
-			subcommandOption("logs-unwatch", "로그 피드 중지", []commandOption{
-				stringOption("service", "피드 서비스", true, connectedServiceChoices),
-				stringOption("mode", "피드 모드", true, logModeChoices),
-			}),
-			subcommandOption("logs-watches", "등록된 로그 피드 목록", nil),
-			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{
-				stringOption("course", "courseSlug", true, nil),
-				stringOption("status", "과제 상태", false, assignmentStatusChoices),
-			}),
-			subcommandOption("assignments-all", "Report 전체 코스 과제 요약", []commandOption{
-				stringOption("window", "조회 창", false, assignmentWindowChoices),
-			}),
 			subcommandOption("assignment", "특정 과제 이벤트 조회", []commandOption{
-				stringOption("course", "courseSlug", true, nil),
-				stringOption("id", "assignmentId", true, nil),
+				stringOption("action", "list/check/submissions/ack/unack", false, assignmentActionChoices),
+				stringOption("scope", "조회 범위", false, assignmentScopeChoices),
+				stringOption("course", "courseSlug", false, nil),
+				stringOption("id", "assignmentId", false, nil),
+				stringOption("view", "보기 방식", false, assignmentViewChoices),
+				stringOption("status", "과제 상태", false, assignmentStatusChoices),
+				stringOption("window", "조회 창", false, assignmentWindowChoices),
+				stringOption("event", "ack/unack 대상 이벤트", false, assignmentEventChoices),
+				stringOption("until", "ack 유지 기간", false, assignmentAckUntilChoices),
+				stringOption("reason", "ack 사유", false, nil),
 			}),
-			subcommandOption("assignment-check", "특정 과제 상태 검증", []commandOption{
-				stringOption("course", "courseSlug", true, nil),
-				stringOption("id", "assignmentId", true, nil),
+			subcommandOption("help", "운영 명령어 도움말", []commandOption{
+				stringOption("topic", "도움말 주제", false, helpTopicChoices),
+				stringOption("command", "상세 설명할 명령어", false, helpCommandChoices),
+				stringOption("query", "상황 검색어", false, nil),
 			}),
-			subcommandOption("submissions", "과제 제출/채점 상태 요약", []commandOption{
-				stringOption("course", "courseSlug", true, nil),
-				stringOption("assignment", "assignmentId", true, nil),
-			}),
-			subcommandOption("trace", "traceId 기준 로그 조회", []commandOption{
-				stringOption("trace_id", "조회할 traceId", true, nil),
-			}),
-			subcommandOption("alarms", "CloudWatch alarm 조회", []commandOption{
-				stringOption("state", "alarm 상태", false, alarmStateChoices),
-				stringOption("service", "서비스 필터", false, alarmServiceChoices),
-			}),
-			subcommandOption("storage", "CloudWatch log 사용량과 retention", []commandOption{
-				stringOption("view", "storage 보기", false, storageViewChoices),
-			}),
-			subcommandOption("help", "운영 명령어 도움말", nil),
 		}},
 	}
 }

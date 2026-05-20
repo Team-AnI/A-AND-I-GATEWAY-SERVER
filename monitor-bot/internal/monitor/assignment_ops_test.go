@@ -96,10 +96,10 @@ func TestAssignmentOpsDetectsAssignmentAndGradingEvents(t *testing.T) {
 		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}, {Slug: "legacy", Status: "CLOSED"}, {Slug: "unknown"}},
 		assignments: map[string][]reportadmin.Assignment{
 			"kotlin": {
-				{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z"},
+				{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z", ProblemID: "p1"},
 				{ID: "a2", Title: "6주차", Status: "draft", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z"},
 			},
-			"legacy": {{ID: "old", Status: "published"}},
+			"legacy": {{ID: "old", Status: "published", ProblemID: "p-old"}},
 		},
 		submissions: map[string]reportadmin.SubmissionSummary{
 			"kotlin:a1": {Submitted: 2, Graded: 1, Pending: 1},
@@ -161,6 +161,216 @@ func TestAssignmentOpsDetectsWarningsAndDedupes(t *testing.T) {
 	}
 }
 
+func TestAssignmentIssueLifecycleSuppressesSameOpenIssueAfterCooldown(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	report := &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{ID: "a1", Title: "delayed", Status: "draft", PublishedAt: "2026-05-20T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"}},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}},
+	}
+	service := newAssignmentOpsTestService(store, report)
+	_ = service.collectAssignmentOps(context.Background(), now.Add(-time.Minute))
+
+	first := service.collectAssignmentOps(context.Background(), now)
+	if !hasAssignmentEvent(first.Events, "ASSIGNMENT_PUBLISH_DELAYED") {
+		t.Fatalf("first open issue should notify: %#v", first.Events)
+	}
+	again := service.collectAssignmentOps(context.Background(), now.Add(2*time.Hour))
+	if hasAssignmentEvent(again.Events, "ASSIGNMENT_PUBLISH_DELAYED") {
+		t.Fatalf("same open issue should not resend after cooldown: %#v", again.Events)
+	}
+	issue := store.Snapshot().AssignmentIssues[assignmentIssueKey("ASSIGNMENT_PUBLISH_DELAYED", "kotlin", "a1")]
+	if issue.NotifyCount != 1 || issue.State != "open" {
+		t.Fatalf("issue state mismatch: %#v", issue)
+	}
+}
+
+func TestAssignmentIssueResolvesAndReopens(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	publishedAt := now.Add(-3 * time.Hour).Format(time.RFC3339)
+	startAt := now.Add(24 * time.Hour).Format(time.RFC3339)
+	endAt := now.Add(48 * time.Hour).Format(time.RFC3339)
+	service := newAssignmentOpsTestService(store, &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{ID: "a1", Status: "draft", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt}},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}},
+	})
+	_ = service.collectAssignmentOps(context.Background(), now.Add(-time.Minute))
+	_ = service.collectAssignmentOps(context.Background(), now)
+
+	service.report = &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{ID: "a1", Status: "published", ProblemID: "p1", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt}},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}},
+	}
+	_ = service.collectAssignmentOps(context.Background(), now.Add(time.Hour))
+	key := assignmentIssueKey("ASSIGNMENT_PUBLISH_DELAYED", "kotlin", "a1")
+	if got := store.Snapshot().AssignmentIssues[key].State; got != "resolved" {
+		t.Fatalf("issue should resolve, got %q", got)
+	}
+
+	service.report = &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{ID: "a1", Status: "draft", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt}},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}},
+	}
+	reopened := service.collectAssignmentOps(context.Background(), now.Add(2*time.Hour))
+	if !hasAssignmentEvent(reopened.Events, "ASSIGNMENT_PUBLISH_DELAYED") {
+		t.Fatalf("resolved issue should notify when reopened: %#v", reopened.Events)
+	}
+}
+
+func TestAssignmentDiagnosisSplitsDraftPastStartAndStaleDraft(t *testing.T) {
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	draftPastStart := diagnoseAssignment(state.AssignmentSnapshot{
+		CourseSlug:   "3rd-cs",
+		AssignmentID: "a1",
+		Status:       "DRAFT",
+		StartAt:      "2026-05-20T09:00:00Z",
+		EndAt:        "2026-05-25T09:00:00Z",
+	}, now, 7*24*time.Hour)
+	if len(draftPastStart) == 0 || draftPastStart[0].EventType != "ASSIGNMENT_DRAFT_PAST_START" {
+		t.Fatalf("draft past start diagnosis mismatch: %#v", draftPastStart)
+	}
+	if !strings.Contains(draftPastStart[0].ReasonText, "공개 지연으로 단정할 수 없습니다") {
+		t.Fatalf("draft past start should not assert publish delay: %#v", draftPastStart[0])
+	}
+
+	stale := diagnoseAssignment(state.AssignmentSnapshot{
+		CourseSlug:   "3rd-cs",
+		AssignmentID: "a1",
+		Status:       "DRAFT",
+		StartAt:      "2025-05-19T09:00:00+09:00",
+		EndAt:        "2025-05-23T18:00:00+09:00",
+	}, now, 7*24*time.Hour)
+	if len(stale) == 0 || stale[0].EventType != "ASSIGNMENT_STALE_DRAFT" || stale[0].ShouldNotify {
+		t.Fatalf("stale draft should be dashboard-only: %#v", stale)
+	}
+}
+
+func TestAssignmentDiagnosisMissingProblemOnPublished(t *testing.T) {
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	diagnoses := diagnoseAssignment(state.AssignmentSnapshot{
+		CourseSlug:   "kotlin",
+		AssignmentID: "a1",
+		Status:       "open",
+		StartAt:      "2026-05-20T09:00:00Z",
+		EndAt:        "2026-05-21T09:00:00Z",
+	}, now, 7*24*time.Hour)
+	if !hasDiagnosis(diagnoses, "ASSIGNMENT_MISSING_PROBLEM") {
+		t.Fatalf("published/open missing problem should be diagnosed: %#v", diagnoses)
+	}
+}
+
+func TestAssignmentAckSuppressesUntilExpiry(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	publishedAt := now.Add(-3 * time.Hour).Format(time.RFC3339)
+	startAt := now.Add(24 * time.Hour).Format(time.RFC3339)
+	endAt := now.Add(48 * time.Hour).Format(time.RFC3339)
+	service := newAssignmentOpsTestService(store, &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{ID: "a1", Status: "draft", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt}},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}},
+	})
+	_ = service.collectAssignmentOps(context.Background(), now.Add(-time.Minute))
+	if _, err := service.AcknowledgeAssignmentIssue("kotlin", "a1", "publish-delayed", "1h", "known", "test"); err != nil {
+		t.Fatal(err)
+	}
+	suppressed := service.collectAssignmentOps(context.Background(), now)
+	if hasAssignmentEvent(suppressed.Events, "ASSIGNMENT_PUBLISH_DELAYED") {
+		t.Fatalf("acked issue should be suppressed: %#v", suppressed.Events)
+	}
+	expired := service.collectAssignmentOps(context.Background(), now.Add(2*time.Hour))
+	if !hasAssignmentEvent(expired.Events, "ASSIGNMENT_PUBLISH_DELAYED") {
+		t.Fatalf("expired ack should allow notification: %#v", expired.Events)
+	}
+}
+
+func TestAssignmentAlertIncludesEvidenceAndExplainedNextCommands(t *testing.T) {
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	snapshot := state.AssignmentSnapshot{
+		CourseSlug:   "3rd-cs",
+		AssignmentID: "1d74df8d-c501-405e-9327-d8f39b4d98cb",
+		Status:       "DRAFT",
+		StartAt:      "2026-05-20T09:00:00Z",
+		EndAt:        "2026-05-25T09:00:00Z",
+	}
+	diagnosis := diagnoseAssignment(snapshot, now, 7*24*time.Hour)[0]
+	event := makeAssignmentIssueEvent(snapshot, diagnosis, now)
+	issue, include := applyAssignmentIssueState(state.AssignmentIssueState{}, event, now)
+	if !include {
+		t.Fatal("first issue should be included")
+	}
+	got := formatAssignmentEvent(enrichAssignmentIssueEvent(event, issue))
+	for _, want := range []string{"title: unknown", "publishedAt: unknown", "reasonCode: PUBLISHED_AT_MISSING_DRAFT_START_PAST", "공개 지연으로 단정할 수 없음", "evidence:", "/ops assignment course:3rd-cs id:1d74df8d-c501-405e-9327-d8f39b4d98cb view:diagnosis", "- 봇 감지 이력과 반복 억제 상태를 확인합니다."} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assignment alert missing %q: %s", want, got)
+		}
+	}
+}
+
+func TestAssignmentIssueNotificationsAreBatchedWithSuppressedCount(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	report := &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {
+				{ID: "a1", Title: "one", Status: "draft", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"},
+				{ID: "a2", Title: "two", Status: "published", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z", ProblemID: "p1"},
+			},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}, "kotlin:a2": {}},
+	}
+	service := newAssignmentOpsTestService(store, report)
+	_ = service.collectAssignmentOps(context.Background(), now.Add(-time.Minute))
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	report.assignments["kotlin"][1] = reportadmin.Assignment{ID: "a2", Title: "two", Status: "draft", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"}
+	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if fakeDiscord.sends != 3 || fakeDiscord.edits != 1 {
+		t.Fatalf("expected dashboard + two digests and one edit, sends=%d edits=%d contents=%#v", fakeDiscord.sends, fakeDiscord.edits, fakeDiscord.sentContents)
+	}
+	digest := fakeDiscord.sentContents[2]
+	for _, want := range []string{"과제 상태 점검 2건", "eventType: ASSIGNMENT_PUBLISH_DELAYED", "- newly opened: 1", "- repeated suppressed: 1", "/ops assignment course:kotlin id:a2 view:diagnosis", "/ops logs service:report mode:events query:a2"} {
+		if !strings.Contains(digest, want) {
+			t.Fatalf("assignment issue digest missing %q: %s", want, digest)
+		}
+	}
+}
+
 func TestAssignmentDashboardReusesMessageIDAndLimitsRecentEvents(t *testing.T) {
 	store := state.NewStore(t.TempDir() + "/state.json")
 	if err := store.Load(); err != nil {
@@ -169,7 +379,7 @@ func TestAssignmentDashboardReusesMessageIDAndLimitsRecentEvents(t *testing.T) {
 	service := newAssignmentOpsTestService(store, &fakeReportAdmin{
 		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
 		assignments: map[string][]reportadmin.Assignment{
-			"kotlin": {{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z"}},
+			"kotlin": {{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z", ProblemID: "p1"}},
 		},
 		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {Submitted: 1, Graded: 1}},
 	})
@@ -204,14 +414,14 @@ func TestAssignmentOpsUsesConfiguredAlertChannelFromState(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := store.Update(func(data *state.Data) {
-		data.ServiceAlerts.ChannelID = "state-alert-channel"
+		data.ServiceAlerts.GeneralChannelID = "state-alert-channel"
 	}); err != nil {
 		t.Fatal(err)
 	}
 	service := newAssignmentOpsTestService(store, &fakeReportAdmin{
 		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
 		assignments: map[string][]reportadmin.Assignment{
-			"kotlin": {{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z"}},
+			"kotlin": {{ID: "a1", Title: "5주차", Status: "published", StartAt: "2026-05-14T09:00:00Z", EndAt: "2026-05-15T09:00:00Z", ProblemID: "p1"}},
 		},
 		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {Submitted: 1, Graded: 1}},
 	})
@@ -247,4 +457,22 @@ func newAssignmentOpsTestService(store *state.Store, report ReportAdminAPI) *Ser
 	service := NewService(cfg, health.NewClient(map[string]string{}, time.Millisecond), &fakeLogs{}, fakeAlarms{}, store, nil)
 	service.report = report
 	return service
+}
+
+func hasAssignmentEvent(events []state.AssignmentEventState, eventType string) bool {
+	for _, event := range events {
+		if event.EventType == eventType {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDiagnosis(diagnoses []AssignmentDiagnosis, eventType string) bool {
+	for _, diagnosis := range diagnoses {
+		if diagnosis.EventType == eventType {
+			return true
+		}
+	}
+	return false
 }

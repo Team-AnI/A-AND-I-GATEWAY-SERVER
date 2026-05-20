@@ -96,7 +96,7 @@ func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 		t.Fatalf("critical alert should use fallback role id, got %q", got)
 	}
 	content := fakeDiscord.roleContents[0]
-	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "/ops logs service:report mode:errors", "/ops trace trace_id:trace-1"} {
+	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "/ops logs service:report mode:errors", "/ops logs mode:trace query:trace-1"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}
@@ -259,6 +259,141 @@ func TestAllowedRoleFallbackOnlyAppliesToCritical(t *testing.T) {
 	}
 }
 
+func TestConfigureAlertTargetsSetRouteChannels(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.Alert.ChannelID = ""
+	service.cfg.Dashboard.ChannelID = ""
+
+	if _, err := service.ConfigureAlert(context.Background(), "all-channel", "channel", "", "all"); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := store.Snapshot()
+	if snapshot.ServiceAlerts.ChannelID != "all-channel" || snapshot.ServiceAlerts.GeneralChannelID != "all-channel" || snapshot.ServiceAlerts.CriticalChannelID != "all-channel" {
+		t.Fatalf("target=all should set legacy/general/critical channels: %#v", snapshot.ServiceAlerts)
+	}
+	if got := service.generalAlertChannelID(); got != "all-channel" {
+		t.Fatalf("general all fallback = %q", got)
+	}
+	if got := service.criticalAlertChannelID(); got != "all-channel" {
+		t.Fatalf("critical all fallback = %q", got)
+	}
+
+	if _, err := service.ConfigureAlert(context.Background(), "general-channel", "channel", "", "general"); err != nil {
+		t.Fatal(err)
+	}
+	if got := service.generalAlertChannelID(); got != "general-channel" {
+		t.Fatalf("general target should update general channel, got %q", got)
+	}
+	if got := service.criticalAlertChannelID(); got != "all-channel" {
+		t.Fatalf("general target should not update critical channel, got %q", got)
+	}
+
+	if _, err := service.ConfigureAlert(context.Background(), "critical-channel", "channel", "", "critical"); err != nil {
+		t.Fatal(err)
+	}
+	if got := service.criticalAlertChannelID(); got != "critical-channel" {
+		t.Fatalf("critical target should update critical channel, got %q", got)
+	}
+	if got := service.generalAlertChannelID(); got != "general-channel" {
+		t.Fatalf("critical target should not update general channel, got %q", got)
+	}
+}
+
+func TestLegacyAlertChannelRoutesGeneralAndCritical(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(data *state.Data) {
+		data.ServiceAlerts.ChannelID = "legacy-channel"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.Alert.ChannelID = ""
+	service.cfg.Dashboard.ChannelID = ""
+
+	if got := service.generalAlertChannelID(); got != "legacy-channel" {
+		t.Fatalf("legacy channel should route general alerts, got %q", got)
+	}
+	if got := service.criticalAlertChannelID(); got != "legacy-channel" {
+		t.Fatalf("legacy channel should route critical alerts, got %q", got)
+	}
+}
+
+func TestAlertRoutingUsesGeneralAndCriticalChannels(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(data *state.Data) {
+		data.ServiceAlerts.GeneralChannelID = "general-channel"
+		data.ServiceAlerts.CriticalChannelID = "critical-channel"
+		data.ServiceAlerts.RoleID = "9999999999"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.Alert.ChannelID = ""
+	service.cfg.Dashboard.ChannelID = ""
+	service.cfg.DiscordAllowedRoleIDs = []string{"1234567890"}
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.sendAlert(context.Background(), alertForErrorCode(60701)); err != nil {
+		t.Fatal(err)
+	}
+	if fakeDiscord.sends != 1 || fakeDiscord.sentChannels[0] != "general-channel" || fakeDiscord.roleSends != 0 {
+		t.Fatalf("HIGH should use general channel without role mention, sends=%d roleSends=%d channels=%#v", fakeDiscord.sends, fakeDiscord.roleSends, fakeDiscord.sentChannels)
+	}
+
+	if err := service.sendAlert(context.Background(), alertForErrorCode(21801)); err != nil {
+		t.Fatal(err)
+	}
+	if fakeDiscord.roleSends != 1 || fakeDiscord.roleChannels[0] != "critical-channel" {
+		t.Fatalf("CRITICAL should use critical channel with role mention, roleSends=%d channels=%#v", fakeDiscord.roleSends, fakeDiscord.roleChannels)
+	}
+	if got := strings.Join(fakeDiscord.roleIDs, ","); got != "9999999999" {
+		t.Fatalf("critical route should use configured state role, got %q", got)
+	}
+}
+
+func TestAlertTestTargetsDoNotMentionRole(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(data *state.Data) {
+		data.ServiceAlerts.GeneralChannelID = "general-channel"
+		data.ServiceAlerts.CriticalChannelID = "critical-channel"
+		data.ServiceAlerts.RoleID = "9999999999"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.Alert.ChannelID = ""
+	service.cfg.Dashboard.ChannelID = ""
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if _, err := service.ConfigureAlert(context.Background(), "", "test", "", "general"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ConfigureAlert(context.Background(), "", "test", "", "critical"); err != nil {
+		t.Fatal(err)
+	}
+	if fakeDiscord.roleSends != 0 {
+		t.Fatalf("alert tests must not mention role, roleSends=%d", fakeDiscord.roleSends)
+	}
+	if strings.Join(fakeDiscord.sentChannels, ",") != "general-channel,critical-channel" {
+		t.Fatalf("test target routing channels = %#v", fakeDiscord.sentChannels)
+	}
+}
+
 func TestConfigureAlertUsesStateRoleAndBlocksUnsafeRole(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {
@@ -267,17 +402,17 @@ func TestConfigureAlertUsesStateRoleAndBlocksUnsafeRole(t *testing.T) {
 	service := newTestService(store, &fakeLogs{})
 
 	for _, roleID := range []string{"everyone", "here", "@everyone", "@here"} {
-		if _, err := service.ConfigureAlert(context.Background(), "channel-1", "role", roleID); err == nil {
+		if _, err := service.ConfigureAlert(context.Background(), "channel-1", "role", roleID, ""); err == nil {
 			t.Fatalf("%q role should be rejected", roleID)
 		}
 	}
-	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "channel", ""); err != nil {
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "channel", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "role", "1234567890"); err != nil {
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "role", "1234567890", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "on", ""); err != nil {
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "on", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	status := service.FormatAlertStatus()
@@ -306,7 +441,7 @@ func TestAlertTestSendsWithoutConfiguredRole(t *testing.T) {
 	fakeDiscord := &fakeDiscord{}
 	service.discord = fakeDiscord
 
-	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "test", ""); err != nil {
+	if _, err := service.ConfigureAlert(context.Background(), "channel-1", "test", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if fakeDiscord.sends != 1 {

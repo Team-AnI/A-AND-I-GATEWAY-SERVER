@@ -1,6 +1,8 @@
 package formatting
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -398,32 +400,224 @@ func TestFormatRetentionDoesNotExposeDeleteOperationsOrSecrets(t *testing.T) {
 func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	got := HelpText()
 	for _, want := range []string{
-		"A&I Ops Incident Flow",
-		"Core",
-		"/ops dashboard since:30m",
-		"/ops service service:blog view:summary",
-		"/ops logs mode:errors since:15m limit:10",
-		"/ops watch scope:all channel:#ops interval:5m",
-		"/ops alert action:channel channel:#ops-alerts",
+		"A&I Ops Bot 도움말",
+		"기본 명령은 5개입니다",
+		"1. /ops dashboard",
+		"2. /ops logs",
+		"3. /ops alert",
+		"4. /ops assignment",
+		"5. /ops help",
+		"/ops dashboard service:report",
+		"/ops logs service:report mode:errors since:30m limit:10",
+		"/ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20",
+		"/ops logs mode:trace query:<traceId>",
+		"/ops alert action:channel target:general channel:#ops-log",
+		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
-		"/ops alert action:on",
-		"/ops alert action:status",
-		"/ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10",
-		"Advanced",
-		"/ops trace trace_id:<traceId>",
-		"/ops alarms state:ALARM",
-		"/ops storage view:usage",
-		"/ops assignments course:<courseSlug> status:all",
-		"Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.",
-		"Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.",
+		"/ops assignment course:3rd-cs",
+		"/ops assignment course:<course> id:<assignmentId> view:diagnosis",
+		"/ops assignment course:<course> id:<assignmentId> view:events",
+		"봇은 과제를 생성/수정/삭제/공개하지 않습니다",
+		"CRITICAL 서버 장애만 role mention",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)
 		}
 	}
-	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy"} {
+	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service", "/ops trace", "/ops watch", "/ops logs-watch", "/ops assignments", "/ops assignment-check", "/ops submissions"} {
 		if strings.Contains(got, legacy) {
 			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
+		}
+	}
+}
+
+func TestHelpTopicAssignmentsAndCommandAssignmentCheckExplainPurpose(t *testing.T) {
+	topic := HelpTextFor("assignments", "", "")
+	for _, want := range []string{"/ops assignment", "action:list", "action:check", "action:submissions", "view:diagnosis", "view:events", "action:ack", "query:<assignmentId|traceId|actorId>", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
+		if !strings.Contains(topic, want) {
+			t.Fatalf("assignment topic missing %q: %s", want, topic)
+		}
+	}
+	command := HelpTextFor("", "assignment", "")
+	for _, want := range []string{"역할:", "확인하는 것:", "problemId", "view:events", "action:ack"} {
+		if !strings.Contains(command, want) {
+			t.Fatalf("assignment help missing %q: %s", want, command)
+		}
+	}
+}
+
+func TestHelpTopicsCoverRoutingAuditAndTroubleshooting(t *testing.T) {
+	cases := map[string][]string{
+		"dashboard":       {"/ops dashboard action:watch", "service/watch/unwatch"},
+		"logs":            {"mode:critical", "mode:events", "mode:trace", "@message는 fallback"},
+		"alerts":          {"target:general", "target:critical", "HIGH/general/audit/WARN"},
+		"routing":         {"general route", "critical route", "role mention"},
+		"audit":           {"Report V2 EVENT logs", "ASSIGNMENT_CREATED", "WEB Admin API snapshot에서 actor를 추측하지 않습니다"},
+		"troubleshooting": {"DISCORD_REGISTER_COMMANDS=true", "Too many assignment warnings", "mode:trace"},
+	}
+	for topic, wants := range cases {
+		got := HelpTextFor(topic, "", "")
+		for _, want := range wants {
+			if !strings.Contains(got, want) {
+				t.Fatalf("help topic %s missing %q: %s", topic, want, got)
+			}
+		}
+	}
+}
+
+func TestHelpCommandPagesMatchFiveCommandFamilies(t *testing.T) {
+	cases := map[string][]string{
+		"dashboard":  {"전체/단일 서비스 상태", "action:watch", "예전 service/watch"},
+		"logs":       {"mode:events", "mode:trace", "structured V2 fields"},
+		"alert":      {"target:general", "target:critical", "CRITICAL 서버 장애만"},
+		"assignment": {"action:submissions", "view:events", "read-only"},
+		"help":       {"query:", "topic:", "command:"},
+	}
+	for command, wants := range cases {
+		got := HelpTextFor("", command, "ignored query")
+		for _, want := range wants {
+			if !strings.Contains(got, want) {
+				t.Fatalf("help command %s missing %q: %s", command, want, got)
+			}
+		}
+	}
+}
+
+func TestHelpQueryExplainsAssignmentAuditAndRouting(t *testing.T) {
+	got := HelpTextFor("", "", "과제 수정 누가")
+	for _, want := range []string{"Report EVENT logs", "query:<assignmentId|traceId|actorId>", "/ops assignment course:<course> id:<assignmentId> view:events", "현재 assignment state does not prove actor", "bot은 과제를 업데이트하지 않습니다"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assignment audit query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "과제 삭제 언제")
+	for _, want := range []string{"mode:events", "query:<assignmentId|traceId|actorId>", "삭제된 assignment는 /ops assignment course:<course> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다", "Report V2 EVENT logs", "현재 WEB Admin state"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assignment deletion query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "critical role")
+	for _, want := range []string{"target:critical", "/ops alert action:role", "CRITICAL only", "HIGH/general/audit/WARN do not role-mention"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("critical routing query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "critical 알림 role")
+	for _, forbidden := range []string{"반복 알림 정책", "lifecycle state", "action:ack event:<eventType>"} {
+		if strings.Contains(got, forbidden) {
+			t.Fatalf("critical alert role query should not use repeated-alert help %q: %s", forbidden, got)
+		}
+	}
+	if !strings.Contains(got, "target:critical") || !strings.Contains(got, "CRITICAL only") {
+		t.Fatalf("critical alert role query should route to critical help: %s", got)
+	}
+	got = HelpTextFor("", "", "일반 로그 채널")
+	for _, want := range []string{"target:general", "assignment audit", "normal ops logs go to general", "CRITICAL goes to critical"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("general channel query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "로그 검색")
+	for _, want := range []string{"mode:errors", "mode:trace", "mode:events"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("log search query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "반복 알림")
+	for _, want := range []string{"assignment issues are lifecycle state, not an event stream", "cooldown", "digest groups repeated assignment issues", "action:ack event:<eventType>"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("repeat alert query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "과제 공개 지연")
+	for _, want := range []string{"ASSIGNMENT_PUBLISH_DELAYED", "publishedAt", "ASSIGNMENT_DRAFT_PAST_START", "stale draft"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("publish delay query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "태그 배포")
+	for _, want := range []string{"tag/deploy", "git tag", "DISCORD_REGISTER_COMMANDS=true"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("tag deploy query help missing %q: %s", want, got)
+		}
+	}
+}
+
+func TestHelpExamplesUseExplicitPlaceholders(t *testing.T) {
+	pages := map[string]string{
+		"default":         HelpText(),
+		"assignments":     HelpTextFor("assignments", "", ""),
+		"logs":            HelpTextFor("logs", "", ""),
+		"audit":           HelpTextFor("audit", "", ""),
+		"troubleshooting": HelpTextFor("troubleshooting", "", ""),
+		"assignment":      HelpTextFor("", "assignment", ""),
+		"assignmentCheck": HelpTextFor("", "assignment-check", ""),
+		"deleteQuery":     HelpTextFor("", "", "과제 삭제 언제"),
+		"updateQuery":     HelpTextFor("", "", "과제 수정 누가"),
+		"repeatQuery":     HelpTextFor("", "", "반복 알림"),
+	}
+	for name, got := range pages {
+		for _, forbidden := range []string{"id:<id>", "event:<event>", "reason:\"old draft\"", "/ops logs ... query:", "query:<assignmentId> since:24h"} {
+			if strings.Contains(got, forbidden) {
+				t.Fatalf("help page %s has ambiguous placeholder %q: %s", name, forbidden, got)
+			}
+		}
+	}
+	for name, got := range pages {
+		for _, want := range []string{"<assignmentId>", "<course>"} {
+			if strings.Contains(got, "/ops assignment") && !strings.Contains(got, want) {
+				t.Fatalf("help page %s should include explicit placeholder %q: %s", name, want, got)
+			}
+		}
+	}
+}
+
+func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", "..", ".."))
+	files := map[string]string{
+		"root":    filepath.Join(root, "README.md"),
+		"bot":     filepath.Join(root, "monitor-bot", "README.md"),
+		"opsdocs": filepath.Join(root, "docs", "discord-monitor-bot.md"),
+	}
+	contents := make(map[string]string, len(files))
+	for name, path := range files {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s docs: %v", name, err)
+		}
+		contents[name] = string(body)
+	}
+	for _, want := range []string{"Discord Monitor Bot", "monitor-bot/README.md", "docs/discord-monitor-bot.md", "bot never creates/updates/deletes/publishes assignments", "Report V2 EVENT logs", "CRITICAL server alerts"} {
+		if !strings.Contains(contents["root"], want) {
+			t.Fatalf("root README missing %q", want)
+		}
+	}
+	for _, want := range []string{"## UX Contract", "/ops dashboard", "/ops logs", "/ops alert", "/ops assignment", "/ops help", "no ASSIGNMENT_OPS_CHANNEL_ID", "No tag"} {
+		if !strings.Contains(contents["bot"], want) {
+			t.Fatalf("monitor-bot README missing %q", want)
+		}
+	}
+	for _, want := range []string{"Legacy Command Migration", "/ops service", "/ops dashboard service:<service>", "same assignment issue does not resend every cooldown", "DISCORD_REGISTER_COMMANDS=true", "No tag deployment"} {
+		if !strings.Contains(contents["opsdocs"], want) {
+			t.Fatalf("discord monitor docs missing %q", want)
+		}
+	}
+	defaultHelpSection := contents["opsdocs"]
+	if strings.Contains(defaultHelpSection, "Primary commands:\n\n- `/ops service") {
+		t.Fatal("discord monitor docs must not present legacy commands as primary UX")
+	}
+}
+
+func TestFormatAdminAssignmentCheckChecklistIncludesBotIssue(t *testing.T) {
+	got := FormatAdminAssignmentCheck("3rd-cs", reportadmin.Assignment{
+		ID:      "1d74df8d-c501-405e-9327-d8f39b4d98cb",
+		Status:  "DRAFT",
+		StartAt: "2025-05-19T09:00:00+09:00",
+		EndAt:   "2025-05-23T18:00:00+09:00",
+	}, reportadmin.AssignmentCheck{Status: reportadmin.StatusWarn, Findings: []string{"problemId가 비어 있습니다."}}, "OPEN")
+	for _, want := range []string{"checks:", "title: MISSING", "problemId: MISSING", "botIssue: OPEN", "does not explain ASSIGNMENT_DRAFT_PAST_START"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assignment check missing %q: %s", want, got)
 		}
 	}
 }

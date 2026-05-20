@@ -54,6 +54,74 @@ func TestBuildRecentAndErrorsQueriesApplyLimit(t *testing.T) {
 	}
 }
 
+func TestBuildRecentLogsQueryWithSearchUsesStructuredFields(t *testing.T) {
+	query, err := BuildRecentLogsQueryWithSearch("report", "ERROR", "1d74df8d-c501-405e-9327-d8f39b4d98cb", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"trace.traceId", "trace.requestId", "event.eventType", "assignmentId", "request.pathVariables.assignmentId", "response.error.code", "response.error.value", "http.path like", "http.route like"} {
+		if !strings.Contains(query, want) {
+			t.Fatalf("search query missing %q: %s", want, query)
+		}
+	}
+	if !strings.Contains(query, "@message like") {
+		t.Fatalf("@message fallback should exist for search only: %s", query)
+	}
+	alertQuery, err := BuildAlertQuery("report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(alertQuery, "@message") {
+		t.Fatalf("alert classification must not use @message fallback: %s", alertQuery)
+	}
+}
+
+func TestBuildRecentLogsQueryWithSearchValidatesInput(t *testing.T) {
+	if _, err := BuildRecentLogsQueryWithSearch("report", "ERROR", `x" or request.body like /secret/`, 20); err == nil {
+		t.Fatal("unsafe search query accepted")
+	}
+}
+
+func TestBuildAssignmentAuditEventsQueryUsesReportEventLogs(t *testing.T) {
+	query, err := BuildAssignmentAuditEventsQuery("assignment-123", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`logType = "EVENT"`,
+		`service.domain = "report"`,
+		`service.domainCode = 4`,
+		"ASSIGNMENT_CREATED",
+		"ASSIGNMENT_UPDATED",
+		"ASSIGNMENT_DELETED",
+		"ASSIGNMENT_PUBLISHED",
+		"ASSIGNMENT_UNPUBLISHED",
+		"actor.userId",
+		"actor.role",
+		"actor.name",
+		"@timestamp",
+		"trace.traceId",
+		"event.eventType",
+		"changedFields",
+		"request.pathVariables.course",
+	} {
+		if !strings.Contains(query, want) {
+			t.Fatalf("assignment audit query missing %q: %s", want, query)
+		}
+	}
+	for _, forbidden := range []string{"request.body", "response.data", "@message like"} {
+		if strings.Contains(query, forbidden) {
+			t.Fatalf("assignment audit query should not use forbidden field %q: %s", forbidden, query)
+		}
+	}
+}
+
+func TestBuildAssignmentAuditEventsQueryValidatesSearch(t *testing.T) {
+	if _, err := BuildAssignmentAuditEventsQuery(`x" or request.body like /secret/`, 20); err == nil {
+		t.Fatal("unsafe assignment audit search accepted")
+	}
+}
+
 func TestLogGroupsForServiceAllowlist(t *testing.T) {
 	groups := map[string]string{"gateway": "/a-and-i/gateway", "auth": "/a-and-i/auth", "post": "/a-and-i/prod/tech-blog"}
 	got, err := LogGroupsForService(groups, "gateway")

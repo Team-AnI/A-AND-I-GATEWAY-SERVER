@@ -41,6 +41,9 @@ func TestParseSinceAllowlist(t *testing.T) {
 	if _, ok := ParseSince("15m"); !ok {
 		t.Fatal("15m should be accepted")
 	}
+	if _, ok := ParseSince("24h"); !ok {
+		t.Fatal("24h should be accepted for targeted log searches")
+	}
 	if _, ok := ParseSince("2h"); ok {
 		t.Fatal("2h must not be accepted")
 	}

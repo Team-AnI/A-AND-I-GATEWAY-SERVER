@@ -32,6 +32,19 @@ type Alert struct {
 	V2Decision  opslog.AlertDecision
 }
 
+const (
+	alertTargetAll      = "all"
+	alertTargetGeneral  = "general"
+	alertTargetCritical = "critical"
+)
+
+type alertRoute struct {
+	Kind      string
+	ChannelID string
+	RoleID    string
+	Mention   bool
+}
+
 func (s *Service) alertLoop(ctx context.Context) {
 	for {
 		if err := s.PollAlerts(ctx); err != nil {
@@ -55,8 +68,7 @@ func (s *Service) PollAlerts(ctx context.Context) error {
 	if !s.alertsEnabled() {
 		return nil
 	}
-	channelID := s.alertChannelID()
-	if strings.TrimSpace(channelID) == "" {
+	if s.generalAlertChannelID() == "" && s.criticalAlertChannelID() == "" {
 		return nil
 	}
 	active := make(map[string]Alert)
@@ -178,6 +190,10 @@ func (s *Service) markAlertSent(alert Alert, active bool) error {
 
 func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Alert) {
 	snapshot := s.store.Snapshot()
+	channelID := s.generalAlertChannelID()
+	if channelID == "" {
+		return
+	}
 	for fingerprint, existing := range snapshot.Alerts {
 		if !existing.Active {
 			continue
@@ -186,7 +202,7 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 			continue
 		}
 		content := fmt.Sprintf("🟢 [PROD] alert resolved\n\nFingerprint: `%s`", fingerprint)
-		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content); err != nil {
+		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, channelID, content); err != nil {
 			log.Printf("send resolved alert failed: %v", err)
 			continue
 		}
@@ -196,14 +212,33 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 
 func (s *Service) sendAlert(ctx context.Context, alert Alert) error {
 	content := formatAlert(alert, "")
-	if shouldMentionAlert(alert) {
-		if roleID := s.alertMentionRoleID(); roleID != "" {
-			_, err := s.discord.SendChannelMessageWithRoleMention(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content, roleID)
+	route := s.alertRoute(alert)
+	if route.ChannelID == "" {
+		return fmt.Errorf("%s alert channel is not configured", route.Kind)
+	}
+	if route.Mention {
+		if route.RoleID != "" {
+			_, err := s.discord.SendChannelMessageWithRoleMention(ctx, s.client, s.cfg.DiscordBotToken, route.ChannelID, content, route.RoleID)
 			return err
 		}
 	}
-	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, s.alertChannelID(), content)
+	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, route.ChannelID, content)
 	return err
+}
+
+func (s *Service) alertRoute(alert Alert) alertRoute {
+	if isCriticalAlert(alert) {
+		return alertRoute{
+			Kind:      alertTargetCritical,
+			ChannelID: s.criticalAlertChannelID(),
+			RoleID:    s.alertMentionRoleID(),
+			Mention:   shouldMentionAlert(alert),
+		}
+	}
+	return alertRoute{
+		Kind:      alertTargetGeneral,
+		ChannelID: s.generalAlertChannelID(),
+	}
 }
 
 func (s *Service) alertMentionRoleID() string {
@@ -223,19 +258,33 @@ func (s *Service) alertMentionRoleID() string {
 	return roleID
 }
 
-func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID string) (string, error) {
+func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID, target string) (string, error) {
 	action = strings.TrimSpace(action)
+	target, err := normalizeAlertTarget(target)
+	if err != nil {
+		return "", err
+	}
 	switch action {
 	case "channel":
 		if strings.TrimSpace(channelID) == "" {
 			return "", fmt.Errorf("channel id is required")
 		}
 		if err := s.store.Update(func(data *state.Data) {
-			data.ServiceAlerts.ChannelID = strings.TrimSpace(channelID)
+			channelID = strings.TrimSpace(channelID)
+			switch target {
+			case alertTargetAll:
+				data.ServiceAlerts.ChannelID = channelID
+				data.ServiceAlerts.GeneralChannelID = channelID
+				data.ServiceAlerts.CriticalChannelID = channelID
+			case alertTargetGeneral:
+				data.ServiceAlerts.GeneralChannelID = channelID
+			case alertTargetCritical:
+				data.ServiceAlerts.CriticalChannelID = channelID
+			}
 		}); err != nil {
 			return "", err
 		}
-		return "✅ 서비스 알림 채널을 현재 채널로 설정했습니다.", nil
+		return fmt.Sprintf("✅ 서비스 알림 채널을 %s route로 설정했습니다.", target), nil
 	case "role":
 		roleID = normalizeRoleID(roleID)
 		if !validRoleID(roleID) {
@@ -274,15 +323,15 @@ func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID 
 	case "status":
 		return s.FormatAlertStatus(), nil
 	case "test":
-		target := s.alertChannelID()
-		if target == "" {
-			target = strings.TrimSpace(channelID)
+		routeChannelID := s.alertTestChannelID(target)
+		if routeChannelID == "" {
+			routeChannelID = strings.TrimSpace(channelID)
 		}
-		if target == "" {
+		if routeChannelID == "" {
 			return "", fmt.Errorf("alert channel이 설정되지 않았습니다. 먼저 /ops alert action:channel 을 실행하세요")
 		}
-		content := "✅ 서비스 알림 테스트\n\n서비스 운영 알림 채널 설정이 정상입니다.\nrole mention은 CRITICAL alert에서만 적용됩니다."
-		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, target, content); err != nil {
+		content := fmt.Sprintf("✅ 서비스 알림 테스트\n\ntarget: %s\nrole mention은 CRITICAL alert에서만 적용되며 test에서는 전송하지 않습니다.", target)
+		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, routeChannelID, content); err != nil {
 			return "", err
 		}
 		return "✅ 테스트 알림을 전송했습니다.", nil
@@ -294,19 +343,34 @@ func (s *Service) ConfigureAlert(ctx context.Context, channelID, action, roleID 
 func (s *Service) FormatAlertStatus() string {
 	snapshot := s.store.Snapshot()
 	enabled := s.alertsEnabled()
-	channelID := s.alertChannelID()
+	generalChannelID := s.generalAlertChannelID()
+	criticalChannelID := s.criticalAlertChannelID()
+	legacyChannelID := strings.TrimSpace(snapshot.ServiceAlerts.ChannelID)
 	roleID := strings.TrimSpace(snapshot.ServiceAlerts.RoleID)
+	effectiveRoleID := s.alertMentionRoleID()
 	cooldown := s.alertCooldown(snapshot)
 	var b strings.Builder
 	b.WriteString("🔔 Service Alert Status\n\n")
 	fmt.Fprintf(&b, "enabled: %t\n", enabled)
-	if channelID == "" {
-		b.WriteString("channel: NOT_CONFIGURED\n")
+	if generalChannelID == "" {
+		b.WriteString("general channel: NOT_CONFIGURED\n")
 	} else {
-		fmt.Fprintf(&b, "channel: <#%s>\n", channelID)
+		fmt.Fprintf(&b, "general channel: <#%s>\n", generalChannelID)
+	}
+	if criticalChannelID == "" {
+		b.WriteString("critical channel: NOT_CONFIGURED\n")
+	} else {
+		fmt.Fprintf(&b, "critical channel: <#%s>\n", criticalChannelID)
+	}
+	if legacyChannelID != "" {
+		fmt.Fprintf(&b, "legacy fallback channel: <#%s>\n", legacyChannelID)
 	}
 	if roleID == "" {
-		b.WriteString("role mention: none\n")
+		if effectiveRoleID == "" {
+			b.WriteString("role mention: none\n")
+		} else {
+			fmt.Fprintf(&b, "role mention: <@&%s> (fallback)\n", effectiveRoleID)
+		}
 	} else if !validRoleID(roleID) {
 		b.WriteString("role mention: INVALID_CONFIGURED_ROLE\n")
 	} else {
@@ -322,9 +386,23 @@ func (s *Service) alertsEnabled() bool {
 	return snapshot.ServiceAlerts.Enabled || s.cfg.Alert.Enabled || strings.TrimSpace(s.cfg.Alert.ChannelID) != ""
 }
 
-func (s *Service) alertChannelID() string {
+func (s *Service) generalAlertChannelID() string {
 	snapshot := s.store.Snapshot()
-	return strings.TrimSpace(firstNonEmpty(snapshot.ServiceAlerts.ChannelID, s.cfg.Alert.ChannelID))
+	return strings.TrimSpace(firstNonEmpty(snapshot.ServiceAlerts.GeneralChannelID, snapshot.ServiceAlerts.ChannelID, s.cfg.Alert.ChannelID, s.cfg.Dashboard.ChannelID))
+}
+
+func (s *Service) criticalAlertChannelID() string {
+	snapshot := s.store.Snapshot()
+	return strings.TrimSpace(firstNonEmpty(snapshot.ServiceAlerts.CriticalChannelID, snapshot.ServiceAlerts.ChannelID, s.cfg.Alert.ChannelID))
+}
+
+func (s *Service) alertTestChannelID(target string) string {
+	switch target {
+	case alertTargetCritical:
+		return s.criticalAlertChannelID()
+	default:
+		return s.generalAlertChannelID()
+	}
 }
 
 func (s *Service) alertCooldown(snapshot state.Data) time.Duration {
@@ -359,6 +437,19 @@ func validRoleID(value string) bool {
 		}
 	}
 	return true
+}
+
+func normalizeAlertTarget(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return alertTargetAll, nil
+	}
+	switch value {
+	case alertTargetAll, alertTargetGeneral, alertTargetCritical:
+		return value, nil
+	default:
+		return "", fmt.Errorf("지원하지 않는 alert target입니다")
+	}
 }
 
 func formatAlert(alert Alert, mention string) string {
@@ -396,13 +487,13 @@ func formatAlert(alert Alert, mention string) string {
 	}
 	b.WriteString("\n상세 확인:\n")
 	if alert.Service == "cloudwatch" {
-		b.WriteString("/ops alarms state:ALARM\n")
+		b.WriteString("/ops dashboard action:status\n")
 	} else {
 		fmt.Fprintf(&b, "/ops logs service:%s mode:errors since:15m limit:10\n", alert.Service)
 		fmt.Fprintf(&b, "/ops logs service:%s mode:slow since:15m limit:10\n", alert.Service)
 	}
 	if len(alert.Traces) > 0 {
-		fmt.Fprintf(&b, "/ops trace trace_id:%s", alert.Traces[0])
+		fmt.Fprintf(&b, "/ops logs mode:trace query:%s", alert.Traces[0])
 	}
 	return formatting.TruncateDiscordMessage(b.String())
 }
@@ -456,10 +547,20 @@ func displayServiceName(service string) string {
 }
 
 func shouldMentionAlert(alert Alert) bool {
-	if alert.AlertType == "v2-log" {
-		return alert.V2Decision.Alert && alert.V2Decision.Mention && alert.V2Decision.Severity == opslog.SeverityCrit
+	return isCriticalAlert(alert)
+}
+
+func isCriticalAlert(alert Alert) bool {
+	if strings.EqualFold(alert.Severity, opslog.SeverityCrit) || alert.Severity == "P0" {
+		return true
 	}
-	return alert.Severity == opslog.SeverityCrit || alert.Severity == "P0"
+	if alert.V2Log != nil {
+		return strings.EqualFold(alert.V2Log.Level, opslog.SeverityCrit)
+	}
+	if alert.AlertType == "v2-log" {
+		return strings.EqualFold(alert.V2Decision.Severity, opslog.SeverityCrit)
+	}
+	return false
 }
 
 func serviceAlertSummary(alert Alert) string {
