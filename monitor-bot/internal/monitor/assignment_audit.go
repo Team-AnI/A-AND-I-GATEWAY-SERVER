@@ -101,7 +101,7 @@ func parseAssignmentAuditEvent(row map[string]string) (state.AssignmentAuditEven
 	occurredAt := parseAuditTime(rowValue(row, "event.occurredAt", "@timestamp", "timestamp"))
 	event := state.AssignmentAuditEventState{
 		EventType:     eventType,
-		CourseSlug:    sanitizeAuditValue(rowValue(row, "event.courseSlug", "assignment.courseSlug", "courseSlug", "request.pathVariables.courseSlug")),
+		CourseSlug:    sanitizeAuditValue(rowValue(row, "event.courseSlug", "assignment.courseSlug", "courseSlug", "request.pathVariables.courseSlug", "request.pathVariables.course")),
 		AssignmentID:  sanitizeAuditValue(rowValue(row, "event.assignmentId", "event.resourceId", "assignmentId", "assignment.assignmentId", "request.pathVariables.assignmentId")),
 		Title:         sanitizeAuditValue(rowValue(row, "event.title", "assignment.title")),
 		ActorID:       sanitizeAuditValue(rowValue(row, "actor.userId", "actor.id")),
@@ -311,8 +311,8 @@ func formatAssignmentAuditEvent(event state.AssignmentAuditEventState) string {
 	}
 	b.WriteString("\nnext:\n")
 	query := firstNonEmpty(event.TraceID, event.AssignmentID)
-	fmt.Fprintf(&b, "1. /ops logs service:report mode:recent query:%s since:24h limit:20\n", unknownAuditValue(query))
-	b.WriteString("   - 이 운영 행위의 서버 로그를 확인합니다.")
+	fmt.Fprintf(&b, "1. /ops logs service:report mode:events query:%s since:24h limit:20\n", unknownAuditValue(query))
+	b.WriteString("   - 이 운영 행위의 Report EVENT 로그를 확인합니다.")
 	return formatting.TruncateDiscordMessage(b.String())
 }
 

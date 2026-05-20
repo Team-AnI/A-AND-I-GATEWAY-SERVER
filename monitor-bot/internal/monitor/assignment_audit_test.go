@@ -155,7 +155,7 @@ func TestFormatAssignmentAuditEventTitles(t *testing.T) {
 			TraceID:      "trace-1",
 			Source:       assignmentAuditSource,
 		})
-		for _, want := range []string{title, "actor:", "occurredAt:", "source: REPORT_EVENT_LOG", "/ops logs service:report mode:recent query:trace-1"} {
+		for _, want := range []string{title, "actor:", "occurredAt:", "source: REPORT_EVENT_LOG", "/ops logs service:report mode:events query:trace-1"} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("%s message missing %q: %s", eventType, want, got)
 			}

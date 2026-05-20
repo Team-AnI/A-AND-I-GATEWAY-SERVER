@@ -33,6 +33,7 @@ var allowedOutputFields = map[string]struct{}{
 	"assignment.status":                  {},
 	"request.pathVariables.assignmentId": {},
 	"request.pathVariables.courseSlug":   {},
+	"request.pathVariables.course":       {},
 	"http.method":                        {},
 	"http.path":                          {},
 	"http.route":                         {},

@@ -609,6 +609,7 @@ func FormatAssignmentAuditRows(rows []map[string]string, query string) string {
 			value(row, "assignment.courseSlug", ""),
 			value(row, "courseSlug", ""),
 			value(row, "request.pathVariables.courseSlug", ""),
+			value(row, "request.pathVariables.course", ""),
 			"unknown",
 		)
 		title := firstNonEmpty(value(row, "event.title", ""), value(row, "assignment.title", ""), "unknown")

@@ -103,6 +103,7 @@ func TestBuildAssignmentAuditEventsQueryUsesReportEventLogs(t *testing.T) {
 		"trace.traceId",
 		"event.eventType",
 		"changedFields",
+		"request.pathVariables.course",
 	} {
 		if !strings.Contains(query, want) {
 			t.Fatalf("assignment audit query missing %q: %s", want, query)
