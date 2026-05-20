@@ -36,6 +36,19 @@ func TestAlertFingerprintDedupeAndCooldown(t *testing.T) {
 	}
 }
 
+func TestV2AlertKeepsTraceFingerprintWhileIncidentKeyExcludesTrace(t *testing.T) {
+	row1 := map[string]string{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/reports", "response.error.code": "18801", "trace.traceId": "trace-1"}
+	row2 := map[string]string{"@timestamp": "2026-05-14T10:00:01+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/reports", "response.error.code": "18801", "trace.traceId": "trace-2"}
+	alert1 := makeV2Alert(row1)
+	alert2 := makeV2Alert(row2)
+	if alert1.Fingerprint == "" || alert2.Fingerprint == "" || alert1.Fingerprint == alert2.Fingerprint {
+		t.Fatalf("trace-scoped alert fingerprint behavior should remain unchanged: %q %q", alert1.Fingerprint, alert2.Fingerprint)
+	}
+	if serviceAlertIncidentKey(alert1) != serviceAlertIncidentKey(alert2) {
+		t.Fatalf("incident key should group same incident with different trace IDs: %q %q", serviceAlertIncidentKey(alert1), serviceAlertIncidentKey(alert2))
+	}
+}
+
 func TestServiceAlertsSkipUnconnectedServices(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {
@@ -70,6 +83,41 @@ func TestServiceAlertsCollectAuthV2Alert(t *testing.T) {
 	alert := alerts[0]
 	if alert.Service != "auth" || alert.Severity != "CRITICAL" || alert.V2Decision.ErrorCode.CategoryCode != 8 {
 		t.Fatalf("unexpected auth alert: %#v", alert)
+	}
+}
+
+func TestMarkAlertSentPersistsRecentIncidentEvidence(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	alert := Alert{
+		Fingerprint: "prod:gateway:v2:API_ERROR:trace-1",
+		Service:     "gateway",
+		Severity:    "CRITICAL",
+		AlertType:   "v2-log",
+		Reason:      "critical",
+		Path:        "/v2/reports",
+		ErrorCode:   "18801",
+		Traces:      []string{"trace-1", "trace-1", "bad trace with space"},
+	}
+	if err := service.markAlertSent(alert, true); err != nil {
+		t.Fatal(err)
+	}
+	got := store.Snapshot().RecentServiceAlerts
+	if len(got) != 1 {
+		t.Fatalf("expected one recent service alert, got %#v", got)
+	}
+	event := got[0]
+	if event.IncidentKey == "" || strings.Contains(event.IncidentKey, "trace-1") {
+		t.Fatalf("incident key should exist and exclude trace id: %#v", event)
+	}
+	if event.Reason != "critical" || event.Path != "/v2/reports" || event.ErrorCode != "18801" {
+		t.Fatalf("incident metadata not persisted: %#v", event)
+	}
+	if len(event.TraceIDs) != 1 || event.TraceIDs[0] != "trace-1" {
+		t.Fatalf("trace ids should be sanitized and deduped: %#v", event.TraceIDs)
 	}
 }
 

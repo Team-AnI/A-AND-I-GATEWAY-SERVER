@@ -180,10 +180,15 @@ type AlertState struct {
 
 type ServiceAlertEventState struct {
 	Fingerprint string    `json:"fingerprint,omitempty"`
+	IncidentKey string    `json:"incidentKey,omitempty"`
 	Severity    string    `json:"severity,omitempty"`
 	Service     string    `json:"service,omitempty"`
 	AlertType   string    `json:"alertType,omitempty"`
 	Summary     string    `json:"summary,omitempty"`
+	TraceIDs    []string  `json:"traceIds,omitempty"`
+	Reason      string    `json:"reason,omitempty"`
+	Path        string    `json:"path,omitempty"`
+	ErrorCode   string    `json:"errorCode,omitempty"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
 }
 
@@ -474,10 +479,19 @@ func cloneData(data Data) Data {
 	}
 	cloned.RecentAssignmentEvents = append([]AssignmentEventState(nil), data.RecentAssignmentEvents...)
 	cloned.RecentAssignmentAuditEvents = cloneAssignmentAuditEvents(data.RecentAssignmentAuditEvents)
-	cloned.RecentServiceAlerts = append([]ServiceAlertEventState(nil), data.RecentServiceAlerts...)
+	cloned.RecentServiceAlerts = cloneServiceAlertEvents(data.RecentServiceAlerts)
 	cloned.HealthDownCounts = make(map[string]int, len(data.HealthDownCounts))
 	for key, value := range data.HealthDownCounts {
 		cloned.HealthDownCounts[key] = value
+	}
+	return cloned
+}
+
+func cloneServiceAlertEvents(events []ServiceAlertEventState) []ServiceAlertEventState {
+	cloned := make([]ServiceAlertEventState, len(events))
+	for i, event := range events {
+		cloned[i] = event
+		cloned[i].TraceIDs = append([]string(nil), event.TraceIDs...)
 	}
 	return cloned
 }

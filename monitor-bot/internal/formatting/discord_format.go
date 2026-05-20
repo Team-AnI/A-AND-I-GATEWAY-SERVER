@@ -166,14 +166,15 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 		if service.Alarm || strings.EqualFold(service.Health.State, "DOWN") || summary.FiveXX > 0 || isDashboardLogFailure(logStatus) {
 			statusIcon = "🔴"
 			overall = "장애"
-			if topIssue == "none" {
-				topIssue = fmt.Sprintf("%s 5xx x%d", service.Service, summary.FiveXX)
-			}
+			topIssue = dashboardServiceTopIssue(service, summary, logStatus)
 			break
 		}
 		if strings.EqualFold(service.Health.State, "UNKNOWN") || strings.EqualFold(service.Health.State, "NOT_CONNECTED") || summary.Error > 0 || summary.P95 >= 1000 || service.LogStatus == "NOT_CONFIGURED" || service.LogStatus == "NOT_CONNECTED" {
 			statusIcon = "🟡"
 			overall = "주의"
+			if topIssue == "none" {
+				topIssue = dashboardServiceTopIssue(service, summary, logStatus)
+			}
 		}
 	}
 	fmt.Fprintf(&b, "📌 A&I 서비스 운영 대시보드\n\n")
@@ -221,6 +222,9 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 	} else {
 		b.WriteString(strings.Join(alarmNames, ", "))
 	}
+	if topIssue == "none" && len(recentAlerts) > 0 {
+		topIssue = dashboardRecentTopIssue(recentAlerts[0])
+	}
 	b.WriteString("\nTop issue: " + topIssue)
 	b.WriteString("\n\n최근 장애 알림\n")
 	if len(recentAlerts) == 0 {
@@ -242,6 +246,38 @@ func FormatDashboardWithMetaAndAlerts(since string, services []DashboardServiceI
 
 func isUnconnectedDashboardInput(service DashboardServiceInput) bool {
 	return strings.Contains(strings.ToLower(service.Health.Detail), "not connected") && (strings.EqualFold(service.LogStatus, "NO_LOGS") || strings.EqualFold(service.LogStatus, "NO_V2_LOG"))
+}
+
+func dashboardServiceTopIssue(service DashboardServiceInput, summary LogSummary, logStatus string) string {
+	name := dashboardServiceName(service.Service, service.DisplayName)
+	switch {
+	case service.Alarm:
+		return name + " CloudWatch alarm"
+	case strings.EqualFold(service.Health.State, "DOWN"):
+		return name + " health DOWN"
+	case summary.FiveXX > 0:
+		return fmt.Sprintf("%s 5xx x%d", name, summary.FiveXX)
+	case summary.Error > 0:
+		return fmt.Sprintf("%s error x%d", name, summary.Error)
+	case summary.P95 >= 1000:
+		return fmt.Sprintf("%s p95 %dms", name, summary.P95)
+	case isDashboardLogFailure(logStatus):
+		return name + " logs " + strings.ToUpper(strings.TrimSpace(logStatus))
+	case strings.EqualFold(service.Health.State, "UNKNOWN"), strings.EqualFold(service.Health.State, "NOT_CONNECTED"):
+		return name + " health " + strings.ToUpper(strings.TrimSpace(service.Health.State))
+	case strings.EqualFold(service.LogStatus, "NOT_CONFIGURED"), strings.EqualFold(service.LogStatus, "NOT_CONNECTED"):
+		return name + " logs " + strings.ToUpper(strings.TrimSpace(service.LogStatus))
+	default:
+		return name + " warning"
+	}
+}
+
+func dashboardRecentTopIssue(recent string) string {
+	line := strings.TrimSpace(strings.SplitN(recent, "\n", 2)[0])
+	if line == "" {
+		return "recent alert"
+	}
+	return security.SanitizeText(line)
 }
 
 func dashboardTableHeader() string {

@@ -98,6 +98,12 @@ state는 `/var/lib/monitor-bot/state.json`에 저장합니다.
 
 저장은 atomic rename 방식이고, 깨진 JSON은 `.corrupt.*`로 보존한 뒤 빈 state로 graceful fallback합니다.
 
+## Dashboard Recent Sections
+
+서비스 dashboard의 최근 장애 알림은 raw history 5건이 아니라 incident key 기준으로 묶어서 표시합니다. 같은 service/severity/reason/path/errorCode에서 traceId만 다른 요청은 한 incident로 묶고, 대표 traceId가 있으면 `/ops logs mode:trace query:<traceId>` drilldown을 함께 보여줍니다.
+
+과제 dashboard의 최근 이벤트도 eventType/course/summary/reason 기준으로 묶습니다. WEB Admin snapshot diagnosis 이벤트는 traceId가 없을 수 있으므로 assignmentId, issueKey, evidenceHash, `/ops assignment ... view:events` 중심으로 drilldown합니다. Report EVENT audit 이벤트는 실제 로그 필드에 있을 때만 traceId/requestId를 표시합니다.
+
 ## Assignment Ops
 
 Assignment issue warning은 WEB Admin GET API snapshot과 diagnosis를 사용합니다.

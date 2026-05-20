@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -213,7 +214,7 @@ func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interv
 		alarmNames = nil
 	}
 	inputs := s.dashboardInputs(ctx, since, alarmNames, s.cfg.Dashboard.MaxCloudWatchQueries)
-	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, time.Now(), interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5))
+	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, time.Now(), interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5, sinceLabel))
 }
 
 func (s *Service) RefreshDashboard(ctx context.Context) error {
@@ -343,7 +344,7 @@ func (s *Service) RenderServiceDashboard(ctx context.Context, service, sinceLabe
 			continue
 		}
 		inputs := s.dashboardInputsForRegistry(ctx, since, []string{}, s.cfg.Dashboard.MaxCloudWatchQueries, []config.ServiceDefinition{item})
-		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, time.Now(), interval, recentServiceAlertLines(s.store.Snapshot().RecentServiceAlerts, 5))
+		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, time.Now(), interval, recentServiceAlertLines(s.store.Snapshot().RecentServiceAlerts, 5, sinceLabel))
 	}
 	return "service registry에 없는 서비스입니다."
 }
@@ -438,25 +439,191 @@ func logStatusFromQueryError(err error) string {
 	}
 }
 
-func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int) []string {
+type serviceAlertGroup struct {
+	Key             string
+	Service         string
+	Severity        string
+	AlertType       string
+	Summary         string
+	Count           int
+	FirstAt         time.Time
+	LatestAt        time.Time
+	TraceIDs        []string
+	TotalTraceCount int
+}
+
+func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int, since string) []string {
 	if limit <= 0 {
 		limit = 5
 	}
-	lines := make([]string, 0, limit)
-	for _, event := range events {
-		if len(lines) >= limit {
-			break
-		}
-		summary := strings.TrimSpace(event.Summary)
-		if summary == "" {
-			summary = strings.TrimSpace(event.Service + " " + event.AlertType)
-		}
-		if !event.CreatedAt.IsZero() {
-			summary = fmt.Sprintf("%s (%s)", summary, event.CreatedAt.In(time.FixedZone("KST", 9*60*60)).Format("15:04"))
-		}
-		lines = append(lines, summary)
+	groups := groupRecentServiceAlerts(events, limit)
+	lines := make([]string, 0, len(groups))
+	for _, group := range groups {
+		lines = append(lines, formatServiceAlertGroup(group, since))
 	}
 	return lines
+}
+
+func groupRecentServiceAlerts(events []state.ServiceAlertEventState, limit int) []serviceAlertGroup {
+	if limit <= 0 {
+		limit = 5
+	}
+	groups := map[string]*serviceAlertGroup{}
+	order := make([]string, 0, len(events))
+	for _, event := range events {
+		key := serviceAlertGroupKey(event)
+		if key == "" {
+			continue
+		}
+		group, ok := groups[key]
+		if !ok {
+			group = &serviceAlertGroup{
+				Key:       key,
+				Service:   strings.TrimSpace(event.Service),
+				Severity:  strings.TrimSpace(event.Severity),
+				AlertType: strings.TrimSpace(event.AlertType),
+				Summary:   serviceAlertEventSummary(event),
+			}
+			groups[key] = group
+			order = append(order, key)
+		}
+		group.Count++
+		if group.Service == "" {
+			group.Service = strings.TrimSpace(event.Service)
+		}
+		if group.Severity == "" {
+			group.Severity = strings.TrimSpace(event.Severity)
+		}
+		if group.AlertType == "" {
+			group.AlertType = strings.TrimSpace(event.AlertType)
+		}
+		if group.Summary == "" {
+			group.Summary = serviceAlertEventSummary(event)
+		}
+		if !event.CreatedAt.IsZero() {
+			if group.FirstAt.IsZero() || event.CreatedAt.Before(group.FirstAt) {
+				group.FirstAt = event.CreatedAt
+			}
+			if group.LatestAt.IsZero() || event.CreatedAt.After(group.LatestAt) {
+				group.LatestAt = event.CreatedAt
+			}
+		}
+		addServiceAlertGroupTraceIDs(group, event.TraceIDs)
+	}
+	result := make([]serviceAlertGroup, 0, len(groups))
+	for _, key := range order {
+		result = append(result, *groups[key])
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		if result[i].LatestAt.Equal(result[j].LatestAt) {
+			return result[i].Key < result[j].Key
+		}
+		if result[i].LatestAt.IsZero() {
+			return false
+		}
+		if result[j].LatestAt.IsZero() {
+			return true
+		}
+		return result[i].LatestAt.After(result[j].LatestAt)
+	})
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	return result
+}
+
+func serviceAlertGroupKey(event state.ServiceAlertEventState) string {
+	if key := strings.TrimSpace(event.IncidentKey); key != "" {
+		return key
+	}
+	parts := []string{
+		strings.TrimSpace(event.Service),
+		strings.TrimSpace(event.Severity),
+		strings.TrimSpace(event.AlertType),
+		strings.TrimSpace(event.Summary),
+	}
+	if strings.Join(parts, "") == "" {
+		parts = append(parts, strings.TrimSpace(event.Fingerprint))
+	}
+	for i, part := range parts {
+		parts[i] = strings.ToLower(part)
+	}
+	return strings.Trim(strings.Join(parts, "\x00"), "\x00")
+}
+
+func serviceAlertEventSummary(event state.ServiceAlertEventState) string {
+	summary := strings.TrimSpace(event.Summary)
+	if summary != "" {
+		return summary
+	}
+	return strings.TrimSpace(strings.Join([]string{event.Service, event.Severity, "-", event.AlertType}, " "))
+}
+
+func addServiceAlertGroupTraceIDs(group *serviceAlertGroup, traceIDs []string) {
+	seen := map[string]struct{}{}
+	for _, traceID := range group.TraceIDs {
+		seen[traceID] = struct{}{}
+	}
+	for _, traceID := range traceIDs {
+		traceID = strings.TrimSpace(traceID)
+		if traceID == "" || !security.ValidateTraceID(traceID) {
+			continue
+		}
+		if _, ok := seen[traceID]; ok {
+			continue
+		}
+		seen[traceID] = struct{}{}
+		group.TotalTraceCount++
+		if len(group.TraceIDs) < 3 {
+			group.TraceIDs = append(group.TraceIDs, traceID)
+		}
+	}
+}
+
+func formatServiceAlertGroup(group serviceAlertGroup, since string) string {
+	var b strings.Builder
+	summary := security.SanitizeText(firstNonEmpty(group.Summary, strings.TrimSpace(group.Service+" "+group.Severity+" - "+group.AlertType), "unknown alert"))
+	count := group.Count
+	if count <= 0 {
+		count = 1
+	}
+	fmt.Fprintf(&b, "%s ×%d\n", summary, count)
+	if !group.LatestAt.IsZero() {
+		fmt.Fprintf(&b, "   latest=%s", formatDashboardClock(group.LatestAt))
+		if !group.FirstAt.IsZero() && !group.FirstAt.Equal(group.LatestAt) {
+			fmt.Fprintf(&b, " first=%s", formatDashboardClock(group.FirstAt))
+		}
+		b.WriteString("\n")
+	}
+	if len(group.TraceIDs) == 0 {
+		b.WriteString("   trace: none\n")
+	} else {
+		b.WriteString("   traces: ")
+		for i, traceID := range group.TraceIDs {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(security.SanitizeText(traceID))
+		}
+		if extra := group.TotalTraceCount - len(group.TraceIDs); extra > 0 {
+			fmt.Fprintf(&b, " (+%d)", extra)
+		}
+		b.WriteString("\n")
+	}
+	service := security.SanitizeText(firstNonEmpty(group.Service, "gateway"))
+	mode := "errors"
+	if strings.EqualFold(group.Severity, "CRITICAL") || strings.Contains(strings.ToLower(group.Summary), "critical") {
+		mode = "critical"
+	}
+	fmt.Fprintf(&b, "   logs: /ops logs service:%s mode:%s since:%s limit:10\n", service, mode, security.SanitizeText(firstNonEmpty(since, "30m")))
+	if len(group.TraceIDs) > 0 {
+		fmt.Fprintf(&b, "   trace: /ops logs mode:trace query:%s", security.SanitizeText(group.TraceIDs[0]))
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func formatDashboardClock(value time.Time) string {
+	return value.In(time.FixedZone("KST", 9*60*60)).Format("15:04")
 }
 
 func (s *Service) dashboardInterval(snapshot state.Data) time.Duration {

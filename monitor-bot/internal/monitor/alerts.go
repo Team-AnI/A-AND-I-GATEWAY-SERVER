@@ -176,10 +176,15 @@ func (s *Service) markAlertSent(alert Alert, active bool) error {
 			data.ServiceAlerts.LastSent[alert.Fingerprint] = time.Now()
 			data.RecentServiceAlerts = append([]state.ServiceAlertEventState{{
 				Fingerprint: alert.Fingerprint,
+				IncidentKey: serviceAlertIncidentKey(alert),
 				Severity:    alert.Severity,
 				Service:     alert.Service,
 				AlertType:   alert.AlertType,
 				Summary:     serviceAlertSummary(alert),
+				TraceIDs:    serviceAlertTraceIDs(alert),
+				Reason:      alert.Reason,
+				Path:        alert.Path,
+				ErrorCode:   alert.ErrorCode,
 				CreatedAt:   time.Now(),
 			}}, data.RecentServiceAlerts...)
 		}
@@ -450,6 +455,42 @@ func normalizeAlertTarget(value string) (string, error) {
 	default:
 		return "", fmt.Errorf("지원하지 않는 alert target입니다")
 	}
+}
+
+func serviceAlertIncidentKey(alert Alert) string {
+	parts := []string{
+		strings.TrimSpace(alert.Service),
+		strings.TrimSpace(alert.Severity),
+		strings.TrimSpace(alert.AlertType),
+		strings.TrimSpace(alertReasonText(alert)),
+		strings.TrimSpace(alert.Path),
+		strings.TrimSpace(alert.ErrorCode),
+	}
+	for i, part := range parts {
+		parts[i] = strings.ToLower(part)
+	}
+	key := strings.Trim(strings.Join(parts, "\x00"), "\x00")
+	if key == "" {
+		return strings.TrimSpace(alert.Fingerprint)
+	}
+	return key
+}
+
+func serviceAlertTraceIDs(alert Alert) []string {
+	seen := map[string]struct{}{}
+	traceIDs := make([]string, 0, len(alert.Traces))
+	for _, trace := range alert.Traces {
+		trace = strings.TrimSpace(trace)
+		if trace == "" || !security.ValidateTraceID(trace) {
+			continue
+		}
+		if _, ok := seen[trace]; ok {
+			continue
+		}
+		seen[trace] = struct{}{}
+		traceIDs = append(traceIDs, trace)
+	}
+	return traceIDs
 }
 
 func formatAlert(alert Alert, mention string) string {

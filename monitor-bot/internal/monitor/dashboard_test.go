@@ -10,6 +10,7 @@ import (
 
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/config"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/discord"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/health"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
@@ -107,6 +108,61 @@ func TestDashboardQueriesOnlyV2ConnectedServices(t *testing.T) {
 
 	if logs.calls != 4 {
 		t.Fatalf("expected gateway/auth/report/blog CloudWatch queries, got %d", logs.calls)
+	}
+}
+
+func TestRecentServiceAlertsGroupIncidentsWithTraceDrilldown(t *testing.T) {
+	base := time.Date(2026, 5, 20, 14, 9, 0, 0, time.FixedZone("KST", 9*60*60))
+	events := []state.ServiceAlertEventState{
+		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/reports\x0018801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-a"}, CreatedAt: base},
+		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/reports\x0018801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-b"}, CreatedAt: base.Add(-3 * time.Minute)},
+		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/reports\x0018801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-c"}, CreatedAt: base.Add(-4 * time.Minute)},
+		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/reports\x0018801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-d"}, CreatedAt: base.Add(-5 * time.Minute)},
+	}
+	got := formatting.FormatDashboardWithMetaAndAlerts("30m", []formatting.DashboardServiceInput{{
+		Service:   "gateway",
+		Health:    formatting.ServiceStatus{Service: "gateway", State: "UP"},
+		LogStatus: "OK",
+		Rows:      []map[string]string{{"count": "1", "logType": "API", "level": "INFO", "http.statusCode": "200"}},
+	}}, nil, base, 5*time.Minute, recentServiceAlertLines(events, 5, "30m"))
+	for _, want := range []string{"gateway CRITICAL - critical ×4", "latest=14:09 first=14:04", "traces: trace-a, trace-b, trace-c (+1)", "/ops logs service:gateway mode:critical since:30m limit:10", "/ops logs mode:trace query:trace-a"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("grouped service dashboard missing %q: %s", want, got)
+		}
+	}
+	if strings.Count(got, "gateway CRITICAL - critical") >= 5 {
+		t.Fatalf("dashboard should not render duplicate raw alert rows: %s", got)
+	}
+	if strings.Contains(got, "/ops trace trace_id:") {
+		t.Fatalf("dashboard must use latest trace command: %s", got)
+	}
+}
+
+func TestRecentServiceAlertsKeepDistinctIncidentKeysAndHandleMissingTrace(t *testing.T) {
+	base := time.Date(2026, 5, 20, 14, 9, 0, 0, time.FixedZone("KST", 9*60*60))
+	events := []state.ServiceAlertEventState{
+		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/reports\x0018801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", CreatedAt: base},
+		{IncidentKey: "gateway\x00critical\x00v2-log\x00critical\x00/v2/auth\x0021801", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", TraceIDs: []string{"trace-auth"}, CreatedAt: base.Add(-time.Minute)},
+	}
+	lines := recentServiceAlertLines(events, 5, "30m")
+	if len(lines) != 2 {
+		t.Fatalf("different incident keys should stay separate: %#v", lines)
+	}
+	got := strings.Join(lines, "\n")
+	if !strings.Contains(got, "trace: none") || !strings.Contains(got, "/ops logs mode:trace query:trace-auth") {
+		t.Fatalf("missing trace and trace drilldown should both be represented: %s", got)
+	}
+}
+
+func TestRecentServiceAlertsFallbackGroupsLegacyState(t *testing.T) {
+	base := time.Date(2026, 5, 20, 14, 9, 0, 0, time.FixedZone("KST", 9*60*60))
+	events := []state.ServiceAlertEventState{
+		{Fingerprint: "fp-trace-1", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", CreatedAt: base},
+		{Fingerprint: "fp-trace-2", Service: "gateway", Severity: "CRITICAL", AlertType: "v2-log", Summary: "gateway CRITICAL - critical", CreatedAt: base.Add(-time.Minute)},
+	}
+	lines := recentServiceAlertLines(events, 5, "30m")
+	if len(lines) != 1 || !strings.Contains(lines[0], "×2") {
+		t.Fatalf("legacy state without incident key should group by summary: %#v", lines)
 	}
 }
 
