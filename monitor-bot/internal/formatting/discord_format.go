@@ -581,6 +581,50 @@ func FormatAdminSubmissions(courseSlug, assignmentID string, summary reportadmin
 	return TruncateDiscordMessage(b.String())
 }
 
+func FormatAssignmentAuditRows(rows []map[string]string, query string) string {
+	var b strings.Builder
+	b.WriteString("Assignment audit events\n")
+	if strings.TrimSpace(query) != "" {
+		fmt.Fprintf(&b, "query: %s\n", security.SanitizeText(query))
+	}
+	if len(rows) == 0 {
+		b.WriteString("\n조회 결과가 없습니다.")
+		return TruncateDiscordMessage(b.String())
+	}
+	for i, row := range rows {
+		if i >= 10 {
+			break
+		}
+		eventType := value(row, "event.eventType", "unknown")
+		assignmentID := firstNonEmpty(
+			value(row, "event.assignmentId", ""),
+			value(row, "event.resourceId", ""),
+			value(row, "assignmentId", ""),
+			value(row, "assignment.assignmentId", ""),
+			value(row, "request.pathVariables.assignmentId", ""),
+			"unknown",
+		)
+		course := firstNonEmpty(
+			value(row, "event.courseSlug", ""),
+			value(row, "assignment.courseSlug", ""),
+			value(row, "courseSlug", ""),
+			value(row, "request.pathVariables.courseSlug", ""),
+			"unknown",
+		)
+		title := firstNonEmpty(value(row, "event.title", ""), value(row, "assignment.title", ""), "unknown")
+		actorID := firstNonEmpty(value(row, "actor.userId", ""), value(row, "actor.id", ""), "unknown")
+		actorName := firstNonEmpty(value(row, "actor.name", ""), value(row, "actor.displayName", ""), value(row, "actor.loginId", ""), "unknown")
+		actorRole := value(row, "actor.role", "unknown")
+		occurredAt := firstNonEmpty(value(row, "event.occurredAt", ""), value(row, "@timestamp", ""), "unknown")
+		traceID := value(row, "trace.traceId", "unknown")
+		fmt.Fprintf(&b, "\n%d. %s course=%s assignmentId=%s\n", i+1, eventType, course, assignmentID)
+		fmt.Fprintf(&b, "   title=%s\n", title)
+		fmt.Fprintf(&b, "   actor=userId:%s role:%s name:%s\n", actorID, actorRole, actorName)
+		fmt.Fprintf(&b, "   occurredAt=%s traceId=%s\n", occurredAt, traceID)
+	}
+	return TruncateDiscordMessage(b.String())
+}
+
 func FormatAdminError(status, courseSlug, assignmentID, finding string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "status: %s\n", security.SanitizeText(status))
@@ -753,6 +797,9 @@ func HelpTextFor(topic, command string) string {
 /ops assignment-events course:3rd-cs id:<assignmentId>
 → 봇 감지 이력, firstDetectedAt, notifyCount, ack/silence 상태를 봅니다.
 
+/ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+→ 과제 생성/수정/삭제/공개/비공개 EVENT 로그에서 actor와 발생 시각을 봅니다.
+
 /ops assignment-ack course:3rd-cs id:<assignmentId> event:draft-past-start until:7d reason:<reason>
 → 의도된 상태라면 반복 알림을 중지합니다.
 
@@ -771,6 +818,8 @@ func helpAssignmentsText() string {
 
 /ops assignment
 - 목적: 단일 과제 상세 조회
+- 언제 사용: 현재 WEB Admin API 기준 상태를 볼 때
+- 주의: 누가 변경했는지 증명하는 audit trail이 아닙니다.
 - view:summary 기본 필드
 - view:diagnosis 봇의 이상 상태 판단 근거
 - view:raw 민감정보 제외 원본 주요 필드
@@ -792,7 +841,14 @@ func helpAssignmentsText() string {
 
 /ops logs ... query:
 - 목적: WEB Admin API가 답하지 못하는 원인을 CloudWatch 로그에서 검색
-- 예시: /ops logs service:report mode:recent query:<assignmentId> since:24h limit:20`)
+- 예시: /ops logs service:report mode:recent query:<assignmentId> since:24h limit:20
+
+Assignment audit notifications
+- 목적: 과제 등록/수정/삭제/공개/비공개를 누가 언제 했는지 확인
+- source: Report EVENT logs only
+- 이벤트: ASSIGNMENT_CREATED, ASSIGNMENT_UPDATED, ASSIGNMENT_DELETED, ASSIGNMENT_PUBLISHED, ASSIGNMENT_UNPUBLISHED
+- 조회: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+- 주의: bot은 과제를 생성/수정/삭제/공개하지 않습니다. actor/occurredAt은 EVENT 로그에 있을 때만 표시하고 없으면 unknown입니다.`)
 }
 
 func helpCommandText(command string) string {

@@ -32,7 +32,9 @@ type Data struct {
 	AssignmentSnapshots           map[string]AssignmentSnapshot   `json:"assignmentSnapshots,omitempty"`
 	AssignmentEventFingerprints   map[string]AlertState           `json:"assignmentEventFingerprints,omitempty"`
 	AssignmentIssues              map[string]AssignmentIssueState `json:"assignmentIssues,omitempty"`
+	AssignmentAuditFingerprints   map[string]AlertState           `json:"assignmentAuditFingerprints,omitempty"`
 	RecentAssignmentEvents        []AssignmentEventState          `json:"recentAssignmentEvents,omitempty"`
+	RecentAssignmentAuditEvents   []AssignmentAuditEventState     `json:"recentAssignmentAuditEvents,omitempty"`
 	Alerts                        map[string]AlertState           `json:"alertFingerprints,omitempty"`
 	RecentServiceAlerts           []ServiceAlertEventState        `json:"recentServiceAlerts,omitempty"`
 	HealthDownCounts              map[string]int                  `json:"healthDownCounts,omitempty"`
@@ -144,6 +146,28 @@ type AssignmentIssueState struct {
 	AckBy           string    `json:"ackBy,omitempty"`
 	AckReason       string    `json:"ackReason,omitempty"`
 	AckUntil        time.Time `json:"ackUntil,omitempty"`
+}
+
+type AssignmentAuditEventState struct {
+	Fingerprint   string                            `json:"fingerprint,omitempty"`
+	EventType     string                            `json:"eventType,omitempty"`
+	CourseSlug    string                            `json:"courseSlug,omitempty"`
+	AssignmentID  string                            `json:"assignmentId,omitempty"`
+	Title         string                            `json:"title,omitempty"`
+	ActorID       string                            `json:"actorId,omitempty"`
+	ActorName     string                            `json:"actorName,omitempty"`
+	ActorRole     string                            `json:"actorRole,omitempty"`
+	OccurredAt    time.Time                         `json:"occurredAt,omitempty"`
+	TraceID       string                            `json:"traceId,omitempty"`
+	RequestID     string                            `json:"requestId,omitempty"`
+	ChangedFields map[string]AssignmentChangedField `json:"changedFields,omitempty"`
+	Source        string                            `json:"source,omitempty"`
+	CreatedAt     time.Time                         `json:"createdAt,omitempty"`
+}
+
+type AssignmentChangedField struct {
+	Before string `json:"before,omitempty"`
+	After  string `json:"after,omitempty"`
 }
 
 type AlertState struct {
@@ -290,11 +314,18 @@ func normalize(data Data) Data {
 	if data.AssignmentIssues == nil {
 		data.AssignmentIssues = make(map[string]AssignmentIssueState)
 	}
+	if data.AssignmentAuditFingerprints == nil {
+		data.AssignmentAuditFingerprints = make(map[string]AlertState)
+	}
+	pruneAlertStateMap(data.AssignmentAuditFingerprints, 14*24*time.Hour, 2000)
 	if data.HealthDownCounts == nil {
 		data.HealthDownCounts = make(map[string]int)
 	}
 	if len(data.RecentAssignmentEvents) > 20 {
 		data.RecentAssignmentEvents = data.RecentAssignmentEvents[:20]
+	}
+	if len(data.RecentAssignmentAuditEvents) > 20 {
+		data.RecentAssignmentAuditEvents = data.RecentAssignmentAuditEvents[:20]
 	}
 	if len(data.RecentServiceAlerts) > 20 {
 		data.RecentServiceAlerts = data.RecentServiceAlerts[:20]
@@ -373,6 +404,36 @@ func pruneTimeMap(values map[string]time.Time, ttl time.Duration, max int) {
 	}
 }
 
+func pruneAlertStateMap(values map[string]AlertState, ttl time.Duration, max int) {
+	if len(values) == 0 {
+		return
+	}
+	now := time.Now()
+	for key, value := range values {
+		if !value.LastSentAt.IsZero() && now.Sub(value.LastSentAt) > ttl {
+			delete(values, key)
+		}
+	}
+	if max <= 0 || len(values) <= max {
+		return
+	}
+	type pair struct {
+		key string
+		at  time.Time
+	}
+	pairs := make([]pair, 0, len(values))
+	for key, value := range values {
+		pairs = append(pairs, pair{key: key, at: value.LastSentAt})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].at.Before(pairs[j].at)
+	})
+	for len(pairs) > max {
+		delete(values, pairs[0].key)
+		pairs = pairs[1:]
+	}
+}
+
 func cloneData(data Data) Data {
 	data = normalize(data)
 	cloned := data
@@ -405,11 +466,30 @@ func cloneData(data Data) Data {
 	for key, value := range data.AssignmentIssues {
 		cloned.AssignmentIssues[key] = value
 	}
+	cloned.AssignmentAuditFingerprints = make(map[string]AlertState, len(data.AssignmentAuditFingerprints))
+	for key, value := range data.AssignmentAuditFingerprints {
+		cloned.AssignmentAuditFingerprints[key] = value
+	}
 	cloned.RecentAssignmentEvents = append([]AssignmentEventState(nil), data.RecentAssignmentEvents...)
+	cloned.RecentAssignmentAuditEvents = cloneAssignmentAuditEvents(data.RecentAssignmentAuditEvents)
 	cloned.RecentServiceAlerts = append([]ServiceAlertEventState(nil), data.RecentServiceAlerts...)
 	cloned.HealthDownCounts = make(map[string]int, len(data.HealthDownCounts))
 	for key, value := range data.HealthDownCounts {
 		cloned.HealthDownCounts[key] = value
+	}
+	return cloned
+}
+
+func cloneAssignmentAuditEvents(events []AssignmentAuditEventState) []AssignmentAuditEventState {
+	cloned := make([]AssignmentAuditEventState, len(events))
+	for i, event := range events {
+		cloned[i] = event
+		if event.ChangedFields != nil {
+			cloned[i].ChangedFields = make(map[string]AssignmentChangedField, len(event.ChangedFields))
+			for key, value := range event.ChangedFields {
+				cloned[i].ChangedFields[key] = value
+			}
+		}
 	}
 	return cloned
 }

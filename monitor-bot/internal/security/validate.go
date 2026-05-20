@@ -21,6 +21,7 @@ var (
 		"30m": 30 * time.Minute,
 		"1h":  time.Hour,
 		"3h":  3 * time.Hour,
+		"24h": 24 * time.Hour,
 	}
 	allowedLevels = map[string]struct{}{
 		"INFO":  {},

@@ -8,7 +8,7 @@ Primary 운영 command는 `/ops`입니다.
 
 - `/ops dashboard since:<15m|30m|1h>`
 - `/ops service service:<gateway|auth|report|blog> view:<summary|health>`
-- `/ops logs [service:<all|gateway|auth|report|blog>] mode:<recent|errors|slow|security> level:<INFO|WARN|ERROR> query:<assignmentId|traceId|eventType|errorCode> limit:<5|10|20>`
+- `/ops logs [service:<all|gateway|auth|report|blog>] mode:<recent|errors|slow|security|events> level:<INFO|WARN|ERROR> query:<assignmentId|traceId|eventType|errorCode> limit:<5|10|20>`
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all>`
 - `/ops storage view:<usage|retention>`
 - `/ops help topic:<overview|dashboard|logs|alerts|assignments|feeds>`
@@ -126,6 +126,34 @@ blog      ⚪ UNK   NOLOG     0    0    0 -
 ```
 
 `/ops logs ... query:<value>`는 가능한 경우 구조화 필드(`trace.traceId`, `trace.requestId`, `event.eventType`, `assignmentId`, `request.pathVariables.assignmentId`, `response.error.code`, `response.error.value`, `http.path`, `http.route`)를 검색합니다. `@message` 검색은 fallback search로만 사용하며 alert 판단 조건에는 사용하지 않습니다.
+
+### Assignment Audit Event Feed
+
+Assignment issue warning과 별도로, Report V2 `EVENT` 로그 기반 audit feed를 전송합니다. 이 feed는 과제 상태 이상이 아니라 "누가 어떤 운영 행위를 언제 했는지"를 알리는 read-only 알림입니다.
+
+- monitor-bot은 과제를 생성/수정/삭제/공개/비공개하는 명령을 제공하지 않습니다.
+- Report admin POST/PATCH/DELETE API를 호출하지 않습니다.
+- actor와 발생 시각은 WEB Admin API snapshot에서 추측하지 않고 Report `EVENT` 로그의 구조화 필드에서만 가져옵니다.
+- actor 또는 occurredAt이 로그에 없으면 `unknown`으로 표시합니다.
+- audit 알림은 INFO 성격이며 role mention을 하지 않습니다.
+
+대상 이벤트:
+
+- `ASSIGNMENT_CREATED`
+- `ASSIGNMENT_UPDATED`
+- `ASSIGNMENT_DELETED`
+- `ASSIGNMENT_PUBLISHED`
+- `ASSIGNMENT_UNPUBLISHED`
+
+알림에는 `eventType`, `course`, `assignmentId`, `title`, `actor.userId`, `actor.role`, 안전한 actor 표시명, `occurredAt`, `trace.traceId`, `trace.requestId`, `source: REPORT_EVENT_LOG`, 수정 시 `changedFields`를 표시합니다.
+
+수동 조회:
+
+```text
+/ops logs service:report mode:events query:<assignmentId|traceId|actorId|eventType> since:24h limit:20
+```
+
+`mode:events`는 현재 Report assignment audit 이벤트 조회 용도입니다. 일반 장애 분석은 기존 `mode:recent|errors|slow|security`를 사용합니다.
 
 ## Runtime
 

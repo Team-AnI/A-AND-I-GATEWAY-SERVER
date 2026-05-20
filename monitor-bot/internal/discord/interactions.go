@@ -447,6 +447,11 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
 		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
+	case "events":
+		if service != "all" && service != "report" {
+			return "mode:events는 현재 report assignment audit EVENT 로그만 지원합니다."
+		}
+		return h.assignmentAuditLogsCommand(ctx, since, query, limit)
 	default:
 		return "지원하지 않는 logs mode입니다."
 	}
@@ -1077,6 +1082,26 @@ func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) stri
 		title = "최근 로그 query=" + security.SanitizeText(search)
 	}
 	return appendTraceNext(formatting.FormatLogRows(title, rows), rows)
+}
+
+func (h *Handler) assignmentAuditLogsCommand(ctx context.Context, sinceLabel, search string, limit int) string {
+	since, ok := security.ParseSince(sinceLabel)
+	if !ok {
+		return "지원하지 않는 since 값입니다."
+	}
+	groups, err := cw.LogGroupsForService(h.cfg.LogGroups, "report")
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	query, err := cw.BuildAssignmentAuditEventsQuery(search, limit)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	rows, err := h.logs.Query(ctx, groups, query, since, int32(limit))
+	if err != nil {
+		return "CloudWatch assignment events 조회 실패: " + security.SanitizeText(err.Error())
+	}
+	return formatting.FormatAssignmentAuditRows(rows, search)
 }
 
 func (h *Handler) errorsCommand(ctx context.Context, interaction Interaction) string {

@@ -104,6 +104,7 @@ func (s *Service) RefreshAssignmentOps(ctx context.Context) error {
 			}
 		}
 	}
+	s.refreshAssignmentAuditEvents(ctx, channelID)
 	return nil
 }
 

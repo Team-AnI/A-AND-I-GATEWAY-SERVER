@@ -59,6 +59,7 @@ func Definitions() []commandDefinition {
 	connectedOrAllChoices := namedChoices(choice("all"), choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"))
 	alarmServiceChoices := namedChoices(choice("gateway"), choice("auth"), choice("report"), choiceAlias("blog", "post"), choice("online-judge"))
 	reportSinceChoices := choices("15m", "30m", "1h")
+	logSinceChoices := choices("15m", "30m", "1h", "24h")
 	watchScopeChoices := choices("all", "service")
 	watchIntervalChoices := choices("1m", "3m", "5m", "10m", "15m")
 	alertActionChoices := choices("channel", "role", "role-clear", "on", "off", "status", "test")
@@ -70,7 +71,8 @@ func Definitions() []commandDefinition {
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
 	serviceViewChoices := choices("summary", "health")
-	logModeChoices := choices("recent", "errors", "slow", "security")
+	logModeChoices := choices("recent", "errors", "slow", "security", "events")
+	logWatchModeChoices := choices("recent", "errors", "slow", "security")
 	helpTopicChoices := choices("overview", "dashboard", "logs", "alerts", "assignments", "feeds")
 	helpCommandChoices := choices("dashboard", "service", "logs", "trace", "alert", "watch", "logs-watch", "assignments", "assignment", "assignment-check", "assignment-events", "assignment-ack", "submissions")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
@@ -89,7 +91,7 @@ func Definitions() []commandDefinition {
 				stringOption("service", "조회할 서비스", false, connectedOrAllChoices),
 				stringOption("mode", "조회 모드", false, logModeChoices),
 				stringOption("level", "로그 레벨", false, levelChoices),
-				stringOption("since", "조회 기간", false, reportSinceChoices),
+				stringOption("since", "조회 기간", false, logSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
 				stringOption("query", "traceId, assignmentId, eventType, errorCode 검색어", false, nil),
 			}),
@@ -111,7 +113,7 @@ func Definitions() []commandDefinition {
 			}),
 			subcommandOption("logs-watch", "로그 피드 등록", []commandOption{
 				stringOption("service", "피드 서비스", true, connectedServiceChoices),
-				stringOption("mode", "피드 모드", true, logModeChoices),
+				stringOption("mode", "피드 모드", true, logWatchModeChoices),
 				channelOption("channel", "로그 피드를 보낼 채널", false),
 				stringOption("interval", "조회 주기", false, watchIntervalChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),
@@ -119,7 +121,7 @@ func Definitions() []commandDefinition {
 			}),
 			subcommandOption("logs-unwatch", "로그 피드 중지", []commandOption{
 				stringOption("service", "피드 서비스", true, connectedServiceChoices),
-				stringOption("mode", "피드 모드", true, logModeChoices),
+				stringOption("mode", "피드 모드", true, logWatchModeChoices),
 			}),
 			subcommandOption("logs-watches", "등록된 로그 피드 목록", nil),
 			subcommandOption("assignments", "Report 과제 이벤트 요약", []commandOption{

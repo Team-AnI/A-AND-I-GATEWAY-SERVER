@@ -428,7 +428,7 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 
 func TestHelpTopicAssignmentsAndCommandAssignmentCheckExplainPurpose(t *testing.T) {
 	topic := HelpTextFor("assignments", "")
-	for _, want := range []string{"/ops assignment", "view:diagnosis", "/ops assignment-events", "/ops assignment-ack", "/ops logs ... query:"} {
+	for _, want := range []string{"/ops assignment", "view:diagnosis", "/ops assignment-events", "/ops assignment-ack", "/ops logs ... query:", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
 		if !strings.Contains(topic, want) {
 			t.Fatalf("assignment topic missing %q: %s", want, topic)
 		}

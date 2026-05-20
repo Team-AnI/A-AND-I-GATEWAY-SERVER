@@ -77,6 +77,9 @@ func TestOpsConnectedServiceChoices(t *testing.T) {
 	if findOption(t, logs.Options, "query").Required {
 		t.Fatal("logs query option should be optional")
 	}
+	if got := choiceValues(findOption(t, logs.Options, "since").Choices); strings.Join(got, ",") != "15m,30m,1h,24h" {
+		t.Fatalf("logs since choices = %#v", got)
+	}
 	if got := choiceNames(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,blog" {
 		t.Fatalf("logs service choice names = %#v", got)
 	}
@@ -207,9 +210,22 @@ func TestOpsLogsModesStayLogFocused(t *testing.T) {
 	logsCommand := findSubcommand(t, command, "logs")
 	modeOption := findOption(t, logsCommand.Options, "mode")
 	got := choiceValues(modeOption.Choices)
-	want := []string{"recent", "errors", "slow", "security"}
+	want := []string{"recent", "errors", "slow", "security", "events"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops logs mode choices = %#v, want %#v", got, want)
+	}
+}
+
+func TestNoAssignmentWriteCommandsRegistered(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, option := range command.Options {
+		switch option.Name {
+		case "assignment-create", "assignment-update", "assignment-delete", "assignment-publish", "assignment-unpublish":
+			t.Fatalf("assignment write command must not be registered: %s", option.Name)
+		}
 	}
 }
 
