@@ -147,10 +147,10 @@ func TestOpsHelpHasTopicAndCommandOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 	help := findSubcommand(t, command, "help")
-	if got := choiceValues(findOption(t, help.Options, "topic").Choices); strings.Join(got, ",") != "overview,dashboard,logs,alerts,assignments" {
+	if got := choiceValues(findOption(t, help.Options, "topic").Choices); strings.Join(got, ",") != "overview,dashboard,logs,alerts,assignments,routing,audit,troubleshooting" {
 		t.Fatalf("help topic choices = %#v", got)
 	}
-	if got := choiceValues(findOption(t, help.Options, "command").Choices); strings.Join(got, ",") != "dashboard,logs,alert,assignment" {
+	if got := choiceValues(findOption(t, help.Options, "command").Choices); strings.Join(got, ",") != "dashboard,logs,alert,assignment,help" {
 		t.Fatalf("help command choices = %#v", got)
 	}
 	if findOption(t, help.Options, "query").Required {
@@ -259,15 +259,14 @@ func TestDefinitionsPayloadMarshals(t *testing.T) {
 }
 
 func TestOpsHelpIncludesAlertRoleSetupPath(t *testing.T) {
-	help := formatting.HelpText()
+	help := formatting.HelpTextFor("alerts", "", "")
 	for _, want := range []string{
-		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:channel target:all channel:#ops-alerts",
 		"/ops alert action:channel target:general channel:#ops-log",
 		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
-		"/ops alert action:on",
 		"/ops alert action:status",
-		"/ops help query:",
+		"/ops alert action:test target:critical",
 	} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help missing %q: %s", want, help)

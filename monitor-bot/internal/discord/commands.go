@@ -74,8 +74,8 @@ func Definitions() []commandDefinition {
 	limitChoices := integerChoices(5, 10, 20)
 	logModeChoices := choices("recent", "errors", "critical", "slow", "security", "events", "trace")
 	logActionChoices := choices("view", "watch", "unwatch", "watches")
-	helpTopicChoices := choices("overview", "dashboard", "logs", "alerts", "assignments")
-	helpCommandChoices := choices("dashboard", "logs", "alert", "assignment")
+	helpTopicChoices := choices("overview", "dashboard", "logs", "alerts", "assignments", "routing", "audit", "troubleshooting")
+	helpCommandChoices := choices("dashboard", "logs", "alert", "assignment", "help")
 	return []commandDefinition{
 		{Name: "ops", Description: "A&I 운영 모니터링", Options: []commandOption{
 			subcommandOption("dashboard", "서비스 상태와 dashboard watch", []commandOption{
