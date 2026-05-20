@@ -93,7 +93,7 @@ func (s *Service) UnwatchLogFeed(ctx context.Context, service, mode string) (str
 func (s *Service) ListLogFeeds(ctx context.Context) string {
 	snapshot := s.store.Snapshot()
 	if len(snapshot.LogFeeds) == 0 {
-		return "등록된 로그 피드가 없습니다.\n\nNext:\n- `/ops logs-watch service:report mode:errors interval:5m since:30m limit:10`"
+		return "등록된 로그 피드가 없습니다.\n\nNext:\n- `/ops logs action:watch service:report mode:errors interval:5m since:30m limit:10`"
 	}
 	keys := make([]string, 0, len(snapshot.LogFeeds))
 	for key := range snapshot.LogFeeds {
@@ -284,7 +284,7 @@ func formatLogFeedMessage(service, mode string, rows []map[string]string, limit 
 	}
 	b.WriteString("\n상세 확인:\n")
 	if len(rows) > 0 && strings.TrimSpace(rows[0]["trace.traceId"]) != "" {
-		fmt.Fprintf(&b, "/ops trace trace_id:%s\n", security.SanitizeText(rows[0]["trace.traceId"]))
+		fmt.Fprintf(&b, "/ops logs mode:trace query:%s\n", security.SanitizeText(rows[0]["trace.traceId"]))
 	}
 	fmt.Fprintf(&b, "/ops logs service:%s mode:%s since:30m limit:10", displayService, mode)
 	return formatting.TruncateDiscordMessage(b.String())

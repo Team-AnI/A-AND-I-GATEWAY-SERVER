@@ -277,7 +277,7 @@ func TestFormatV2AlertSanitizesSecrets(t *testing.T) {
 			t.Fatalf("alert leaked %q: %s", forbidden, content)
 		}
 	}
-	for _, want := range []string{"API_ERROR | gateway", "Code      17801", "external_system", "/ops trace trace_id:trace-1"} {
+	for _, want := range []string{"API_ERROR | gateway", "Code      17801", "external_system", "/ops logs mode:trace query:trace-1"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}

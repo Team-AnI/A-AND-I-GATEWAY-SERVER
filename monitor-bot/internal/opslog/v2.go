@@ -418,7 +418,7 @@ func FormatV2Alert(log V2OpsLog, decision AlertDecision, mention string) string 
 	}
 	b.WriteString("\nNext\n")
 	if log.Trace != nil && strings.TrimSpace(log.Trace.TraceID) != "" {
-		fmt.Fprintf(&b, "/ops trace trace_id:%s\n", security.SanitizeText(log.Trace.TraceID))
+		fmt.Fprintf(&b, "/ops logs mode:trace query:%s\n", security.SanitizeText(log.Trace.TraceID))
 	}
 	fmt.Fprintf(&b, "/ops logs service:%s mode:errors since:30m limit:10", security.SanitizeText(domain))
 	return security.SanitizeText(b.String())

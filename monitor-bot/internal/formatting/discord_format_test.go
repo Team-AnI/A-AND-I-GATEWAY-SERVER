@@ -400,28 +400,29 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	for _, want := range []string{
 		"A&I Ops Bot 도움말",
 		"/ops dashboard since:30m",
-		"/ops service service:report view:summary since:30m",
+		"/ops dashboard service:report since:30m",
 		"/ops logs service:report mode:errors since:30m limit:10",
 		"/ops logs service:report mode:recent query:<assignmentId|traceId|eventType> since:24h limit:20",
-		"/ops watch scope:all channel:#ops interval:5m",
+		"/ops dashboard action:watch channel:#ops interval:5m",
 		"/ops alert action:channel channel:#ops-alerts",
 		"/ops alert action:channel target:general channel:#ops-log",
 		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
 		"/ops alert action:on",
 		"/ops alert action:status",
-		"/ops logs-watch service:report mode:errors channel:#report-logs interval:5m",
-		"/ops trace trace_id:<traceId>",
-		"/ops assignments course:3rd-cs status:all",
+		"/ops logs action:watch service:report mode:errors channel:#report-logs interval:5m",
+		"/ops logs mode:trace query:<traceId>",
+		"/ops assignment course:3rd-cs action:list status:all",
 		"/ops assignment course:3rd-cs id:<assignmentId> view:diagnosis",
 		"/ops assignment course:3rd-cs id:<assignmentId> view:events",
+		"/ops assignment course:3rd-cs id:<assignmentId> action:check",
 		"/ops assignment course:3rd-cs id:<assignmentId> action:ack event:draft-past-start until:7d reason:<reason>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)
 		}
 	}
-	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy"} {
+	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service", "/ops trace", "/ops watch", "/ops logs-watch", "/ops assignments", "/ops assignment-check", "/ops submissions"} {
 		if strings.Contains(got, legacy) {
 			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
 		}
@@ -430,15 +431,15 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 
 func TestHelpTopicAssignmentsAndCommandAssignmentCheckExplainPurpose(t *testing.T) {
 	topic := HelpTextFor("assignments", "", "")
-	for _, want := range []string{"/ops assignment", "view:diagnosis", "view:events", "action:ack", "/ops logs ... query:", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
+	for _, want := range []string{"/ops assignment", "action:list", "action:check", "action:submissions", "view:diagnosis", "view:events", "action:ack", "/ops logs ... query:", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
 		if !strings.Contains(topic, want) {
 			t.Fatalf("assignment topic missing %q: %s", want, topic)
 		}
 	}
-	command := HelpTextFor("", "assignment-check", "")
+	command := HelpTextFor("", "assignment", "")
 	for _, want := range []string{"역할:", "확인하는 것:", "problemId", "view:events", "action:ack"} {
 		if !strings.Contains(command, want) {
-			t.Fatalf("assignment-check help missing %q: %s", want, command)
+			t.Fatalf("assignment help missing %q: %s", want, command)
 		}
 	}
 }

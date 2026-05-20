@@ -185,62 +185,64 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 	}
 	switch subcommand.Name {
 	case "dashboard":
-		return h.dashboardCommand(ctx, interactionForCommand("dashboard", withDefaultOptions(subcommand.Options, map[string]string{"since": "30m"})))
-	case "service":
-		return h.opsServiceCommand(ctx, subcommand)
+		return h.opsDashboardCommand(ctx, interaction, subcommand)
 	case "logs":
-		return h.opsLogsCommand(ctx, subcommand)
-	case "watch":
-		return h.opsWatchCommand(ctx, interaction, subcommand)
-	case "unwatch":
-		return h.opsUnwatchCommand(ctx, subcommand)
-	case "watches":
-		return h.opsWatchesCommand(ctx)
+		return h.opsLogsCommand(ctx, interaction, subcommand)
 	case "alert":
 		return h.opsAlertCommand(ctx, interaction, subcommand)
-	case "logs-watch":
-		return h.opsLogsWatchCommand(ctx, interaction, subcommand)
-	case "logs-unwatch":
-		return h.opsLogsUnwatchCommand(ctx, subcommand)
-	case "logs-watches":
-		return h.opsLogsWatchesCommand(ctx)
-	case "assignments":
-		return h.assignmentsCommand(ctx, interactionForCommand("assignments", withDefaultOptions(subcommand.Options, map[string]string{"status": "all"})))
-	case "assignments-all":
-		return h.assignmentsAllCommand(ctx, interactionForCommand("assignments-all", withDefaultOptions(subcommand.Options, map[string]string{"window": "today"})))
 	case "assignment":
 		return h.assignmentCommand(ctx, interactionForCommand("assignment", subcommand.Options))
-	case "assignment-check":
-		return h.assignmentCheckCommand(ctx, interactionForCommand("assignment-check", subcommand.Options))
-	case "assignment-events":
-		return h.assignmentEventsCommand(ctx, subcommand)
-	case "assignment-ack":
-		return h.assignmentAckCommand(ctx, subcommand)
-	case "assignment-unack":
-		return h.assignmentUnackCommand(ctx, subcommand)
-	case "submissions":
-		return h.submissionsCommand(ctx, interactionForCommand("submissions", subcommand.Options))
-	case "trace":
-		return h.traceCommand(ctx, interactionForCommand("trace", subcommand.Options))
-	case "alarms":
-		return h.opsAlarmsCommand(ctx, subcommand)
-	case "storage":
-		view := optionStringFromOptions(subcommand.Options, "view")
-		if view == "" {
-			view = "usage"
-		}
-		switch view {
-		case "usage":
-			return h.retentionCommand(ctx, "💽 CloudWatch Log Usage")
-		case "retention":
-			return h.retentionCommand(ctx, "📦 CloudWatch Log Retention")
-		default:
-			return "지원하지 않는 storage view입니다."
-		}
 	case "help":
 		return formatting.HelpTextFor(optionStringFromOptions(subcommand.Options, "topic"), optionStringFromOptions(subcommand.Options, "command"), optionStringFromOptions(subcommand.Options, "query"))
+	case "service":
+		return "deprecated: /ops dashboard service:<service> 를 사용하세요."
+	case "trace":
+		return "deprecated: /ops logs mode:trace query:<traceId> 를 사용하세요."
+	case "watch", "unwatch", "watches":
+		return "deprecated: /ops dashboard action:<watch|unwatch|status> 를 사용하세요."
+	case "logs-watch", "logs-unwatch", "logs-watches":
+		return "deprecated: /ops logs action:<watch|unwatch|watches> 를 사용하세요."
+	case "assignments", "assignments-all", "assignment-check", "assignment-events", "assignment-ack", "assignment-unack", "submissions":
+		return "deprecated: /ops assignment action:<list|check|submissions|ack|unack> 또는 view:events 를 사용하세요."
 	default:
 		return "지원하지 않는 /ops subcommand입니다. /ops help 를 확인하세요."
+	}
+}
+
+func (h *Handler) opsDashboardCommand(ctx context.Context, interaction Interaction, subcommand ApplicationCommandOpt) string {
+	action := optionStringFromOptions(subcommand.Options, "action")
+	if action == "" {
+		action = "view"
+	}
+	service := optionStringFromOptions(subcommand.Options, "service")
+	since := optionStringFromOptions(subcommand.Options, "since")
+	if since == "" {
+		since = "30m"
+	}
+	switch action {
+	case "view":
+		if strings.TrimSpace(service) != "" {
+			return h.opsServiceCommand(ctx, ApplicationCommandOpt{Options: withDefaultOptions(subcommand.Options, map[string]string{"since": since})})
+		}
+		return h.dashboardCommand(ctx, interactionForCommand("dashboard", withDefaultOptions(subcommand.Options, map[string]string{"since": since})))
+	case "watch":
+		scope := "all"
+		if strings.TrimSpace(service) != "" {
+			scope = "service"
+		}
+		options := withDefaultOptions(subcommand.Options, map[string]string{"scope": scope, "service": service})
+		return h.opsWatchCommand(ctx, interaction, ApplicationCommandOpt{Options: options})
+	case "unwatch":
+		scope := "all"
+		if strings.TrimSpace(service) != "" {
+			scope = "service"
+		}
+		options := withDefaultOptions(subcommand.Options, map[string]string{"scope": scope, "service": service})
+		return h.opsUnwatchCommand(ctx, ApplicationCommandOpt{Options: options})
+	case "status":
+		return h.opsWatchesCommand(ctx)
+	default:
+		return "지원하지 않는 dashboard action입니다. view, watch, unwatch, status 중 하나를 사용하세요."
 	}
 }
 
@@ -362,14 +364,40 @@ func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationC
 	case "health":
 		return withNext(formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)}), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors")
 	default:
-		return "지원하지 않는 service view입니다. 상태는 `/ops service view:summary|health`, 로그 분석은 `/ops logs`를 사용하세요."
+		return "지원하지 않는 dashboard service view입니다. 상태는 `/ops dashboard service:<service>`, 로그 분석은 `/ops logs`를 사용하세요."
 	}
 }
 
-func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+func (h *Handler) opsLogsCommand(ctx context.Context, interaction Interaction, subcommand ApplicationCommandOpt) string {
+	action := optionStringFromOptions(subcommand.Options, "action")
+	if action == "" {
+		action = "view"
+	}
 	serviceOption := optionStringFromOptions(subcommand.Options, "service")
 	if serviceOption == "" {
 		serviceOption = "all"
+	}
+	mode := optionStringFromOptions(subcommand.Options, "mode")
+	if mode == "" {
+		mode = "errors"
+	}
+	defaults := map[string]string{"service": serviceOption, "mode": mode}
+	switch action {
+	case "watch":
+		if serviceOption == "all" {
+			defaults["service"] = "report"
+		}
+		return h.opsLogsWatchCommand(ctx, interaction, ApplicationCommandOpt{Options: withDefaultOptions(subcommand.Options, defaults)})
+	case "unwatch":
+		if serviceOption == "all" {
+			defaults["service"] = "report"
+		}
+		return h.opsLogsUnwatchCommand(ctx, ApplicationCommandOpt{Options: withDefaultOptions(subcommand.Options, defaults)})
+	case "watches":
+		return h.opsLogsWatchesCommand(ctx)
+	case "view":
+	default:
+		return "지원하지 않는 logs action입니다. view, watch, unwatch, watches 중 하나를 사용하세요."
 	}
 	service, ok := security.NormalizeServiceOrAll(serviceOption)
 	if !ok {
@@ -377,10 +405,6 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 	}
 	if service != "all" && !isOpsV2Service(service) {
 		return "status: NO_V2_LOG\nservice: " + opsDisplayServiceName(service) + "\nkey findings: V2 로그 연동 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops logs service:report mode:errors since:30m limit:10`"
-	}
-	mode := optionStringFromOptions(subcommand.Options, "mode")
-	if mode == "" {
-		mode = "recent"
 	}
 	since := optionStringFromOptions(subcommand.Options, "since")
 	if since == "" {
@@ -391,7 +415,10 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 		level = "ERROR"
 	}
 	query := optionStringFromOptions(subcommand.Options, "query")
-	limit := parseOpsLimit(optionStringFromOptions(subcommand.Options, "limit"), h.cfg.CloudWatchQueryLimit)
+	if optionStringFromOptions(subcommand.Options, "mode") == "" && looksLikeTraceQuery(query) {
+		mode = "trace"
+	}
+	limit := parseOpsLimit(optionStringFromOptions(subcommand.Options, "limit"), 10)
 	switch mode {
 	case "recent":
 		if service == "all" {
@@ -406,20 +433,27 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 		if query != "" {
 			options = append(options, stringInteractionOption("query", query))
 		}
-		return withNext(h.logsCommand(ctx, interactionForCommand("logs", options)), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops service service:"+opsDisplayServiceName(service))
+		return withNext(h.logsCommand(ctx, interactionForCommand("logs", options)), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops dashboard service:"+opsDisplayServiceName(service))
 	case "errors":
 		if service == "all" && !sinceAllowsAllQuery(since) {
 			return allServiceSinceGuardMessage()
 		}
 		next := []string{"/ops dashboard since:" + since}
 		if service != "all" {
-			next = append(next, "/ops logs service:"+opsDisplayServiceName(service)+" mode:recent level:ERROR", "/ops service service:"+opsDisplayServiceName(service))
+			next = append(next, "/ops logs service:"+opsDisplayServiceName(service)+" mode:recent level:ERROR", "/ops dashboard service:"+opsDisplayServiceName(service))
 		}
 		return withNext(h.errorsCommand(ctx, interactionForCommand("errors", []ApplicationCommandOpt{
 			stringInteractionOption("since", since),
 			stringInteractionOption("service", service),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
 		})), next...)
+	case "critical":
+		options := []ApplicationCommandOpt{
+			stringInteractionOption("since", since),
+			stringInteractionOption("service", service),
+			stringInteractionOption("limit", strconv.Itoa(limit)),
+		}
+		return withNext(h.errorsCommand(ctx, interactionForCommand("errors", options)), "/ops alert action:status", "/ops dashboard since:"+since)
 	case "top":
 		if service == "all" {
 			return allServiceGuardMessage()
@@ -429,7 +463,7 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("since", since),
 			stringInteractionOption("by", "path"),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops logs mode:trace query:<traceId>")
 	case "slow":
 		if service == "all" {
 			return allServiceGuardMessage()
@@ -438,7 +472,7 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops logs mode:trace query:<traceId>")
 	case "security":
 		if service == "all" {
 			return allServiceGuardMessage()
@@ -447,12 +481,19 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops trace trace_id:<traceId>")
+		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops logs mode:trace query:<traceId>")
 	case "events":
 		if service != "all" && service != "report" {
 			return "mode:events는 현재 report assignment audit EVENT 로그만 지원합니다."
 		}
 		return h.assignmentAuditLogsCommand(ctx, since, query, limit)
+	case "trace":
+		if strings.TrimSpace(query) == "" {
+			return "mode:trace에는 query:<traceId>가 필요합니다."
+		}
+		return h.traceCommand(ctx, interactionForCommand("trace", []ApplicationCommandOpt{
+			stringInteractionOption("trace_id", query),
+		}))
 	default:
 		return "지원하지 않는 logs mode입니다."
 	}
@@ -778,44 +819,63 @@ func (h *Handler) assignmentsAllCommand(ctx context.Context, interaction Interac
 func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction) string {
 	courseSlug := strings.TrimSpace(optionString(interaction, "course"))
 	assignmentID := strings.TrimSpace(optionString(interaction, "id"))
+	action := strings.TrimSpace(optionString(interaction, "action"))
+	scope := strings.TrimSpace(optionString(interaction, "scope"))
+	if action == "" && assignmentID == "" {
+		action = "list"
+	}
+	if action == "list" || scope == "all" {
+		if scope == "all" || courseSlug == "" {
+			return h.assignmentsAllCommand(ctx, interactionForCommand("assignments-all", withDefaultOptions(interaction.Data.Options, map[string]string{"window": "today"})))
+		}
+		if !security.ValidateCourseSlug(courseSlug) {
+			return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+		}
+		return h.assignmentsCommand(ctx, interactionForCommand("assignments", withDefaultOptions(interaction.Data.Options, map[string]string{"status": "all"})))
+	}
 	if !security.ValidateCourseSlug(courseSlug) {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
 	}
 	if !security.ValidateAssignmentID(assignmentID) {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
 	}
-	action := strings.TrimSpace(optionString(interaction, "action"))
-	if action != "" {
+	switch action {
+	case "check":
+		return h.assignmentCheckCommand(ctx, interaction)
+	case "submissions":
+		return h.submissionsCommand(ctx, interactionForCommand("submissions", withDefaultOptions(interaction.Data.Options, map[string]string{"assignment": assignmentID})))
+	case "ack":
 		if h.ops == nil {
 			return "Service Ops controller is not ready."
 		}
-		switch action {
-		case "ack":
-			reason := optionString(interaction, "reason")
-			if strings.TrimSpace(reason) == "" {
-				return "assignment ack에는 reason이 필요합니다."
-			}
-			result, err := h.ops.AcknowledgeAssignmentIssue(
-				courseSlug,
-				assignmentID,
-				optionString(interaction, "event"),
-				optionString(interaction, "until"),
-				reason,
-				"discord",
-			)
-			if err != nil {
-				return security.SanitizeText(err.Error())
-			}
-			return result
-		case "unack":
-			result, err := h.ops.UnacknowledgeAssignmentIssue(courseSlug, assignmentID, optionString(interaction, "event"))
-			if err != nil {
-				return security.SanitizeText(err.Error())
-			}
-			return result
-		default:
-			return "지원하지 않는 assignment action입니다. ack 또는 unack을 사용하세요."
+		reason := optionString(interaction, "reason")
+		if strings.TrimSpace(reason) == "" {
+			return "assignment ack에는 reason이 필요합니다."
 		}
+		result, err := h.ops.AcknowledgeAssignmentIssue(
+			courseSlug,
+			assignmentID,
+			optionString(interaction, "event"),
+			optionString(interaction, "until"),
+			reason,
+			"discord",
+		)
+		if err != nil {
+			return security.SanitizeText(err.Error())
+		}
+		return result
+	case "unack":
+		if h.ops == nil {
+			return "Service Ops controller is not ready."
+		}
+		result, err := h.ops.UnacknowledgeAssignmentIssue(courseSlug, assignmentID, optionString(interaction, "event"))
+		if err != nil {
+			return security.SanitizeText(err.Error())
+		}
+		return result
+	case "":
+	default:
+		return "지원하지 않는 assignment action입니다. list, check, submissions, ack, unack 중 하나를 사용하세요."
 	}
 	view := optionString(interaction, "view")
 	if view == "" {
@@ -1291,7 +1351,15 @@ func appendTraceNext(content string, rows []map[string]string) string {
 	if traceID == "" {
 		return content
 	}
-	return withNext(content, "/ops trace trace_id:"+traceID)
+	return withNext(content, "/ops logs mode:trace query:"+traceID)
+}
+
+func looksLikeTraceQuery(query string) bool {
+	trimmed := strings.TrimSpace(query)
+	if trimmed == "" || strings.Contains(trimmed, "-") || strings.Contains(trimmed, " ") {
+		return false
+	}
+	return len(trimmed) >= 16 && security.ValidateTraceID(trimmed)
 }
 
 func firstTraceID(rows []map[string]string) string {

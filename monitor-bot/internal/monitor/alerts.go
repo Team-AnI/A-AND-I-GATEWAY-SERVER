@@ -487,13 +487,13 @@ func formatAlert(alert Alert, mention string) string {
 	}
 	b.WriteString("\n상세 확인:\n")
 	if alert.Service == "cloudwatch" {
-		b.WriteString("/ops alarms state:ALARM\n")
+		b.WriteString("/ops dashboard action:status\n")
 	} else {
 		fmt.Fprintf(&b, "/ops logs service:%s mode:errors since:15m limit:10\n", alert.Service)
 		fmt.Fprintf(&b, "/ops logs service:%s mode:slow since:15m limit:10\n", alert.Service)
 	}
 	if len(alert.Traces) > 0 {
-		fmt.Fprintf(&b, "/ops trace trace_id:%s", alert.Traces[0])
+		fmt.Fprintf(&b, "/ops logs mode:trace query:%s", alert.Traces[0])
 	}
 	return formatting.TruncateDiscordMessage(b.String())
 }

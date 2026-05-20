@@ -756,7 +756,7 @@ func formatAssignmentDashboard(result assignmentPollResult) string {
 	b.WriteString("\n상세 확인\n")
 	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis\n")
 	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> view:events\n")
-	b.WriteString("/ops submissions course:<courseSlug> assignment:<assignmentId>\n")
+	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> action:submissions\n")
 	b.WriteString("/ops logs service:report mode:recent query:<assignmentId> since:24h limit:20")
 	return formatting.TruncateDiscordMessage(b.String())
 }
@@ -920,9 +920,9 @@ func writeAssignmentNextCommands(b *strings.Builder, event state.AssignmentEvent
 	b.WriteString("\nnext:\n")
 	switch event.EventType {
 	case "ASSIGNMENT_MISSING_PROBLEM":
-		fmt.Fprintf(b, "1. /ops assignment-check course:%s id:%s\n", course, id)
+		fmt.Fprintf(b, "1. /ops assignment course:%s id:%s action:check\n", course, id)
 		b.WriteString("   - problemId 연결과 제출 가능성 체크리스트를 확인합니다.\n")
-		fmt.Fprintf(b, "2. /ops submissions course:%s assignment:%s\n", course, id)
+		fmt.Fprintf(b, "2. /ops assignment course:%s id:%s action:submissions\n", course, id)
 		b.WriteString("   - 제출/채점 상태가 누락 문제와 연결되는지 확인합니다.\n")
 		fmt.Fprintf(b, "3. /ops logs service:report mode:recent query:%s since:24h limit:20\n", id)
 		b.WriteString("   - Report 로그에서 해당 assignmentId를 검색합니다.")

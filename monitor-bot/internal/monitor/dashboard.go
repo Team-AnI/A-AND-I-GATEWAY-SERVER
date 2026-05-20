@@ -178,7 +178,7 @@ func (s *Service) UnwatchDashboardScope(ctx context.Context, scope, service stri
 func (s *Service) ListDashboardWatches(ctx context.Context) string {
 	snapshot := s.store.Snapshot()
 	if len(snapshot.ServiceDashboards) == 0 {
-		return "등록된 서비스 대시보드 watch가 없습니다.\n\nNext:\n- `/ops watch scope:all interval:5m`"
+		return "등록된 서비스 대시보드 watch가 없습니다.\n\nNext:\n- `/ops dashboard action:watch interval:5m`"
 	}
 	var b strings.Builder
 	b.WriteString("📌 Service Dashboard Watches\n\n")

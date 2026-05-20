@@ -96,7 +96,7 @@ func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 		t.Fatalf("critical alert should use fallback role id, got %q", got)
 	}
 	content := fakeDiscord.roleContents[0]
-	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "/ops logs service:report mode:errors", "/ops trace trace_id:trace-1"} {
+	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "/ops logs service:report mode:errors", "/ops logs mode:trace query:trace-1"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}
