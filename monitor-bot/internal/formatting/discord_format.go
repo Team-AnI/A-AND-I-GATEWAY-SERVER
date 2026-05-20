@@ -723,13 +723,23 @@ func HelpTextFor(topic, command string) string {
 		return strings.TrimSpace(`A&I Ops 알림 도움말
 
 /ops alert action:channel channel:#ops-alerts
-→ 운영 알림 채널을 저장합니다.
+→ general/critical 알림 채널을 모두 같은 채널로 저장합니다.
+
+/ops alert action:channel target:general channel:#ops-log
+→ 과제 audit, 일반 운영 로그, WARN/HIGH 알림 채널을 저장합니다. role mention은 없습니다.
+
+/ops alert action:channel target:critical channel:#ops-critical
+→ CRITICAL 서버 장애 알림 채널을 저장합니다.
 
 /ops alert action:role role:@운영팀
 → CRITICAL 서버 로그에서만 멘션할 역할을 저장합니다.
 
 /ops alert action:status
-→ 현재 채널, 역할, cooldown, 최근 alert 상태를 봅니다.`)
+→ general/critical 채널, 역할, fallback, cooldown, 최근 alert 상태를 봅니다.
+
+/ops alert action:test target:general
+/ops alert action:test target:critical
+→ route별 테스트 메시지를 보냅니다. test는 role mention을 보내지 않습니다.`)
 	case "dashboard":
 		return strings.TrimSpace(`A&I Ops 대시보드 도움말
 
@@ -768,7 +778,13 @@ func HelpTextFor(topic, command string) string {
 
 3. 알림과 피드
 /ops alert action:channel channel:#ops-alerts
-→ 운영 알림 채널을 저장합니다.
+→ general/critical 알림 채널을 모두 같은 채널로 저장합니다.
+
+/ops alert action:channel target:general channel:#ops-log
+→ 과제 audit, 일반 운영 로그, WARN/HIGH 알림 채널을 저장합니다.
+
+/ops alert action:channel target:critical channel:#ops-critical
+→ CRITICAL 서버 장애 알림 채널을 저장합니다.
 
 /ops alert action:role role:@운영팀
 → CRITICAL 서버 로그에서만 멘션할 역할을 저장합니다.
@@ -777,7 +793,7 @@ func HelpTextFor(topic, command string) string {
 → 운영 알림을 켭니다.
 
 /ops alert action:status
-→ 알림 채널, 역할, cooldown, 최근 alert 상태를 봅니다.
+→ general/critical 채널, 역할, fallback, cooldown, 최근 alert 상태를 봅니다.
 
 /ops watch scope:all channel:#ops interval:5m
 → dashboard 메시지를 주기적으로 갱신합니다.

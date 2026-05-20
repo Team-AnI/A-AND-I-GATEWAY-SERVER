@@ -374,7 +374,7 @@ func TestAssignmentOpsUsesConfiguredAlertChannelFromState(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := store.Update(func(data *state.Data) {
-		data.ServiceAlerts.ChannelID = "state-alert-channel"
+		data.ServiceAlerts.GeneralChannelID = "state-alert-channel"
 	}); err != nil {
 		t.Fatal(err)
 	}

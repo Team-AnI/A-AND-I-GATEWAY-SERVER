@@ -84,8 +84,7 @@ func (s *Service) assignmentStaleGrace() time.Duration {
 }
 
 func (s *Service) assignmentOpsChannelID() string {
-	snapshot := s.store.Snapshot()
-	return strings.TrimSpace(firstNonEmpty(snapshot.ServiceAlerts.ChannelID, s.cfg.Alert.ChannelID, s.cfg.Dashboard.ChannelID))
+	return s.generalAlertChannelID()
 }
 
 func (s *Service) RefreshAssignmentOps(ctx context.Context) error {

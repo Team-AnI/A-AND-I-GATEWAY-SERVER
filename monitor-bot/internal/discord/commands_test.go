@@ -254,6 +254,9 @@ func TestServiceOpsAutomationCommandsRegistered(t *testing.T) {
 	if got := choiceValues(findOption(t, alert.Options, "action").Choices); strings.Join(got, ",") != "channel,role,role-clear,on,off,status,test" {
 		t.Fatalf("alert action choices = %#v", got)
 	}
+	if got := choiceValues(findOption(t, alert.Options, "target").Choices); strings.Join(got, ",") != "all,general,critical" {
+		t.Fatalf("alert target choices = %#v", got)
+	}
 	if channel := findOption(t, alert.Options, "channel"); channel.Type != 7 || channel.Required {
 		t.Fatalf("alert channel option must be optional channel type, got type=%d required=%t", channel.Type, channel.Required)
 	}
@@ -291,12 +294,17 @@ func TestDefinitionsPayloadMarshals(t *testing.T) {
 	if !strings.Contains(string(payload), `"name":"role"`) || !strings.Contains(string(payload), `"type":8`) {
 		t.Fatalf("alert role option missing from payload: %s", payload)
 	}
+	if !strings.Contains(string(payload), `"name":"target"`) || !strings.Contains(string(payload), `"value":"critical"`) {
+		t.Fatalf("alert target option missing from payload: %s", payload)
+	}
 }
 
 func TestOpsHelpIncludesAlertRoleSetupPath(t *testing.T) {
 	help := formatting.HelpText()
 	for _, want := range []string{
 		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:channel target:general channel:#ops-log",
+		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
 		"/ops alert action:on",
 		"/ops alert action:status",

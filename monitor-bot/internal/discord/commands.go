@@ -63,6 +63,7 @@ func Definitions() []commandDefinition {
 	watchScopeChoices := choices("all", "service")
 	watchIntervalChoices := choices("1m", "3m", "5m", "10m", "15m")
 	alertActionChoices := choices("channel", "role", "role-clear", "on", "off", "status", "test")
+	alertTargetChoices := choices("all", "general", "critical")
 	assignmentStatusChoices := choices("all", "published", "draft", "scheduled")
 	assignmentWindowChoices := choices("today", "this-week")
 	assignmentViewChoices := choices("summary", "diagnosis", "raw")
@@ -108,6 +109,7 @@ func Definitions() []commandDefinition {
 			subcommandOption("watches", "등록된 서비스 대시보드 목록", nil),
 			subcommandOption("alert", "서비스 알림 설정", []commandOption{
 				stringOption("action", "알림 설정 동작", true, alertActionChoices),
+				stringOption("target", "general=운영 로그, critical=장애 알림, all=둘 다", false, alertTargetChoices),
 				channelOption("channel", "알림 채널", false),
 				roleOption("role", "멘션할 운영자 역할", false),
 			}),

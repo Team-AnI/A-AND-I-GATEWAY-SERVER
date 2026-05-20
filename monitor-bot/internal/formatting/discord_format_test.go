@@ -405,6 +405,8 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops logs service:report mode:recent query:<assignmentId|traceId|eventType> since:24h limit:20",
 		"/ops watch scope:all channel:#ops interval:5m",
 		"/ops alert action:channel channel:#ops-alerts",
+		"/ops alert action:channel target:general channel:#ops-log",
+		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
 		"/ops alert action:on",
 		"/ops alert action:status",

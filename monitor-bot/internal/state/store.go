@@ -54,11 +54,13 @@ type ServiceDashboard struct {
 }
 
 type ServiceAlertsConfig struct {
-	Enabled     bool                 `json:"enabled,omitempty"`
-	ChannelID   string               `json:"channelId,omitempty"`
-	RoleID      string               `json:"roleId,omitempty"`
-	CooldownSec int                  `json:"cooldownSeconds,omitempty"`
-	LastSent    map[string]time.Time `json:"lastSent,omitempty"`
+	Enabled           bool                 `json:"enabled,omitempty"`
+	ChannelID         string               `json:"channelId,omitempty"`
+	GeneralChannelID  string               `json:"generalChannelId,omitempty"`
+	CriticalChannelID string               `json:"criticalChannelId,omitempty"`
+	RoleID            string               `json:"roleId,omitempty"`
+	CooldownSec       int                  `json:"cooldownSeconds,omitempty"`
+	LastSent          map[string]time.Time `json:"lastSent,omitempty"`
 }
 
 type LogFeed struct {

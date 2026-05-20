@@ -42,7 +42,7 @@ type OpsController interface {
 	WatchDashboardScope(ctx context.Context, channelID, scope, service string, interval time.Duration) (string, error)
 	UnwatchDashboardScope(ctx context.Context, scope, service string) (string, error)
 	ListDashboardWatches(ctx context.Context) string
-	ConfigureAlert(ctx context.Context, channelID, action, roleID string) (string, error)
+	ConfigureAlert(ctx context.Context, channelID, action, roleID, target string) (string, error)
 	WatchLogFeed(ctx context.Context, channelID, service, mode, since string, interval time.Duration, limit int) (string, error)
 	UnwatchLogFeed(ctx context.Context, service, mode string) (string, error)
 	ListLogFeeds(ctx context.Context) string
@@ -287,9 +287,10 @@ func (h *Handler) opsAlertCommand(ctx context.Context, interaction Interaction, 
 		return "Service Ops controller is not ready."
 	}
 	action := optionStringFromOptions(subcommand.Options, "action")
+	target := optionStringFromOptions(subcommand.Options, "target")
 	roleID := optionStringFromOptions(subcommand.Options, "role")
 	channelID := firstNonEmpty(optionStringFromOptions(subcommand.Options, "channel"), interaction.ChannelID)
-	result, err := h.ops.ConfigureAlert(ctx, channelID, action, roleID)
+	result, err := h.ops.ConfigureAlert(ctx, channelID, action, roleID, target)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
