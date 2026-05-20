@@ -51,7 +51,7 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "watch", "unwatch", "watches", "alert", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment", "assignment-check", "submissions", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "watch", "unwatch", "watches", "alert", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment", "assignment-check", "assignment-events", "assignment-ack", "assignment-unack", "submissions", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
@@ -73,6 +73,9 @@ func TestOpsConnectedServiceChoices(t *testing.T) {
 	logs := findSubcommand(t, command, "logs")
 	if findOption(t, logs.Options, "service").Required {
 		t.Fatal("logs service option should be optional and default to all")
+	}
+	if findOption(t, logs.Options, "query").Required {
+		t.Fatal("logs query option should be optional")
 	}
 	if got := choiceNames(findOption(t, logs.Options, "service").Choices); strings.Join(got, ",") != "all,gateway,auth,report,blog" {
 		t.Fatalf("logs service choice names = %#v", got)
@@ -106,9 +109,29 @@ func TestOpsConnectedServiceChoices(t *testing.T) {
 	if !idOption.Required {
 		t.Fatal("assignment id option must be required")
 	}
+	if got := choiceValues(findOption(t, assignment.Options, "view").Choices); strings.Join(got, ",") != "summary,diagnosis,raw" {
+		t.Fatalf("assignment view choices = %#v", got)
+	}
 	assignmentCheck := findSubcommand(t, command, "assignment-check")
 	if !findOption(t, assignmentCheck.Options, "course").Required || !findOption(t, assignmentCheck.Options, "id").Required {
 		t.Fatal("assignment-check course/id options must be required")
+	}
+	assignmentEvents := findSubcommand(t, command, "assignment-events")
+	if !findOption(t, assignmentEvents.Options, "course").Required || !findOption(t, assignmentEvents.Options, "id").Required {
+		t.Fatal("assignment-events course/id options must be required")
+	}
+	assignmentAck := findSubcommand(t, command, "assignment-ack")
+	for _, option := range []string{"course", "id", "event", "until", "reason"} {
+		if !findOption(t, assignmentAck.Options, option).Required {
+			t.Fatalf("assignment-ack %s option must be required", option)
+		}
+	}
+	if got := choiceValues(findOption(t, assignmentAck.Options, "event").Choices); strings.Join(got, ",") != "publish-delayed,draft-past-start,stale-draft,invalid-time,missing-problem,grading-failed" {
+		t.Fatalf("assignment-ack event choices = %#v", got)
+	}
+	assignmentUnack := findSubcommand(t, command, "assignment-unack")
+	if !findOption(t, assignmentUnack.Options, "course").Required || !findOption(t, assignmentUnack.Options, "id").Required || !findOption(t, assignmentUnack.Options, "event").Required {
+		t.Fatal("assignment-unack course/id/event options must be required")
 	}
 	submissions := findSubcommand(t, command, "submissions")
 	if !findOption(t, submissions.Options, "course").Required || !findOption(t, submissions.Options, "assignment").Required {
@@ -138,6 +161,20 @@ func TestOpsLogsLimitChoices(t *testing.T) {
 	want := []string{"5", "10", "20"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("/ops logs limit choices = %#v, want %#v", got, want)
+	}
+}
+
+func TestOpsHelpHasTopicAndCommandOptions(t *testing.T) {
+	command, err := findCommand("ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	help := findSubcommand(t, command, "help")
+	if got := choiceValues(findOption(t, help.Options, "topic").Choices); strings.Join(got, ",") != "overview,dashboard,logs,alerts,assignments,feeds" {
+		t.Fatalf("help topic choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, help.Options, "command").Choices); !strings.Contains(strings.Join(got, ","), "assignment-check") || !strings.Contains(strings.Join(got, ","), "assignment-events") {
+		t.Fatalf("help command choices missing assignment commands: %#v", got)
 	}
 }
 

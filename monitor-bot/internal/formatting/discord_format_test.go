@@ -398,24 +398,22 @@ func TestFormatRetentionDoesNotExposeDeleteOperationsOrSecrets(t *testing.T) {
 func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	got := HelpText()
 	for _, want := range []string{
-		"A&I Ops Incident Flow",
-		"Core",
+		"A&I Ops Bot 도움말",
 		"/ops dashboard since:30m",
-		"/ops service service:blog view:summary",
-		"/ops logs mode:errors since:15m limit:10",
+		"/ops service service:report view:summary since:30m",
+		"/ops logs service:report mode:errors since:30m limit:10",
+		"/ops logs service:report mode:recent query:<assignmentId|traceId|eventType> since:24h limit:20",
 		"/ops watch scope:all channel:#ops interval:5m",
 		"/ops alert action:channel channel:#ops-alerts",
 		"/ops alert action:role role:@운영팀",
 		"/ops alert action:on",
 		"/ops alert action:status",
-		"/ops logs-watch service:blog mode:errors channel:#blog-logs interval:5m since:30m limit:10",
-		"Advanced",
+		"/ops logs-watch service:report mode:errors channel:#report-logs interval:5m",
 		"/ops trace trace_id:<traceId>",
-		"/ops alarms state:ALARM",
-		"/ops storage view:usage",
-		"/ops assignments course:<courseSlug> status:all",
-		"Trace drilldown은 /ops logs 또는 logs-watch 결과에 traceId가 있을 때만 사용하세요.",
-		"Assignment Ops는 수동 상태 확인보다 과제 등록/공개/채점 이벤트 feed가 기본입니다.",
+		"/ops assignments course:3rd-cs status:all",
+		"/ops assignment course:3rd-cs id:<assignmentId> view:diagnosis",
+		"/ops assignment-events course:3rd-cs id:<assignmentId>",
+		"/ops assignment-ack course:3rd-cs id:<assignmentId> event:draft-past-start until:7d reason:<reason>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)
@@ -424,6 +422,35 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 	for _, legacy := range []string{"/dashboard since:", "/service service:", "/logs service:", "/errors service:", "/ops " + "copy", "/ops service service:report view:copy"} {
 		if strings.Contains(got, legacy) {
 			t.Fatalf("help text should be ops-focused and omit legacy command %q: %s", legacy, got)
+		}
+	}
+}
+
+func TestHelpTopicAssignmentsAndCommandAssignmentCheckExplainPurpose(t *testing.T) {
+	topic := HelpTextFor("assignments", "")
+	for _, want := range []string{"/ops assignment", "view:diagnosis", "/ops assignment-events", "/ops assignment-ack", "/ops logs ... query:"} {
+		if !strings.Contains(topic, want) {
+			t.Fatalf("assignment topic missing %q: %s", want, topic)
+		}
+	}
+	command := HelpTextFor("", "assignment-check")
+	for _, want := range []string{"역할:", "확인하는 것:", "problemId", "감지 이력 확인", "의도된 상태면 ack"} {
+		if !strings.Contains(command, want) {
+			t.Fatalf("assignment-check help missing %q: %s", want, command)
+		}
+	}
+}
+
+func TestFormatAdminAssignmentCheckChecklistIncludesBotIssue(t *testing.T) {
+	got := FormatAdminAssignmentCheck("3rd-cs", reportadmin.Assignment{
+		ID:      "1d74df8d-c501-405e-9327-d8f39b4d98cb",
+		Status:  "DRAFT",
+		StartAt: "2025-05-19T09:00:00+09:00",
+		EndAt:   "2025-05-23T18:00:00+09:00",
+	}, reportadmin.AssignmentCheck{Status: reportadmin.StatusWarn, Findings: []string{"problemId가 비어 있습니다."}}, "OPEN")
+	for _, want := range []string{"checks:", "title: MISSING", "problemId: MISSING", "botIssue: OPEN", "does not explain ASSIGNMENT_DRAFT_PAST_START"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assignment check missing %q: %s", want, got)
 		}
 	}
 }

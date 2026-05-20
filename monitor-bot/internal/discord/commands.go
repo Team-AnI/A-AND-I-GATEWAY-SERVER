@@ -64,10 +64,15 @@ func Definitions() []commandDefinition {
 	alertActionChoices := choices("channel", "role", "role-clear", "on", "off", "status", "test")
 	assignmentStatusChoices := choices("all", "published", "draft", "scheduled")
 	assignmentWindowChoices := choices("today", "this-week")
+	assignmentViewChoices := choices("summary", "diagnosis", "raw")
+	assignmentEventChoices := choices("publish-delayed", "draft-past-start", "stale-draft", "invalid-time", "missing-problem", "grading-failed")
+	assignmentAckUntilChoices := choices("1h", "6h", "1d", "7d", "forever")
 	levelChoices := choices("INFO", "WARN", "ERROR")
 	limitChoices := integerChoices(5, 10, 20)
 	serviceViewChoices := choices("summary", "health")
 	logModeChoices := choices("recent", "errors", "slow", "security")
+	helpTopicChoices := choices("overview", "dashboard", "logs", "alerts", "assignments", "feeds")
+	helpCommandChoices := choices("dashboard", "service", "logs", "trace", "alert", "watch", "logs-watch", "assignments", "assignment", "assignment-check", "assignment-events", "assignment-ack", "submissions")
 	alarmStateChoices := choices("ALARM", "OK", "INSUFFICIENT_DATA", "all")
 	storageViewChoices := choices("usage", "retention")
 	return []commandDefinition{
@@ -86,6 +91,7 @@ func Definitions() []commandDefinition {
 				stringOption("level", "로그 레벨", false, levelChoices),
 				stringOption("since", "조회 기간", false, reportSinceChoices),
 				integerOption("limit", "출력 개수", false, limitChoices),
+				stringOption("query", "traceId, assignmentId, eventType, errorCode 검색어", false, nil),
 			}),
 			subcommandOption("watch", "서비스 대시보드 자동 갱신 등록", []commandOption{
 				stringOption("scope", "dashboard 범위", true, watchScopeChoices),
@@ -126,10 +132,27 @@ func Definitions() []commandDefinition {
 			subcommandOption("assignment", "특정 과제 이벤트 조회", []commandOption{
 				stringOption("course", "courseSlug", true, nil),
 				stringOption("id", "assignmentId", true, nil),
+				stringOption("view", "보기 방식", false, assignmentViewChoices),
 			}),
 			subcommandOption("assignment-check", "특정 과제 상태 검증", []commandOption{
 				stringOption("course", "courseSlug", true, nil),
 				stringOption("id", "assignmentId", true, nil),
+			}),
+			subcommandOption("assignment-events", "과제 감지 이력과 dedupe 상태 조회", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("id", "assignmentId", true, nil),
+			}),
+			subcommandOption("assignment-ack", "알고 있는 과제 이슈 알림 중지", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("id", "assignmentId", true, nil),
+				stringOption("event", "ack할 이벤트", true, assignmentEventChoices),
+				stringOption("until", "ack 유지 기간", true, assignmentAckUntilChoices),
+				stringOption("reason", "운영 기록 사유", true, nil),
+			}),
+			subcommandOption("assignment-unack", "과제 이슈 ack 해제", []commandOption{
+				stringOption("course", "courseSlug", true, nil),
+				stringOption("id", "assignmentId", true, nil),
+				stringOption("event", "ack 해제할 이벤트", true, assignmentEventChoices),
 			}),
 			subcommandOption("submissions", "과제 제출/채점 상태 요약", []commandOption{
 				stringOption("course", "courseSlug", true, nil),
@@ -145,7 +168,10 @@ func Definitions() []commandDefinition {
 			subcommandOption("storage", "CloudWatch log 사용량과 retention", []commandOption{
 				stringOption("view", "storage 보기", false, storageViewChoices),
 			}),
-			subcommandOption("help", "운영 명령어 도움말", nil),
+			subcommandOption("help", "운영 명령어 도움말", []commandOption{
+				stringOption("topic", "도움말 주제", false, helpTopicChoices),
+				stringOption("command", "상세 설명할 명령어", false, helpCommandChoices),
+			}),
 		}},
 	}
 }

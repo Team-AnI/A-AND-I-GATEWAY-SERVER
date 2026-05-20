@@ -46,6 +46,11 @@ type OpsController interface {
 	WatchLogFeed(ctx context.Context, channelID, service, mode, since string, interval time.Duration, limit int) (string, error)
 	UnwatchLogFeed(ctx context.Context, service, mode string) (string, error)
 	ListLogFeeds(ctx context.Context) string
+	DescribeAssignmentDiagnosis(courseSlug string, assignment reportadmin.Assignment) string
+	AssignmentIssueStatus(courseSlug, assignmentID string) string
+	AssignmentIssueHistory(courseSlug, assignmentID string) string
+	AcknowledgeAssignmentIssue(courseSlug, assignmentID, eventSlug, until, reason, actor string) (string, error)
+	UnacknowledgeAssignmentIssue(courseSlug, assignmentID, eventSlug string) (string, error)
 }
 
 type Interaction struct {
@@ -207,6 +212,12 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 		return h.assignmentCommand(ctx, interactionForCommand("assignment", subcommand.Options))
 	case "assignment-check":
 		return h.assignmentCheckCommand(ctx, interactionForCommand("assignment-check", subcommand.Options))
+	case "assignment-events":
+		return h.assignmentEventsCommand(ctx, subcommand)
+	case "assignment-ack":
+		return h.assignmentAckCommand(ctx, subcommand)
+	case "assignment-unack":
+		return h.assignmentUnackCommand(ctx, subcommand)
 	case "submissions":
 		return h.submissionsCommand(ctx, interactionForCommand("submissions", subcommand.Options))
 	case "trace":
@@ -227,7 +238,7 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 			return "지원하지 않는 storage view입니다."
 		}
 	case "help":
-		return formatting.HelpText()
+		return formatting.HelpTextFor(optionStringFromOptions(subcommand.Options, "topic"), optionStringFromOptions(subcommand.Options, "command"))
 	default:
 		return "지원하지 않는 /ops subcommand입니다. /ops help 를 확인하세요."
 	}
@@ -378,18 +389,23 @@ func (h *Handler) opsLogsCommand(ctx context.Context, subcommand ApplicationComm
 	if level == "" {
 		level = "ERROR"
 	}
+	query := optionStringFromOptions(subcommand.Options, "query")
 	limit := parseOpsLimit(optionStringFromOptions(subcommand.Options, "limit"), h.cfg.CloudWatchQueryLimit)
 	switch mode {
 	case "recent":
 		if service == "all" {
 			return allServiceGuardMessage()
 		}
-		return withNext(h.logsCommand(ctx, interactionForCommand("logs", []ApplicationCommandOpt{
+		options := []ApplicationCommandOpt{
 			stringInteractionOption("service", service),
 			stringInteractionOption("since", since),
 			stringInteractionOption("level", level),
 			stringInteractionOption("limit", strconv.Itoa(limit)),
-		})), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops service service:"+opsDisplayServiceName(service))
+		}
+		if query != "" {
+			options = append(options, stringInteractionOption("query", query))
+		}
+		return withNext(h.logsCommand(ctx, interactionForCommand("logs", options)), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors", "/ops service service:"+opsDisplayServiceName(service))
 	case "errors":
 		if service == "all" && !sinceAllowsAllQuery(since) {
 			return allServiceSinceGuardMessage()
@@ -775,7 +791,23 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 		}
 		return h.assignmentLogFallback(ctx, "Assignment", courseSlug, assignmentID, status, err)
 	}
-	return formatting.WithAdminNotice(formatting.FormatAdminAssignment(courseSlug, assignment), notice)
+	view := optionString(interaction, "view")
+	if view == "" {
+		view = "summary"
+	}
+	switch view {
+	case "summary":
+		return formatting.WithAdminNotice(formatting.FormatAdminAssignment(courseSlug, assignment), notice)
+	case "diagnosis":
+		if h.ops == nil {
+			return formatting.WithAdminNotice(formatting.FormatAdminAssignment(courseSlug, assignment), notice)
+		}
+		return formatting.WithAdminNotice(h.ops.DescribeAssignmentDiagnosis(courseSlug, assignment), notice)
+	case "raw":
+		return formatting.WithAdminNotice(formatting.FormatAdminAssignmentRaw(courseSlug, assignment), notice)
+	default:
+		return "지원하지 않는 assignment view입니다. summary, diagnosis, raw 중 하나를 사용하세요."
+	}
 }
 
 func (h *Handler) assignmentCheckCommand(ctx context.Context, interaction Interaction) string {
@@ -800,7 +832,74 @@ func (h *Handler) assignmentCheckCommand(ctx context.Context, interaction Intera
 		}
 		return h.assignmentLogFallback(ctx, "Assignment check", courseSlug, assignmentID, status, err)
 	}
-	return formatting.WithAdminNotice(formatting.FormatAdminAssignmentCheck(courseSlug, assignment, reportadmin.CheckAssignment(assignment)), notice)
+	botIssue := "NONE"
+	if h.ops != nil {
+		botIssue = h.ops.AssignmentIssueStatus(courseSlug, assignmentID)
+	}
+	return formatting.WithAdminNotice(formatting.FormatAdminAssignmentCheck(courseSlug, assignment, reportadmin.CheckAssignment(assignment), botIssue), notice)
+}
+
+func (h *Handler) assignmentEventsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	_ = ctx
+	courseSlug := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "course"))
+	assignmentID := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "id"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+	}
+	if !security.ValidateAssignmentID(assignmentID) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
+	}
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	return h.ops.AssignmentIssueHistory(courseSlug, assignmentID)
+}
+
+func (h *Handler) assignmentAckCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	_ = ctx
+	courseSlug := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "course"))
+	assignmentID := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "id"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+	}
+	if !security.ValidateAssignmentID(assignmentID) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
+	}
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	result, err := h.ops.AcknowledgeAssignmentIssue(
+		courseSlug,
+		assignmentID,
+		optionStringFromOptions(subcommand.Options, "event"),
+		optionStringFromOptions(subcommand.Options, "until"),
+		optionStringFromOptions(subcommand.Options, "reason"),
+		"discord",
+	)
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
+}
+
+func (h *Handler) assignmentUnackCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
+	_ = ctx
+	courseSlug := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "course"))
+	assignmentID := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "id"))
+	if !security.ValidateCourseSlug(courseSlug) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
+	}
+	if !security.ValidateAssignmentID(assignmentID) {
+		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
+	}
+	if h.ops == nil {
+		return "Service Ops controller is not ready."
+	}
+	result, err := h.ops.UnacknowledgeAssignmentIssue(courseSlug, assignmentID, optionStringFromOptions(subcommand.Options, "event"))
+	if err != nil {
+		return security.SanitizeText(err.Error())
+	}
+	return result
 }
 
 func (h *Handler) submissionsCommand(ctx context.Context, interaction Interaction) string {
@@ -964,7 +1063,8 @@ func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) stri
 		return security.SanitizeText(err.Error())
 	}
 	limit := parseOpsLimit(optionString(interaction, "limit"), h.cfg.CloudWatchQueryLimit)
-	query, err := cw.BuildRecentLogsQuery(service, level, limit)
+	search := optionString(interaction, "query")
+	query, err := cw.BuildRecentLogsQueryWithSearch(service, level, search, limit)
 	if err != nil {
 		return security.SanitizeText(err.Error())
 	}
@@ -972,7 +1072,11 @@ func (h *Handler) logsCommand(ctx context.Context, interaction Interaction) stri
 	if err != nil {
 		return "CloudWatch logs 조회 실패: " + security.SanitizeText(err.Error())
 	}
-	return appendTraceNext(formatting.FormatLogRows("최근 로그", rows), rows)
+	title := "최근 로그"
+	if search != "" {
+		title = "최근 로그 query=" + security.SanitizeText(search)
+	}
+	return appendTraceNext(formatting.FormatLogRows(title, rows), rows)
 }
 
 func (h *Handler) errorsCommand(ctx context.Context, interaction Interaction) string {

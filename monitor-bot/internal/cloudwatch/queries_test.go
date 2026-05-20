@@ -54,6 +54,34 @@ func TestBuildRecentAndErrorsQueriesApplyLimit(t *testing.T) {
 	}
 }
 
+func TestBuildRecentLogsQueryWithSearchUsesStructuredFields(t *testing.T) {
+	query, err := BuildRecentLogsQueryWithSearch("report", "ERROR", "1d74df8d-c501-405e-9327-d8f39b4d98cb", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"trace.traceId", "trace.requestId", "event.eventType", "assignmentId", "request.pathVariables.assignmentId", "response.error.code", "response.error.value", "http.path like", "http.route like"} {
+		if !strings.Contains(query, want) {
+			t.Fatalf("search query missing %q: %s", want, query)
+		}
+	}
+	if !strings.Contains(query, "@message like") {
+		t.Fatalf("@message fallback should exist for search only: %s", query)
+	}
+	alertQuery, err := BuildAlertQuery("report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(alertQuery, "@message") {
+		t.Fatalf("alert classification must not use @message fallback: %s", alertQuery)
+	}
+}
+
+func TestBuildRecentLogsQueryWithSearchValidatesInput(t *testing.T) {
+	if _, err := BuildRecentLogsQueryWithSearch("report", "ERROR", `x" or request.body like /secret/`, 20); err == nil {
+		t.Fatal("unsafe search query accepted")
+	}
+}
+
 func TestLogGroupsForServiceAllowlist(t *testing.T) {
 	groups := map[string]string{"gateway": "/a-and-i/gateway", "auth": "/a-and-i/auth", "post": "/a-and-i/prod/tech-blog"}
 	got, err := LogGroupsForService(groups, "gateway")

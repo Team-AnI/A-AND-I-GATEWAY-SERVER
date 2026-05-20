@@ -18,24 +18,25 @@ type Store struct {
 }
 
 type Data struct {
-	Version                       int                           `json:"version,omitempty"`
-	DashboardChannelID            string                        `json:"dashboardChannelId,omitempty"`
-	DashboardMessageID            string                        `json:"dashboardMessageId,omitempty"`
-	DashboardIntervalSec          int                           `json:"dashboardIntervalSeconds,omitempty"`
-	LastDashboardUpdatedAt        time.Time                     `json:"lastDashboardUpdatedAt,omitempty"`
-	ServiceDashboards             map[string]ServiceDashboard   `json:"serviceDashboards,omitempty"`
-	ServiceAlerts                 ServiceAlertsConfig           `json:"serviceAlerts,omitempty"`
-	LogFeeds                      map[string]LogFeed            `json:"logFeeds,omitempty"`
-	AssignmentOpsMessageID        string                        `json:"assignmentOpsMessageId,omitempty"`
-	LastAssignmentOpsUpdatedAt    time.Time                     `json:"lastAssignmentOpsUpdatedAt,omitempty"`
-	AssignmentBaselineInitialized bool                          `json:"assignmentBaselineInitialized,omitempty"`
-	AssignmentSnapshots           map[string]AssignmentSnapshot `json:"assignmentSnapshots,omitempty"`
-	AssignmentEventFingerprints   map[string]AlertState         `json:"assignmentEventFingerprints,omitempty"`
-	RecentAssignmentEvents        []AssignmentEventState        `json:"recentAssignmentEvents,omitempty"`
-	Alerts                        map[string]AlertState         `json:"alertFingerprints,omitempty"`
-	RecentServiceAlerts           []ServiceAlertEventState      `json:"recentServiceAlerts,omitempty"`
-	HealthDownCounts              map[string]int                `json:"healthDownCounts,omitempty"`
-	LastAlertSentAt               time.Time                     `json:"lastAlertSentAt,omitempty"`
+	Version                       int                             `json:"version,omitempty"`
+	DashboardChannelID            string                          `json:"dashboardChannelId,omitempty"`
+	DashboardMessageID            string                          `json:"dashboardMessageId,omitempty"`
+	DashboardIntervalSec          int                             `json:"dashboardIntervalSeconds,omitempty"`
+	LastDashboardUpdatedAt        time.Time                       `json:"lastDashboardUpdatedAt,omitempty"`
+	ServiceDashboards             map[string]ServiceDashboard     `json:"serviceDashboards,omitempty"`
+	ServiceAlerts                 ServiceAlertsConfig             `json:"serviceAlerts,omitempty"`
+	LogFeeds                      map[string]LogFeed              `json:"logFeeds,omitempty"`
+	AssignmentOpsMessageID        string                          `json:"assignmentOpsMessageId,omitempty"`
+	LastAssignmentOpsUpdatedAt    time.Time                       `json:"lastAssignmentOpsUpdatedAt,omitempty"`
+	AssignmentBaselineInitialized bool                            `json:"assignmentBaselineInitialized,omitempty"`
+	AssignmentSnapshots           map[string]AssignmentSnapshot   `json:"assignmentSnapshots,omitempty"`
+	AssignmentEventFingerprints   map[string]AlertState           `json:"assignmentEventFingerprints,omitempty"`
+	AssignmentIssues              map[string]AssignmentIssueState `json:"assignmentIssues,omitempty"`
+	RecentAssignmentEvents        []AssignmentEventState          `json:"recentAssignmentEvents,omitempty"`
+	Alerts                        map[string]AlertState           `json:"alertFingerprints,omitempty"`
+	RecentServiceAlerts           []ServiceAlertEventState        `json:"recentServiceAlerts,omitempty"`
+	HealthDownCounts              map[string]int                  `json:"healthDownCounts,omitempty"`
+	LastAlertSentAt               time.Time                       `json:"lastAlertSentAt,omitempty"`
 }
 
 type ServiceDashboard struct {
@@ -91,14 +92,58 @@ type AssignmentSnapshot struct {
 }
 
 type AssignmentEventState struct {
-	Fingerprint  string    `json:"fingerprint,omitempty"`
-	EventType    string    `json:"eventType,omitempty"`
-	Severity     string    `json:"severity,omitempty"`
-	CourseSlug   string    `json:"courseSlug,omitempty"`
-	AssignmentID string    `json:"assignmentId,omitempty"`
-	Title        string    `json:"title,omitempty"`
-	Summary      string    `json:"summary,omitempty"`
-	CreatedAt    time.Time `json:"createdAt,omitempty"`
+	Fingerprint     string    `json:"fingerprint,omitempty"`
+	IssueKey        string    `json:"issueKey,omitempty"`
+	EventType       string    `json:"eventType,omitempty"`
+	Severity        string    `json:"severity,omitempty"`
+	CourseSlug      string    `json:"courseSlug,omitempty"`
+	AssignmentID    string    `json:"assignmentId,omitempty"`
+	Title           string    `json:"title,omitempty"`
+	Status          string    `json:"status,omitempty"`
+	PublishedAt     string    `json:"publishedAt,omitempty"`
+	StartAt         string    `json:"startAt,omitempty"`
+	EndAt           string    `json:"endAt,omitempty"`
+	ProblemID       string    `json:"problemId,omitempty"`
+	Summary         string    `json:"summary,omitempty"`
+	ReasonCode      string    `json:"reasonCode,omitempty"`
+	ReasonText      string    `json:"reasonText,omitempty"`
+	Evidence        []string  `json:"evidence,omitempty"`
+	EvidenceHash    string    `json:"evidenceHash,omitempty"`
+	IssueState      string    `json:"issueState,omitempty"`
+	FirstDetectedAt time.Time `json:"firstDetectedAt,omitempty"`
+	LastDetectedAt  time.Time `json:"lastDetectedAt,omitempty"`
+	LastNotifiedAt  time.Time `json:"lastNotifiedAt,omitempty"`
+	NotifyCount     int       `json:"notifyCount,omitempty"`
+	RepeatPolicy    string    `json:"repeatPolicy,omitempty"`
+	ShouldNotify    bool      `json:"shouldNotify,omitempty"`
+	ShouldCount     bool      `json:"shouldCount,omitempty"`
+	CreatedAt       time.Time `json:"createdAt,omitempty"`
+}
+
+type AssignmentIssueState struct {
+	IssueKey        string    `json:"issueKey,omitempty"`
+	EventType       string    `json:"eventType,omitempty"`
+	Severity        string    `json:"severity,omitempty"`
+	CourseSlug      string    `json:"courseSlug,omitempty"`
+	AssignmentID    string    `json:"assignmentId,omitempty"`
+	Title           string    `json:"title,omitempty"`
+	Status          string    `json:"status,omitempty"`
+	PublishedAt     string    `json:"publishedAt,omitempty"`
+	StartAt         string    `json:"startAt,omitempty"`
+	EndAt           string    `json:"endAt,omitempty"`
+	ProblemID       string    `json:"problemId,omitempty"`
+	FirstDetectedAt time.Time `json:"firstDetectedAt,omitempty"`
+	LastDetectedAt  time.Time `json:"lastDetectedAt,omitempty"`
+	LastNotifiedAt  time.Time `json:"lastNotifiedAt,omitempty"`
+	ResolvedAt      time.Time `json:"resolvedAt,omitempty"`
+	State           string    `json:"state,omitempty"`
+	NotifyCount     int       `json:"notifyCount,omitempty"`
+	EvidenceHash    string    `json:"evidenceHash,omitempty"`
+	ReasonCode      string    `json:"reasonCode,omitempty"`
+	ReasonText      string    `json:"reasonText,omitempty"`
+	AckBy           string    `json:"ackBy,omitempty"`
+	AckReason       string    `json:"ackReason,omitempty"`
+	AckUntil        time.Time `json:"ackUntil,omitempty"`
 }
 
 type AlertState struct {
@@ -242,6 +287,9 @@ func normalize(data Data) Data {
 	if data.AssignmentEventFingerprints == nil {
 		data.AssignmentEventFingerprints = make(map[string]AlertState)
 	}
+	if data.AssignmentIssues == nil {
+		data.AssignmentIssues = make(map[string]AssignmentIssueState)
+	}
 	if data.HealthDownCounts == nil {
 		data.HealthDownCounts = make(map[string]int)
 	}
@@ -352,6 +400,10 @@ func cloneData(data Data) Data {
 	cloned.AssignmentEventFingerprints = make(map[string]AlertState, len(data.AssignmentEventFingerprints))
 	for key, value := range data.AssignmentEventFingerprints {
 		cloned.AssignmentEventFingerprints[key] = value
+	}
+	cloned.AssignmentIssues = make(map[string]AssignmentIssueState, len(data.AssignmentIssues))
+	for key, value := range data.AssignmentIssues {
+		cloned.AssignmentIssues[key] = value
 	}
 	cloned.RecentAssignmentEvents = append([]AssignmentEventState(nil), data.RecentAssignmentEvents...)
 	cloned.RecentServiceAlerts = append([]ServiceAlertEventState(nil), data.RecentServiceAlerts...)

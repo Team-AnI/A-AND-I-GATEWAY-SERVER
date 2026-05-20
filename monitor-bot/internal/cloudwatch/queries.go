@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	recentFields     = `fields @timestamp, level, logType, env, service.name, service.domain, service.domainCode, service.version, service.instanceId, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
+	recentFields     = `fields @timestamp, level, logType, env, service.name, service.domain, service.domainCode, service.version, service.instanceId, trace.traceId, trace.requestId, event.eventType, assignmentId, request.pathVariables.assignmentId, http.method, http.path, http.route, http.statusCode, http.latencyMs, actor.userId, actor.role, actor.isAuthenticated, response.success, response.error.code, response.error.value, response.error.message, response.error.alert, message, tags`
 	traceFields      = `fields @timestamp, level, logType, service.name, service.domain, service.domainCode, service.version, trace.traceId, trace.requestId, http.method, http.path, http.route, http.statusCode, http.latencyMs, response.success, response.error.code, response.error.value, response.error.message, message, tags`
 	errorFields      = `fields service.domain, service.name, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, trace.traceId, logType, message`
 	assignmentFields = `fields service.name, http.method, http.path, http.route, http.statusCode, response.error.code, response.error.value, response.error.message, tags`
@@ -53,6 +53,10 @@ func LogGroupsForOptionalService(logGroups map[string]string, service string, ma
 }
 
 func BuildRecentLogsQuery(service, level string, limit int) (string, error) {
+	return BuildRecentLogsQueryWithSearch(service, level, "", limit)
+}
+
+func BuildRecentLogsQueryWithSearch(service, level, search string, limit int) (string, error) {
 	normalizedService, ok := security.NormalizeService(service)
 	if !ok {
 		return "", fmt.Errorf("unsupported service: %s", service)
@@ -61,13 +65,24 @@ func BuildRecentLogsQuery(service, level string, limit int) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unsupported level: %s", level)
 	}
+	searchFilter := ""
+	search = strings.TrimSpace(search)
+	if search != "" {
+		if !security.ValidateLogSearchQuery(search) {
+			return "", fmt.Errorf("invalid query")
+		}
+		quoted := regexpQuoteForLogsInsights(search)
+		searchFilter = fmt.Sprintf(`
+| filter trace.traceId = "%[1]s" or trace.requestId = "%[1]s" or event.eventType = "%[1]s" or assignmentId = "%[1]s" or request.pathVariables.assignmentId = "%[1]s" or response.error.code = "%[1]s" or response.error.value = "%[1]s" or http.path like /%[2]s/ or http.route like /%[2]s/ or @message like /%[2]s/`, search, quoted)
+	}
 	limit32 := security.ClampLimit(limit, 20, 100)
 	return fmt.Sprintf(`%s
 %s
 | filter logType != "" and service.name != ""
 | filter level = "%s"
+%s
 | sort @timestamp desc
-| limit %d`, recentFields, serviceDomainFilter(normalizedService), normalized, limit32), nil
+| limit %d`, recentFields, serviceDomainFilter(normalizedService), normalized, searchFilter, limit32), nil
 }
 
 func BuildTraceQuery(traceID string) (string, error) {
@@ -229,6 +244,7 @@ func regexpQuoteForLogsInsights(value string) string {
 		`{`, `\{`,
 		`}`, `\}`,
 		`|`, `\|`,
+		`/`, `\/`,
 	)
 	return replacer.Replace(value)
 }
