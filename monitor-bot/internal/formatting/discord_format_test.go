@@ -409,14 +409,14 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"5. /ops help",
 		"/ops dashboard service:report",
 		"/ops logs service:report mode:errors since:30m limit:10",
-		"/ops logs service:report mode:events query:<assignmentId> since:24h limit:20",
+		"/ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20",
 		"/ops logs mode:trace query:<traceId>",
 		"/ops alert action:channel target:general channel:#ops-log",
 		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
 		"/ops assignment course:3rd-cs",
-		"/ops assignment course:3rd-cs id:<id> view:diagnosis",
-		"/ops assignment course:3rd-cs id:<id> view:events",
+		"/ops assignment course:<course> id:<assignmentId> view:diagnosis",
+		"/ops assignment course:<course> id:<assignmentId> view:events",
 		"봇은 과제를 생성/수정/삭제/공개하지 않습니다",
 		"CRITICAL 서버 장애만 role mention",
 	} {
@@ -433,7 +433,7 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 
 func TestHelpTopicAssignmentsAndCommandAssignmentCheckExplainPurpose(t *testing.T) {
 	topic := HelpTextFor("assignments", "", "")
-	for _, want := range []string{"/ops assignment", "action:list", "action:check", "action:submissions", "view:diagnosis", "view:events", "action:ack", "/ops logs ... query:", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
+	for _, want := range []string{"/ops assignment", "action:list", "action:check", "action:submissions", "view:diagnosis", "view:events", "action:ack", "query:<assignmentId|traceId|actorId>", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
 		if !strings.Contains(topic, want) {
 			t.Fatalf("assignment topic missing %q: %s", want, topic)
 		}
@@ -485,25 +485,34 @@ func TestHelpCommandPagesMatchFiveCommandFamilies(t *testing.T) {
 
 func TestHelpQueryExplainsAssignmentAuditAndRouting(t *testing.T) {
 	got := HelpTextFor("", "", "과제 수정 누가")
-	for _, want := range []string{"Report EVENT logs", "ASSIGNMENT_CREATED/UPDATED/DELETED/PUBLISHED/UNPUBLISHED", "/ops logs service:report mode:events", "/ops assignment course:<course> id:<assignmentId> view:events", "bot은 과제를 생성/수정/삭제/공개하지 않습니다"} {
+	for _, want := range []string{"Report EVENT logs", "query:<assignmentId|traceId|actorId>", "/ops assignment course:<course> id:<assignmentId> view:events", "현재 assignment state does not prove actor", "bot은 과제를 업데이트하지 않습니다"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("assignment audit query help missing %q: %s", want, got)
 		}
 	}
 	got = HelpTextFor("", "", "과제 삭제 언제")
-	for _, want := range []string{"mode:events", "삭제된 과제는 /ops assignment 조회가 실패할 수 있습니다", "Report EVENT 로그"} {
+	for _, want := range []string{"mode:events", "query:<assignmentId|traceId|actorId>", "삭제된 assignment는 /ops assignment course:<course> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다", "Report V2 EVENT logs", "현재 WEB Admin state"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("assignment deletion query help missing %q: %s", want, got)
 		}
 	}
 	got = HelpTextFor("", "", "critical role")
-	for _, want := range []string{"target:critical", "/ops alert action:role", "HIGH 알림은 general 채널"} {
+	for _, want := range []string{"target:critical", "/ops alert action:role", "CRITICAL only", "HIGH/general/audit/WARN do not role-mention"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("critical routing query help missing %q: %s", want, got)
 		}
 	}
+	got = HelpTextFor("", "", "critical 알림 role")
+	for _, forbidden := range []string{"반복 알림 정책", "lifecycle state", "action:ack event:<eventType>"} {
+		if strings.Contains(got, forbidden) {
+			t.Fatalf("critical alert role query should not use repeated-alert help %q: %s", forbidden, got)
+		}
+	}
+	if !strings.Contains(got, "target:critical") || !strings.Contains(got, "CRITICAL only") {
+		t.Fatalf("critical alert role query should route to critical help: %s", got)
+	}
 	got = HelpTextFor("", "", "일반 로그 채널")
-	for _, want := range []string{"target:general", "assignment audit", "CRITICAL 서버 장애"} {
+	for _, want := range []string{"target:general", "assignment audit", "normal ops logs go to general", "CRITICAL goes to critical"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("general channel query help missing %q: %s", want, got)
 		}
@@ -515,7 +524,7 @@ func TestHelpQueryExplainsAssignmentAuditAndRouting(t *testing.T) {
 		}
 	}
 	got = HelpTextFor("", "", "반복 알림")
-	for _, want := range []string{"lifecycle state", "cooldown", "digest", "action:ack"} {
+	for _, want := range []string{"assignment issues are lifecycle state, not an event stream", "cooldown", "digest groups repeated assignment issues", "action:ack event:<eventType>"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("repeat alert query help missing %q: %s", want, got)
 		}
@@ -530,6 +539,35 @@ func TestHelpQueryExplainsAssignmentAuditAndRouting(t *testing.T) {
 	for _, want := range []string{"tag/deploy", "git tag", "DISCORD_REGISTER_COMMANDS=true"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("tag deploy query help missing %q: %s", want, got)
+		}
+	}
+}
+
+func TestHelpExamplesUseExplicitPlaceholders(t *testing.T) {
+	pages := map[string]string{
+		"default":         HelpText(),
+		"assignments":     HelpTextFor("assignments", "", ""),
+		"logs":            HelpTextFor("logs", "", ""),
+		"audit":           HelpTextFor("audit", "", ""),
+		"troubleshooting": HelpTextFor("troubleshooting", "", ""),
+		"assignment":      HelpTextFor("", "assignment", ""),
+		"assignmentCheck": HelpTextFor("", "assignment-check", ""),
+		"deleteQuery":     HelpTextFor("", "", "과제 삭제 언제"),
+		"updateQuery":     HelpTextFor("", "", "과제 수정 누가"),
+		"repeatQuery":     HelpTextFor("", "", "반복 알림"),
+	}
+	for name, got := range pages {
+		for _, forbidden := range []string{"id:<id>", "event:<event>", "reason:\"old draft\"", "/ops logs ... query:", "query:<assignmentId> since:24h"} {
+			if strings.Contains(got, forbidden) {
+				t.Fatalf("help page %s has ambiguous placeholder %q: %s", name, forbidden, got)
+			}
+		}
+	}
+	for name, got := range pages {
+		for _, want := range []string{"<assignmentId>", "<course>"} {
+			if strings.Contains(got, "/ops assignment") && !strings.Contains(got, want) {
+				t.Fatalf("help page %s should include explicit placeholder %q: %s", name, want, got)
+			}
 		}
 	}
 }

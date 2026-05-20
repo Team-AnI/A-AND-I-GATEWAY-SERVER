@@ -736,7 +736,7 @@ func HelpTextFor(topic, command, query string) string {
 2. /ops logs
    - 오류, CRITICAL, trace, EVENT/audit 로그를 검색합니다.
    - 예: /ops logs service:report mode:errors since:30m limit:10
-   - 예: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+   - 예: /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
    - 예: /ops logs mode:trace query:<traceId>
 
 3. /ops alert
@@ -748,8 +748,8 @@ func HelpTextFor(topic, command, query string) string {
 4. /ops assignment
    - 과제 목록, 상세, 진단, 이벤트 이력, ack, 제출 상태를 봅니다.
    - 예: /ops assignment course:3rd-cs
-   - 예: /ops assignment course:3rd-cs id:<id> view:diagnosis
-   - 예: /ops assignment course:3rd-cs id:<id> view:events
+   - 예: /ops assignment course:<course> id:<assignmentId> view:diagnosis
+   - 예: /ops assignment course:<course> id:<assignmentId> view:events
 
 5. /ops help
    - 상황별로 쓸 명령을 검색합니다.
@@ -877,23 +877,22 @@ func helpAssignmentsText() string {
 - 목적: 과제 목록, 상세, 진단, 감지 이력, 체크리스트, 제출 상태, ack/unack을 한 명령에서 처리
 - list: /ops assignment course:3rd-cs action:list status:draft
 - all list: /ops assignment scope:all action:list window:today
-- summary: /ops assignment course:3rd-cs id:<id>
-- diagnosis: /ops assignment course:3rd-cs id:<id> view:diagnosis
-- events: /ops assignment course:3rd-cs id:<id> view:events
-- check: /ops assignment course:3rd-cs id:<id> action:check
-- submissions: /ops assignment course:3rd-cs id:<id> action:submissions
-- ack: /ops assignment course:3rd-cs id:<id> action:ack event:draft-past-start until:7d reason:"old draft"
+- summary: /ops assignment course:<course> id:<assignmentId>
+- diagnosis: /ops assignment course:<course> id:<assignmentId> view:diagnosis
+- events: /ops assignment course:<course> id:<assignmentId> view:events
+- check: /ops assignment course:<course> id:<assignmentId> action:check
+- submissions: /ops assignment course:<course> id:<assignmentId> action:submissions
+- ack: /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>
 - 주의: 누가 변경했는지 증명하는 audit trail이 아닙니다.
 
-/ops logs ... query:
+/ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
 - 목적: WEB Admin API가 답하지 못하는 원인을 CloudWatch 로그에서 검색
-- 예시: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
 
 Assignment audit notifications
 - 목적: 과제 등록/수정/삭제/공개/비공개를 누가 언제 했는지 확인
 - source: Report EVENT logs only
 - 이벤트: ASSIGNMENT_CREATED, ASSIGNMENT_UPDATED, ASSIGNMENT_DELETED, ASSIGNMENT_PUBLISHED, ASSIGNMENT_UNPUBLISHED
-- 조회: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+- 조회: /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
 - 주의: bot은 과제를 생성/수정/삭제/공개하지 않습니다. actor/occurredAt은 EVENT 로그에 있을 때만 표시하고 없으면 unknown입니다.`)
 }
 
@@ -939,11 +938,11 @@ CRITICAL role mention이 동작하지 않음:
 과제 WARN이 많음:
 - Too many assignment warnings:
 - issue digest와 repeated suppressed count를 확인합니다.
-- /ops assignment course:<course> id:<id> view:events로 감지 이력을 봅니다.
-- 의도된 stale issue는 /ops assignment ... action:ack으로 묶습니다.
+- /ops assignment course:<course> id:<assignmentId> view:events로 감지 이력을 봅니다.
+- 의도된 stale issue는 /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>으로 묶습니다.
 
 누가 과제를 수정했는지 확인:
-- /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+- /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
 
 서버 장애 원인 추적:
 - traceId가 있으면 /ops logs mode:trace query:<traceId>를 사용합니다.`)
@@ -968,9 +967,9 @@ func helpCommandText(command string) string {
 이 명령은 왜 알림이 발생했는지 설명해야 합니다. problemId 누락만으로 DRAFT past start를 설명하지 않습니다.
 
 다음 단계:
-- 서버 로그 검색: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+- 서버 로그 검색: /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
 - 감지 이력 확인: /ops assignment course:<course> id:<assignmentId> view:events
-- 의도된 상태면 ack: /ops assignment course:<course> id:<assignmentId> action:ack event:<event> until:7d reason:<reason>`)
+- 의도된 상태면 ack: /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`)
 	case "dashboard":
 		return strings.TrimSpace(`/ops dashboard
 
@@ -1033,10 +1032,10 @@ action:
 
 예시:
 /ops assignment course:3rd-cs action:list status:draft
-/ops assignment course:3rd-cs id:<id> view:events
-/ops assignment course:3rd-cs id:<id> action:check
-/ops assignment course:3rd-cs id:<id> action:submissions
-/ops assignment course:3rd-cs id:<id> action:ack event:draft-past-start until:7d reason:"old draft"`)
+/ops assignment course:<course> id:<assignmentId> view:events
+/ops assignment course:<course> id:<assignmentId> action:check
+/ops assignment course:<course> id:<assignmentId> action:submissions
+/ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`)
 	case "help":
 		return strings.TrimSpace(`/ops help
 
@@ -1056,6 +1055,18 @@ action:
 
 func helpQueryText(query string) string {
 	normalized := strings.ToLower(strings.TrimSpace(query))
+	assignmentQuery := strings.Contains(normalized, "과제") || strings.Contains(normalized, "assignment")
+	deleteQuery := strings.Contains(normalized, "삭제") || strings.Contains(normalized, "delete") || strings.Contains(normalized, "deleted")
+	updateActorQuery := strings.Contains(normalized, "수정") || strings.Contains(normalized, "update") || strings.Contains(normalized, "updated") || strings.Contains(normalized, "누가") || strings.Contains(normalized, "who") || strings.Contains(normalized, "actor")
+	criticalRoleQuery := strings.Contains(normalized, "critical") || strings.Contains(normalized, "장애") || strings.Contains(normalized, "role") || strings.Contains(normalized, "mention")
+	generalChannelQuery := (strings.Contains(normalized, "일반") && strings.Contains(normalized, "채널")) ||
+		(strings.Contains(normalized, "general") && strings.Contains(normalized, "channel")) ||
+		(strings.Contains(normalized, "ops log") && strings.Contains(normalized, "channel")) ||
+		(strings.Contains(normalized, "ops logs") && strings.Contains(normalized, "channel"))
+	repeatedAlertQuery := strings.Contains(normalized, "반복") || strings.Contains(normalized, "중복") ||
+		strings.Contains(normalized, "spam") || strings.Contains(normalized, "too many") ||
+		strings.Contains(normalized, "noisy") || strings.Contains(normalized, "repeated") ||
+		strings.Contains(normalized, "duplicate")
 	var b strings.Builder
 	fmt.Fprintf(&b, "검색어: %s\n\n", security.SanitizeText(query))
 	switch {
@@ -1072,21 +1083,36 @@ func helpQueryText(query string) string {
 		b.WriteString("확인:\n")
 		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:diagnosis\n")
 		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events")
-	case strings.Contains(normalized, "반복") || strings.Contains(normalized, "중복") || strings.Contains(normalized, "알림"):
-		b.WriteString("반복 알림 정책:\n")
-		b.WriteString("- assignment issue는 event stream이 아니라 lifecycle state입니다.\n")
-		b.WriteString("- 같은 open issue는 cooldown마다 다시 전송하지 않습니다.\n")
-		b.WriteString("- 같은 poll window의 과제 WARN은 digest로 묶고 repeated suppressed count를 표시합니다.\n\n")
-		b.WriteString("확인/조치:\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> action:ack event:<event> until:7d reason:<reason>")
-	case strings.Contains(normalized, "일반") && strings.Contains(normalized, "채널"):
+	case criticalRoleQuery:
+		b.WriteString("CRITICAL role mention 설정:\n")
+		b.WriteString("- /ops alert action:channel target:critical channel:#ops-critical\n")
+		b.WriteString("- /ops alert action:role role:@운영팀\n\n")
+		b.WriteString("정책:\n")
+		b.WriteString("- CRITICAL only: configured role mention은 CRITICAL alert에서만 보냅니다.\n")
+		b.WriteString("- HIGH/general/audit/WARN do not role-mention.")
+	case generalChannelQuery:
 		b.WriteString("일반 운영 로그 채널:\n")
 		b.WriteString("- /ops alert action:channel target:general channel:#ops-log\n")
-		b.WriteString("  → assignment audit, assignment issue WARN, HIGH alert, 일반 운영 로그를 보냅니다.\n\n")
-		b.WriteString("CRITICAL 서버 장애는 critical channel로 분리합니다:\n")
+		b.WriteString("  → assignment audit, assignment issue WARN/INFO, HIGH service alerts, normal ops logs go to general.\n\n")
+		b.WriteString("CRITICAL goes to critical:\n")
 		b.WriteString("- /ops alert action:channel target:critical channel:#ops-critical")
-	case strings.Contains(normalized, "과제") && (strings.Contains(normalized, "누가") || strings.Contains(normalized, "수정") || strings.Contains(normalized, "삭제") || strings.Contains(normalized, "공개")):
+	case assignmentQuery && deleteQuery:
+		b.WriteString("과제 삭제 audit 확인:\n")
+		b.WriteString("- /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
+		b.WriteString("  → 삭제 actor/time은 Report V2 EVENT logs에서 확인합니다.\n\n")
+		b.WriteString("주의:\n")
+		b.WriteString("- 삭제된 assignment는 /ops assignment course:<course> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다.\n")
+		b.WriteString("- /ops assignment는 현재 WEB Admin state만 보여줍니다.\n")
+		b.WriteString("- bot은 과제를 삭제하거나 업데이트하지 않습니다.")
+	case assignmentQuery && updateActorQuery:
+		b.WriteString("과제 수정 actor 확인:\n")
+		b.WriteString("- /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
+		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events\n\n")
+		b.WriteString("정책:\n")
+		b.WriteString("- who/when은 Report EVENT logs에서 확인합니다.\n")
+		b.WriteString("- 현재 assignment state does not prove actor.\n")
+		b.WriteString("- bot은 과제를 업데이트하지 않습니다.")
+	case assignmentQuery && strings.Contains(normalized, "공개"):
 		b.WriteString("관련 기능:\n")
 		b.WriteString("1. 과제 audit 알림\n")
 		b.WriteString("   - source: Report EVENT logs\n")
@@ -1095,9 +1121,6 @@ func helpQueryText(query string) string {
 		b.WriteString("2. 수동 검색\n")
 		b.WriteString("   /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
 		b.WriteString("   → 과제 생성/수정/삭제/공개 EVENT 로그를 검색합니다.\n\n")
-		if strings.Contains(normalized, "삭제") {
-			b.WriteString("삭제된 과제는 /ops assignment 조회가 실패할 수 있습니다. 삭제 actor/time은 Report EVENT 로그에서 확인합니다.\n\n")
-		}
 		b.WriteString("3. 과제별 이력\n")
 		b.WriteString("   /ops assignment course:<course> id:<assignmentId> view:events\n")
 		b.WriteString("   → 봇 감지 이력과 audit event 요약을 봅니다.\n\n")
@@ -1105,15 +1128,14 @@ func helpQueryText(query string) string {
 		b.WriteString("- /ops assignment는 현재 상태 조회입니다.\n")
 		b.WriteString("- 누가 변경했는지는 Report EVENT 로그에서 확인합니다.\n")
 		b.WriteString("- bot은 과제를 생성/수정/삭제/공개하지 않습니다.")
-	case strings.Contains(normalized, "critical") || strings.Contains(normalized, "role") || strings.Contains(normalized, "장애"):
-		b.WriteString("관련 기능:\n")
-		b.WriteString("1. critical 채널 설정\n")
-		b.WriteString("   /ops alert action:channel target:critical channel:#ops-critical\n")
-		b.WriteString("   → CRITICAL 서버 장애 알림을 보낼 채널입니다.\n\n")
-		b.WriteString("2. role mention 설정\n")
-		b.WriteString("   /ops alert action:role role:@운영팀\n")
-		b.WriteString("   → CRITICAL 서버 장애에서만 mention합니다.\n\n")
-		b.WriteString("일반 운영 로그와 HIGH 알림은 general 채널로 가며 role mention은 없습니다.")
+	case repeatedAlertQuery:
+		b.WriteString("반복 알림 정책:\n")
+		b.WriteString("- assignment issues are lifecycle state, not an event stream.\n")
+		b.WriteString("- 같은 open issue는 cooldown마다 다시 전송하지 않습니다.\n")
+		b.WriteString("- digest groups repeated assignment issues and shows repeated suppressed count.\n\n")
+		b.WriteString("확인/조치:\n")
+		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events\n")
+		b.WriteString("- /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>")
 	case strings.Contains(normalized, "로그") || strings.Contains(normalized, "검색") || strings.Contains(normalized, "trace"):
 		b.WriteString("관련 기능:\n")
 		b.WriteString("- /ops logs service:report mode:recent query:<assignmentId|traceId|eventType> since:24h limit:20\n")

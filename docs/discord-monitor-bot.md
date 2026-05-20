@@ -82,16 +82,16 @@ general/critical 채널, role mention, on/off/status/test를 담당합니다.
 과제 목록, 상세, 진단, 감지 이력, 체크리스트, 제출 상태, ack/unack을 담당합니다. 과제 write command는 없습니다.
 
 ```text
-/ops assignment course:3rd-cs
-/ops assignment course:3rd-cs action:list
+/ops assignment course:<course>
+/ops assignment course:<course> action:list
 /ops assignment scope:all action:list
-/ops assignment course:3rd-cs id:<assignmentId>
-/ops assignment course:3rd-cs id:<assignmentId> view:diagnosis
-/ops assignment course:3rd-cs id:<assignmentId> view:events
-/ops assignment course:3rd-cs id:<assignmentId> action:check
-/ops assignment course:3rd-cs id:<assignmentId> action:submissions
-/ops assignment course:3rd-cs id:<assignmentId> action:ack event:<event> until:7d reason:<reason>
-/ops assignment course:3rd-cs id:<assignmentId> action:unack event:<event>
+/ops assignment course:<course> id:<assignmentId>
+/ops assignment course:<course> id:<assignmentId> view:diagnosis
+/ops assignment course:<course> id:<assignmentId> view:events
+/ops assignment course:<course> id:<assignmentId> action:check
+/ops assignment course:<course> id:<assignmentId> action:submissions
+/ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>
+/ops assignment course:<course> id:<assignmentId> action:unack event:<eventType>
 ```
 
 `/ops assignment`은 WEB Admin GET API 기준 현재 상태를 보여줍니다. 현재 상태는 누가 변경했는지를 증명하지 않습니다. actor/occurredAt은 Report EVENT 로그에서만 확인합니다.
@@ -214,7 +214,7 @@ Audit events route to general and never role-mention.
 수동 조회:
 
 ```text
-/ops logs service:report mode:events query:<assignmentId|traceId|actorId|eventType> since:24h limit:20
+/ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
 ```
 
 삭제된 과제는 `/ops assignment` 조회가 실패할 수 있습니다. 삭제 actor/time은 Report EVENT 로그에서 확인합니다.
@@ -264,7 +264,7 @@ same assignment issue does not resend every cooldown. Assignment issue는 event 
 
 ```text
 /ops assignment course:<course> id:<assignmentId> view:events
-/ops assignment course:<course> id:<assignmentId> action:ack event:<event> until:7d reason:<reason>
+/ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>
 ```
 
 ## 10. Source of Truth
@@ -307,13 +307,13 @@ Critical role mention does not work:
 Too many assignment warnings:
 
 - digest의 `repeated suppressed` count를 확인합니다.
-- `/ops assignment ... view:events`로 lifecycle 상태를 확인합니다.
-- 의도된 stale issue는 `/ops assignment ... action:ack`으로 silence합니다.
+- `/ops assignment course:<course> id:<assignmentId> view:events`로 lifecycle 상태를 확인합니다.
+- 의도된 stale issue는 `/ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`으로 silence합니다.
 
 Need to know who modified an assignment:
 
 ```text
-/ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+/ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
 ```
 
 Need server failure root cause:
