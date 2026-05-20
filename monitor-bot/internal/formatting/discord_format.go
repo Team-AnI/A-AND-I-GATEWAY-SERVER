@@ -493,7 +493,7 @@ func FormatAdminAssignment(courseSlug string, assignment reportadmin.Assignment)
 	fmt.Fprintf(&b, "updatedAt: %s\n", shortValue(assignment.UpdatedAt))
 	b.WriteString("\nrecommended next commands:\n")
 	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + " view:diagnosis` - 봇 판단 근거를 확인합니다.\n")
-	b.WriteString("- `/ops assignment-events course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + "` - 감지 이력과 반복 억제 상태를 확인합니다.\n")
+	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + " view:events` - 감지 이력과 반복 억제 상태를 확인합니다.\n")
 	b.WriteString("- `/ops assignment-check course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + "` - 운영 체크리스트를 확인합니다.\n")
 	b.WriteString("- `/ops submissions course:" + security.SanitizeText(courseSlug) + " assignment:" + shortValue(assignment.ID) + "`")
 	return TruncateDiscordMessage(b.String())
@@ -543,8 +543,8 @@ func FormatAdminAssignmentCheck(courseSlug string, assignment reportadmin.Assign
 	}
 	b.WriteString("\nrecommended next commands:\n")
 	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + " view:diagnosis` - 필드별 판단 근거 확인\n")
-	b.WriteString("- `/ops assignment-events course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + "` - 봇 감지 이력 확인\n")
-	b.WriteString("- `/ops logs service:report mode:recent query:" + shortValue(assignment.ID) + " since:24h limit:20` - 서버 이벤트 검색")
+	b.WriteString("- `/ops assignment course:" + security.SanitizeText(courseSlug) + " id:" + shortValue(assignment.ID) + " view:events` - 봇 감지 이력 확인\n")
+	b.WriteString("- `/ops logs service:report mode:events query:" + shortValue(assignment.ID) + " since:24h limit:20` - Report EVENT 로그 검색")
 	return TruncateDiscordMessage(b.String())
 }
 
@@ -697,10 +697,13 @@ func SummarizeRows(rows []map[string]string) LogSummary {
 }
 
 func HelpText() string {
-	return HelpTextFor("", "")
+	return HelpTextFor("", "", "")
 }
 
-func HelpTextFor(topic, command string) string {
+func HelpTextFor(topic, command, query string) string {
+	if strings.TrimSpace(query) != "" {
+		return helpQueryText(query)
+	}
 	command = strings.ToLower(strings.TrimSpace(command))
 	if command != "" {
 		return helpCommandText(command)
@@ -801,6 +804,9 @@ func HelpTextFor(topic, command string) string {
 /ops logs-watch service:report mode:errors channel:#report-logs interval:5m
 → 신규 로그만 feed로 보냅니다.
 
+/ops help query:"과제 수정 누가"
+→ 상황별로 어떤 명령을 써야 하는지 검색합니다.
+
 4. 과제 운영
 /ops assignments course:3rd-cs status:all
 → 특정 코스의 과제 목록과 상태를 봅니다.
@@ -811,13 +817,13 @@ func HelpTextFor(topic, command string) string {
 /ops assignment-check course:3rd-cs id:<assignmentId>
 → 제출 가능성, problem 연결, 시간 관계를 체크리스트로 봅니다.
 
-/ops assignment-events course:3rd-cs id:<assignmentId>
+/ops assignment course:3rd-cs id:<assignmentId> view:events
 → 봇 감지 이력, firstDetectedAt, notifyCount, ack/silence 상태를 봅니다.
 
 /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
 → 과제 생성/수정/삭제/공개/비공개 EVENT 로그에서 actor와 발생 시각을 봅니다.
 
-/ops assignment-ack course:3rd-cs id:<assignmentId> event:draft-past-start until:7d reason:<reason>
+/ops assignment course:3rd-cs id:<assignmentId> action:ack event:draft-past-start until:7d reason:<reason>
 → 의도된 상태라면 반복 알림을 중지합니다.
 
 /ops submissions course:3rd-cs assignment:<assignmentId>
@@ -839,26 +845,20 @@ func helpAssignmentsText() string {
 - 주의: 누가 변경했는지 증명하는 audit trail이 아닙니다.
 - view:summary 기본 필드
 - view:diagnosis 봇의 이상 상태 판단 근거
+- view:events 봇 감지 이력과 ack/silence 상태
 - view:raw 민감정보 제외 원본 주요 필드
+- action:ack/action:unack 의도된 이슈 반복 알림 중지/해제
 - 예시: /ops assignment course:3rd-cs id:<id> view:diagnosis
+- 예시: /ops assignment course:3rd-cs id:<id> action:ack event:draft-past-start until:7d reason:"old draft"
 
 /ops assignment-check
 - 목적: 운영 체크리스트 검증
 - 확인: title, status, publishedAt, startAt, endAt, problemId, botIssue
 - 예시: /ops assignment-check course:3rd-cs id:<id>
 
-/ops assignment-events
-- 목적: 봇 감지 이력 확인
-- 확인: firstDetectedAt, lastDetectedAt, lastNotifiedAt, notifyCount, state, ack/silence
-- 예시: /ops assignment-events course:3rd-cs id:<id>
-
-/ops assignment-ack
-- 목적: 이미 알고 있는 이슈 반복 알림 중지
-- 예시: /ops assignment-ack course:3rd-cs id:<id> event:draft-past-start until:7d reason:"old draft"
-
 /ops logs ... query:
 - 목적: WEB Admin API가 답하지 못하는 원인을 CloudWatch 로그에서 검색
-- 예시: /ops logs service:report mode:recent query:<assignmentId> since:24h limit:20
+- 예시: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
 
 Assignment audit notifications
 - 목적: 과제 등록/수정/삭제/공개/비공개를 누가 언제 했는지 확인
@@ -887,37 +887,77 @@ func helpCommandText(command string) string {
 이 명령은 왜 알림이 발생했는지 설명해야 합니다. problemId 누락만으로 DRAFT past start를 설명하지 않습니다.
 
 다음 단계:
-- 서버 로그 검색: /ops logs service:report mode:recent query:<assignmentId> since:24h limit:20
-- 감지 이력 확인: /ops assignment-events course:<course> id:<assignmentId>
-- 의도된 상태면 ack: /ops assignment-ack ...`)
+- 서버 로그 검색: /ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+- 감지 이력 확인: /ops assignment course:<course> id:<assignmentId> view:events
+- 의도된 상태면 ack: /ops assignment course:<course> id:<assignmentId> action:ack event:<event> until:7d reason:<reason>`)
 	case "logs":
-		return HelpTextFor("logs", "")
+		return HelpTextFor("logs", "", "")
 	case "assignment":
 		return strings.TrimSpace(`/ops assignment
 
 역할:
-단일 과제의 상태, 시간, problemId를 조회합니다.
+단일 과제의 현재 상태, 진단, 봇 감지 이력, ack/unack을 처리합니다.
 
 view:
 - summary: 기본 필드
 - diagnosis: 봇이 이상 상태로 판단한 근거와 issue lifecycle
-- raw: 민감정보 제외 원본 주요 필드`)
-	case "assignment-events":
-		return strings.TrimSpace(`/ops assignment-events
+- events: 봇 감지 이력, 반복 억제, ack/silence 상태
+- raw: 민감정보 제외 원본 주요 필드
 
-역할:
-봇이 감지한 과제 이슈의 firstDetectedAt, lastDetectedAt, lastNotifiedAt, notifyCount, ack/silence 상태를 봅니다.`)
-	case "assignment-ack":
-		return strings.TrimSpace(`/ops assignment-ack
-
-역할:
-의도된 과제 이슈의 반복 알림을 중지합니다.
+action:
+- ack: 의도된 과제 이슈의 반복 알림 중지
+- unack: ack 해제
 
 예시:
-/ops assignment-ack course:3rd-cs id:<id> event:draft-past-start until:7d reason:"old draft"`)
+/ops assignment course:3rd-cs id:<id> view:events
+/ops assignment course:3rd-cs id:<id> action:ack event:draft-past-start until:7d reason:"old draft"`)
 	default:
-		return HelpTextFor("overview", "")
+		return HelpTextFor("overview", "", "")
 	}
+}
+
+func helpQueryText(query string) string {
+	normalized := strings.ToLower(strings.TrimSpace(query))
+	var b strings.Builder
+	fmt.Fprintf(&b, "검색어: %s\n\n", security.SanitizeText(query))
+	switch {
+	case strings.Contains(normalized, "과제") && (strings.Contains(normalized, "누가") || strings.Contains(normalized, "수정") || strings.Contains(normalized, "삭제") || strings.Contains(normalized, "공개")):
+		b.WriteString("관련 기능:\n")
+		b.WriteString("1. 과제 audit 알림\n")
+		b.WriteString("   - source: Report EVENT logs\n")
+		b.WriteString("   - eventType: ASSIGNMENT_CREATED/UPDATED/DELETED/PUBLISHED/UNPUBLISHED\n")
+		b.WriteString("   - actor와 occurredAt이 있으면 자동 표시합니다.\n\n")
+		b.WriteString("2. 수동 검색\n")
+		b.WriteString("   /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
+		b.WriteString("   → 과제 생성/수정/삭제/공개 EVENT 로그를 검색합니다.\n\n")
+		b.WriteString("주의:\n")
+		b.WriteString("- /ops assignment는 현재 상태 조회입니다.\n")
+		b.WriteString("- 누가 변경했는지는 Report EVENT 로그에서 확인합니다.\n")
+		b.WriteString("- bot은 과제를 생성/수정/삭제/공개하지 않습니다.")
+	case strings.Contains(normalized, "critical") || strings.Contains(normalized, "role") || strings.Contains(normalized, "장애"):
+		b.WriteString("관련 기능:\n")
+		b.WriteString("1. critical 채널 설정\n")
+		b.WriteString("   /ops alert action:channel target:critical channel:#ops-critical\n")
+		b.WriteString("   → CRITICAL 서버 장애 알림을 보낼 채널입니다.\n\n")
+		b.WriteString("2. role mention 설정\n")
+		b.WriteString("   /ops alert action:role role:@운영팀\n")
+		b.WriteString("   → CRITICAL 서버 장애에서만 mention합니다.\n\n")
+		b.WriteString("일반 운영 로그와 HIGH 알림은 general 채널로 가며 role mention은 없습니다.")
+	case strings.Contains(normalized, "로그") || strings.Contains(normalized, "검색") || strings.Contains(normalized, "trace"):
+		b.WriteString("관련 기능:\n")
+		b.WriteString("- /ops logs service:report mode:recent query:<assignmentId|traceId|eventType> since:24h limit:20\n")
+		b.WriteString("  → 구조화 필드 기반 일반 로그 검색\n")
+		b.WriteString("- /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
+		b.WriteString("  → 과제 lifecycle EVENT 로그 검색\n")
+		b.WriteString("- /ops trace trace_id:<traceId>\n")
+		b.WriteString("  → traceId가 있을 때만 단일 요청 흐름 확인")
+	default:
+		b.WriteString("관련 기능을 좁히지 못했습니다.\n")
+		b.WriteString("- /ops help topic:assignments\n")
+		b.WriteString("- /ops help topic:alerts\n")
+		b.WriteString("- /ops help topic:logs")
+	}
+	return TruncateDiscordMessage(b.String())
 }
 
 func writeCompactRow(b *strings.Builder, row map[string]string) {

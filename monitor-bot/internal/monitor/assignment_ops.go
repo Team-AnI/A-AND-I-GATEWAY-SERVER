@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ type assignmentPollResult struct {
 	GradingFailedDelta    int
 	Snapshots             map[string]state.AssignmentSnapshot
 	IssueStates           map[string]state.AssignmentIssueState
+	SuppressedIssueCounts map[string]int
 	Events                []state.AssignmentEventState
 	RecentEvents          []state.AssignmentEventState
 }
@@ -96,24 +98,54 @@ func (s *Service) RefreshAssignmentOps(ctx context.Context) error {
 	if err := s.upsertAssignmentDashboard(ctx, channelID, formatAssignmentDashboard(result)); err != nil {
 		log.Printf("assignment dashboard update failed: %v", err)
 	}
+	s.sendAssignmentEventNotifications(ctx, channelID, result)
+	s.refreshAssignmentAuditEvents(ctx, channelID)
+	return nil
+}
+
+func (s *Service) sendAssignmentEventNotifications(ctx context.Context, channelID string, result assignmentPollResult) {
+	issueGroups := map[string]assignmentIssueDigestGroup{}
 	for _, event := range result.Events {
+		if isAssignmentIssueEvent(event.EventType) {
+			if shouldSendAssignmentEvent(event) {
+				key := assignmentIssueGroupKey(event)
+				group := issueGroups[key]
+				group.CourseSlug = event.CourseSlug
+				group.EventType = event.EventType
+				group.Severity = event.Severity
+				group.Source = assignmentIssueSource
+				group.Events = append(group.Events, event)
+				group.Suppressed = result.SuppressedIssueCounts[key]
+				issueGroups[key] = group
+			}
+			continue
+		}
 		if shouldSendAssignmentEvent(event) {
 			if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, channelID, formatAssignmentEvent(event)); err != nil {
 				log.Printf("assignment event send failed: %v", err)
 			}
 		}
 	}
-	s.refreshAssignmentAuditEvents(ctx, channelID)
-	return nil
+	keys := make([]string, 0, len(issueGroups))
+	for key := range issueGroups {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, channelID, formatAssignmentIssueDigest(issueGroups[key])); err != nil {
+			log.Printf("assignment issue digest send failed: %v", err)
+		}
+	}
 }
 
 func (s *Service) collectAssignmentOps(ctx context.Context, now time.Time) assignmentPollResult {
 	result := assignmentPollResult{
-		UpdatedAt:    now,
-		APIStatus:    reportadmin.StatusOK,
-		Snapshots:    map[string]state.AssignmentSnapshot{},
-		IssueStates:  map[string]state.AssignmentIssueState{},
-		RecentEvents: s.store.Snapshot().RecentAssignmentEvents,
+		UpdatedAt:             now,
+		APIStatus:             reportadmin.StatusOK,
+		Snapshots:             map[string]state.AssignmentSnapshot{},
+		IssueStates:           map[string]state.AssignmentIssueState{},
+		SuppressedIssueCounts: map[string]int{},
+		RecentEvents:          s.store.Snapshot().RecentAssignmentEvents,
 	}
 	courses, err := s.report.ListCourses(ctx)
 	if err != nil {
@@ -262,6 +294,9 @@ func (s *Service) applyAssignmentEventLifecycle(events []state.AssignmentEventSt
 	if result != nil && result.IssueStates == nil {
 		result.IssueStates = map[string]state.AssignmentIssueState{}
 	}
+	if result != nil && result.SuppressedIssueCounts == nil {
+		result.SuppressedIssueCounts = map[string]int{}
+	}
 	for _, event := range events {
 		if isAssignmentIssueEvent(event.EventType) {
 			updated, include := applyAssignmentIssueState(snapshot.AssignmentIssues[event.IssueKey], event, now)
@@ -271,6 +306,8 @@ func (s *Service) applyAssignmentEventLifecycle(events []state.AssignmentEventSt
 			}
 			if include {
 				filtered = append(filtered, enrichAssignmentIssueEvent(event, updated))
+			} else if result != nil && event.ShouldCount {
+				result.SuppressedIssueCounts[assignmentIssueGroupKey(event)]++
 			}
 			continue
 		}
@@ -718,9 +755,76 @@ func formatAssignmentDashboard(result assignmentPollResult) string {
 	}
 	b.WriteString("\n상세 확인\n")
 	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis\n")
-	b.WriteString("/ops assignment-events course:<courseSlug> id:<assignmentId>\n")
+	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> view:events\n")
 	b.WriteString("/ops submissions course:<courseSlug> assignment:<assignmentId>\n")
 	b.WriteString("/ops logs service:report mode:recent query:<assignmentId> since:24h limit:20")
+	return formatting.TruncateDiscordMessage(b.String())
+}
+
+const assignmentIssueSource = "WEB_ADMIN_API"
+
+type assignmentIssueDigestGroup struct {
+	CourseSlug string
+	EventType  string
+	Severity   string
+	Source     string
+	Events     []state.AssignmentEventState
+	Suppressed int
+}
+
+func assignmentIssueGroupKey(event state.AssignmentEventState) string {
+	return strings.Join([]string{event.CourseSlug, event.EventType, event.Severity, assignmentIssueSource}, "\x00")
+}
+
+func formatAssignmentIssueDigest(group assignmentIssueDigestGroup) string {
+	var b strings.Builder
+	total := len(group.Events) + group.Suppressed
+	fmt.Fprintf(&b, "%s 과제 상태 점검 %d건\n", eventIcon(state.AssignmentEventState{Severity: group.Severity}), total)
+	fmt.Fprintf(&b, "course: %s\n", security.SanitizeText(group.CourseSlug))
+	fmt.Fprintf(&b, "eventType: %s\n", security.SanitizeText(group.EventType))
+	fmt.Fprintf(&b, "severity: %s\n", security.SanitizeText(group.Severity))
+	fmt.Fprintf(&b, "source: %s\n\n", security.SanitizeText(firstNonEmpty(group.Source, assignmentIssueSource)))
+	newlyOpened := 0
+	publishedAtUnknown := 0
+	staleCandidate := 0
+	for _, event := range group.Events {
+		if event.NotifyCount <= 1 {
+			newlyOpened++
+		}
+		if strings.TrimSpace(event.PublishedAt) == "" {
+			publishedAtUnknown++
+		}
+		if group.EventType == "ASSIGNMENT_STALE_DRAFT" || strings.Contains(strings.ToLower(event.ReasonText), "stale") {
+			staleCandidate++
+		}
+	}
+	fmt.Fprintf(&b, "summary:\n")
+	fmt.Fprintf(&b, "- newly opened: %d\n", newlyOpened)
+	fmt.Fprintf(&b, "- repeated suppressed: %d\n", group.Suppressed)
+	if publishedAtUnknown > 0 {
+		fmt.Fprintf(&b, "- publishedAt unknown: %d\n", publishedAtUnknown)
+	}
+	if staleCandidate > 0 {
+		fmt.Fprintf(&b, "- stale candidate: %d\n", staleCandidate)
+	}
+	if len(group.Events) > 0 && strings.TrimSpace(group.Events[0].ReasonText) != "" {
+		fmt.Fprintf(&b, "- reason: %s\n", security.SanitizeText(group.Events[0].ReasonText))
+	}
+	b.WriteString("\nexamples:\n")
+	for i, event := range group.Events {
+		if i >= 5 {
+			break
+		}
+		fmt.Fprintf(&b, "%d. %s title: %s startAt: %s\n", i+1, security.SanitizeText(event.AssignmentID), security.SanitizeText(unknownIfBlank(event.Title)), security.SanitizeText(unknownIfBlank(event.StartAt)))
+	}
+	if extra := len(group.Events) - 5; extra > 0 {
+		fmt.Fprintf(&b, "... and %d more\n", extra)
+	}
+	example := state.AssignmentEventState{CourseSlug: group.CourseSlug}
+	if len(group.Events) > 0 {
+		example = group.Events[0]
+	}
+	writeAssignmentDigestNextCommands(&b, example)
 	return formatting.TruncateDiscordMessage(b.String())
 }
 
@@ -825,20 +929,20 @@ func writeAssignmentNextCommands(b *strings.Builder, event state.AssignmentEvent
 	case "ASSIGNMENT_PUBLISH_DELAYED":
 		fmt.Fprintf(b, "1. /ops assignment course:%s id:%s view:diagnosis\n", course, id)
 		b.WriteString("   - 봇이 공개 지연으로 분류한 필드별 근거를 확인합니다.\n")
-		fmt.Fprintf(b, "2. /ops assignment-events course:%s id:%s\n", course, id)
+		fmt.Fprintf(b, "2. /ops assignment course:%s id:%s view:events\n", course, id)
 		b.WriteString("   - firstDetectedAt, lastDetectedAt, notifyCount, ack/silence 상태를 봅니다.\n")
-		fmt.Fprintf(b, "3. /ops logs service:report mode:recent query:%s since:24h limit:20\n", id)
-		b.WriteString("   - Report 로그에서 이 assignmentId의 publish/update 흔적을 찾습니다.\n")
-		fmt.Fprintf(b, "4. /ops assignment-ack course:%s id:%s event:publish-delayed until:7d reason:<reason>\n", course, id)
+		fmt.Fprintf(b, "3. /ops logs service:report mode:events query:%s since:24h limit:20\n", id)
+		b.WriteString("   - Report EVENT 로그에서 이 assignmentId의 publish/update 흔적을 찾습니다.\n")
+		fmt.Fprintf(b, "4. /ops assignment course:%s id:%s action:ack event:publish-delayed until:7d reason:<reason>\n", course, id)
 		b.WriteString("   - 의도된 상태라면 반복 알림을 중지합니다.")
 	case "ASSIGNMENT_DRAFT_PAST_START", "ASSIGNMENT_STALE_DRAFT", "ASSIGNMENT_INVALID_TIME":
 		fmt.Fprintf(b, "1. /ops assignment course:%s id:%s view:diagnosis\n", course, id)
 		b.WriteString("   - 공개 지연 단정이 가능한지와 부족한 필드를 확인합니다.\n")
-		fmt.Fprintf(b, "2. /ops assignment-events course:%s id:%s\n", course, id)
+		fmt.Fprintf(b, "2. /ops assignment course:%s id:%s view:events\n", course, id)
 		b.WriteString("   - 봇 감지 이력과 반복 억제 상태를 확인합니다.\n")
-		fmt.Fprintf(b, "3. /ops logs service:report mode:recent query:%s since:24h limit:20\n", id)
-		b.WriteString("   - 서버 로그에서 이 과제의 update/publish 이벤트를 검색합니다.\n")
-		fmt.Fprintf(b, "4. /ops assignment-ack course:%s id:%s event:%s until:7d reason:<reason>\n", course, id, assignmentEventSlug(event.EventType))
+		fmt.Fprintf(b, "3. /ops logs service:report mode:events query:%s since:24h limit:20\n", id)
+		b.WriteString("   - Report EVENT 로그에서 이 과제의 update/publish 이벤트를 검색합니다.\n")
+		fmt.Fprintf(b, "4. /ops assignment course:%s id:%s action:ack event:%s until:7d reason:<reason>\n", course, id, assignmentEventSlug(event.EventType))
 		b.WriteString("   - 오래된 draft 등 의도된 상태라면 알림을 중지합니다.")
 	default:
 		fmt.Fprintf(b, "1. /ops assignment course:%s id:%s view:diagnosis\n", course, id)
@@ -846,6 +950,18 @@ func writeAssignmentNextCommands(b *strings.Builder, event state.AssignmentEvent
 		fmt.Fprintf(b, "2. /ops logs service:report mode:recent query:%s since:24h limit:20\n", id)
 		b.WriteString("   - Report 로그에서 관련 이벤트를 검색합니다.")
 	}
+}
+
+func writeAssignmentDigestNextCommands(b *strings.Builder, event state.AssignmentEventState) {
+	course := security.SanitizeText(event.CourseSlug)
+	id := security.SanitizeText(firstNonEmpty(event.AssignmentID, "<id>"))
+	b.WriteString("\nnext:\n")
+	fmt.Fprintf(b, "- /ops assignment course:%s id:%s view:diagnosis\n", course, id)
+	b.WriteString("  - 단일 과제의 판단 근거를 확인합니다.\n")
+	fmt.Fprintf(b, "- /ops assignment course:%s id:%s view:events\n", course, id)
+	b.WriteString("  - 봇 감지 이력과 반복 억제 상태를 확인합니다.\n")
+	fmt.Fprintf(b, "- /ops logs service:report mode:events query:%s since:24h limit:20\n", id)
+	b.WriteString("  - 과제 생성/수정/삭제/공개 EVENT 로그를 확인합니다.")
 }
 
 func assignmentEventSlug(eventType string) string {
@@ -946,10 +1062,10 @@ func (s *Service) DescribeAssignmentDiagnosis(courseSlug string, assignment repo
 		}
 	}
 	b.WriteString("\nnext:\n")
-	fmt.Fprintf(&b, "1. /ops assignment-events course:%s id:%s\n", security.SanitizeText(courseSlug), security.SanitizeText(assignment.ID))
+	fmt.Fprintf(&b, "1. /ops assignment course:%s id:%s view:events\n", security.SanitizeText(courseSlug), security.SanitizeText(assignment.ID))
 	b.WriteString("   - 봇 감지 이력과 반복 억제 상태를 확인합니다.\n")
-	fmt.Fprintf(&b, "2. /ops logs service:report mode:recent query:%s since:24h limit:20\n", security.SanitizeText(assignment.ID))
-	b.WriteString("   - Report 로그에서 이 assignmentId를 검색합니다.")
+	fmt.Fprintf(&b, "2. /ops logs service:report mode:events query:%s since:24h limit:20\n", security.SanitizeText(assignment.ID))
+	b.WriteString("   - Report EVENT 로그에서 이 assignmentId를 검색합니다.")
 	return formatting.TruncateDiscordMessage(b.String())
 }
 

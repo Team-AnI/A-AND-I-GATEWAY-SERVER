@@ -51,13 +51,15 @@ func TestOpsCommandSubcommandsRegistered(t *testing.T) {
 		}
 		got[option.Name] = true
 	}
-	for _, want := range []string{"dashboard", "service", "logs", "watch", "unwatch", "watches", "alert", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment", "assignment-check", "assignment-events", "assignment-ack", "assignment-unack", "submissions", "trace", "alarms", "storage", "help"} {
+	for _, want := range []string{"dashboard", "service", "logs", "watch", "unwatch", "watches", "alert", "logs-watch", "logs-unwatch", "logs-watches", "assignments", "assignments-all", "assignment", "assignment-check", "submissions", "trace", "alarms", "storage", "help"} {
 		if !got[want] {
 			t.Fatalf("/ops subcommand %q is not registered", want)
 		}
 	}
-	if got["copy"] {
-		t.Fatal("copy subcommand should not be registered")
+	for _, forbidden := range []string{"copy", "assignment-events", "assignment-ack", "assignment-unack"} {
+		if got[forbidden] {
+			t.Fatalf("%s subcommand should not be registered", forbidden)
+		}
 	}
 }
 
@@ -112,29 +114,18 @@ func TestOpsConnectedServiceChoices(t *testing.T) {
 	if !idOption.Required {
 		t.Fatal("assignment id option must be required")
 	}
-	if got := choiceValues(findOption(t, assignment.Options, "view").Choices); strings.Join(got, ",") != "summary,diagnosis,raw" {
+	if got := choiceValues(findOption(t, assignment.Options, "view").Choices); strings.Join(got, ",") != "summary,diagnosis,raw,events" {
 		t.Fatalf("assignment view choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, assignment.Options, "action").Choices); strings.Join(got, ",") != "ack,unack" {
+		t.Fatalf("assignment action choices = %#v", got)
+	}
+	if got := choiceValues(findOption(t, assignment.Options, "event").Choices); strings.Join(got, ",") != "publish-delayed,draft-past-start,stale-draft,invalid-time,missing-problem,grading-failed" {
+		t.Fatalf("assignment event choices = %#v", got)
 	}
 	assignmentCheck := findSubcommand(t, command, "assignment-check")
 	if !findOption(t, assignmentCheck.Options, "course").Required || !findOption(t, assignmentCheck.Options, "id").Required {
 		t.Fatal("assignment-check course/id options must be required")
-	}
-	assignmentEvents := findSubcommand(t, command, "assignment-events")
-	if !findOption(t, assignmentEvents.Options, "course").Required || !findOption(t, assignmentEvents.Options, "id").Required {
-		t.Fatal("assignment-events course/id options must be required")
-	}
-	assignmentAck := findSubcommand(t, command, "assignment-ack")
-	for _, option := range []string{"course", "id", "event", "until", "reason"} {
-		if !findOption(t, assignmentAck.Options, option).Required {
-			t.Fatalf("assignment-ack %s option must be required", option)
-		}
-	}
-	if got := choiceValues(findOption(t, assignmentAck.Options, "event").Choices); strings.Join(got, ",") != "publish-delayed,draft-past-start,stale-draft,invalid-time,missing-problem,grading-failed" {
-		t.Fatalf("assignment-ack event choices = %#v", got)
-	}
-	assignmentUnack := findSubcommand(t, command, "assignment-unack")
-	if !findOption(t, assignmentUnack.Options, "course").Required || !findOption(t, assignmentUnack.Options, "id").Required || !findOption(t, assignmentUnack.Options, "event").Required {
-		t.Fatal("assignment-unack course/id/event options must be required")
 	}
 	submissions := findSubcommand(t, command, "submissions")
 	if !findOption(t, submissions.Options, "course").Required || !findOption(t, submissions.Options, "assignment").Required {
@@ -176,8 +167,11 @@ func TestOpsHelpHasTopicAndCommandOptions(t *testing.T) {
 	if got := choiceValues(findOption(t, help.Options, "topic").Choices); strings.Join(got, ",") != "overview,dashboard,logs,alerts,assignments,feeds" {
 		t.Fatalf("help topic choices = %#v", got)
 	}
-	if got := choiceValues(findOption(t, help.Options, "command").Choices); !strings.Contains(strings.Join(got, ","), "assignment-check") || !strings.Contains(strings.Join(got, ","), "assignment-events") {
+	if got := choiceValues(findOption(t, help.Options, "command").Choices); !strings.Contains(strings.Join(got, ","), "assignment-check") || strings.Contains(strings.Join(got, ","), "assignment-events") {
 		t.Fatalf("help command choices missing assignment commands: %#v", got)
+	}
+	if findOption(t, help.Options, "query").Required {
+		t.Fatal("help query must be optional")
 	}
 }
 
@@ -308,6 +302,7 @@ func TestOpsHelpIncludesAlertRoleSetupPath(t *testing.T) {
 		"/ops alert action:role role:@운영팀",
 		"/ops alert action:on",
 		"/ops alert action:status",
+		"/ops help query:",
 	} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help missing %q: %s", want, help)

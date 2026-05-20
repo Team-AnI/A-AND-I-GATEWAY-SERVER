@@ -12,12 +12,13 @@ Primary 운영 command는 `/ops`입니다.
 - `/ops alarms state:<ALARM|OK|INSUFFICIENT_DATA|all>`
 - `/ops storage view:<usage|retention>`
 - `/ops help topic:<overview|dashboard|logs|alerts|assignments|feeds>`
-- `/ops help command:<dashboard|service|logs|trace|alert|watch|logs-watch|assignments|assignment|assignment-check|assignment-events|assignment-ack|submissions>`
+- `/ops help command:<dashboard|service|logs|trace|alert|watch|logs-watch|assignments|assignment|assignment-check|submissions>`
+- `/ops help query:<text>`
 
 Drilldown/fallback commands:
 
 - `/ops trace trace_id:<traceId>`: `/ops logs` 또는 logs-watch 결과에 traceId가 표시될 때만 사용하는 요청 단위 드릴다운
-- `/ops assignments`, `/ops assignments-all`, `/ops assignment view:<summary|diagnosis|raw>`, `/ops assignment-check`, `/ops assignment-events`, `/ops assignment-ack`, `/ops assignment-unack`, `/ops submissions`: 과제 이벤트 feed 이후 상세 확인 또는 fallback 용도
+- `/ops assignments`, `/ops assignments-all`, `/ops assignment view:<summary|diagnosis|raw|events>`, `/ops assignment action:<ack|unack>`, `/ops assignment-check`, `/ops submissions`: 과제 이벤트 feed 이후 상세 확인 또는 fallback 용도
 
 Service Ops 자동화 설정:
 
@@ -91,10 +92,10 @@ blog      ⚪ UNK   NOLOG     0    0    0 -
 - `LEGACY` 코스는 자동 feed에서 제외하고 수동 `/ops assignments` 조회만 허용합니다.
 - `UNKNOWN` 코스는 dashboard count에만 포함하고 이벤트 발송은 제한합니다.
 - 첫 실행은 baseline만 저장하고 과거 과제를 대량 발송하지 않습니다.
-- dashboard는 한 Discord 메시지를 edit/update하며, 이벤트 feed만 중요한 변경을 새 메시지로 보냅니다.
+- dashboard는 한 Discord 메시지를 edit/update하며, 이벤트 feed만 중요한 변경을 새 메시지로 보냅니다. 같은 poll 안의 과제 issue 알림은 `course + eventType + severity` 기준 digest로 묶습니다.
 - assignment alert는 cooldown마다 같은 WARN을 다시 보내지 않고 issue lifecycle로 관리합니다. 같은 `assignment:<eventType>:<courseSlug>:<assignmentId>`가 open 상태이면 dashboard/count와 `lastDetectedAt`만 갱신하고, 새 Discord feed는 억제합니다.
 - 새 메시지는 issue가 처음 open 될 때, resolved 후 reopen 될 때, severity가 상승할 때, evidenceHash가 의미 있게 바뀔 때만 보냅니다.
-- `/ops assignment-ack ... until:<1h|6h|1d|7d|forever> reason:<reason>`으로 의도된 상태를 acknowledge/silence할 수 있습니다. ack 상태여도 dashboard와 `/ops assignment-events`에서는 이슈 상태를 확인할 수 있습니다.
+- `/ops assignment ... action:ack until:<1h|6h|1d|7d|forever> reason:<reason>`으로 의도된 상태를 acknowledge/silence할 수 있습니다. ack 상태여도 dashboard와 `/ops assignment view:events`에서는 이슈 상태를 확인할 수 있습니다.
 - 채널은 general route를 사용합니다. `/ops alert action:channel target:general channel:#채널` 값을 우선 사용하고, 없으면 legacy alert channel, 기존 `DISCORD_ALERT_CHANNEL_ID`, 그다음 `DISCORD_DASHBOARD_CHANNEL_ID`를 사용합니다. 별도 `ASSIGNMENT_OPS_CHANNEL_ID`는 추가하지 않았습니다.
 - poll 주기는 기존 alert poll interval을 재사용합니다. 기본값은 보통 3분이며, 첫 성공 poll은 baseline만 저장해서 과거 과제를 대량 발송하지 않습니다.
 - stale draft 판단 grace는 일반 환경 변수 `ASSIGNMENT_STALE_GRACE_DAYS`로 조정할 수 있으며 기본값은 7일입니다. 새 secret은 필요하지 않습니다.
@@ -115,7 +116,7 @@ blog      ⚪ UNK   NOLOG     0    0    0 -
 
 기존 assignment 관련 `/ops` 명령은 관리자 페이지를 대체하는 상태 확인 UI가 아닙니다. feed에서 이상 항목을 봤을 때 상세 확인하거나, admin API 장애 시 fallback 확인하는 용도입니다.
 
-과제 alert 메시지는 `title`, `status`, `publishedAt`, `startAt`, `endAt`, `problemId`, `reasonCode`, `reasonText`, evidence, issue state, `firstDetectedAt`, `lastDetectedAt`, `notifyCount`, repeat policy를 포함합니다. recommended next commands는 명령어만 나열하지 않고 각 명령을 실행해야 하는 이유를 함께 표시합니다.
+과제 issue digest는 count, newly opened, repeated suppressed, 대표 과제 예시, next command 설명을 포함합니다. 단일 과제 진단은 `title`, `status`, `publishedAt`, `startAt`, `endAt`, `problemId`, `reasonCode`, `reasonText`, evidence, issue state, `firstDetectedAt`, `lastDetectedAt`, `notifyCount`, repeat policy를 표시합니다.
 
 예시:
 
@@ -123,11 +124,14 @@ blog      ⚪ UNK   NOLOG     0    0    0 -
 /ops assignment course:3rd-cs id:<assignmentId> view:diagnosis
 → 필드별 판단 근거와 공개 지연 단정 가능 여부를 확인합니다.
 
-/ops assignment-events course:3rd-cs id:<assignmentId>
+/ops assignment course:3rd-cs id:<assignmentId> view:events
 → 봇 감지 이력, 반복 억제, ack/silence 상태를 확인합니다.
 
-/ops logs service:report mode:recent query:<assignmentId> since:24h limit:20
-→ 구조화 필드에서 해당 assignmentId를 검색합니다.
+/ops assignment course:3rd-cs id:<assignmentId> action:ack event:draft-past-start until:7d reason:"old draft"
+→ 의도된 상태라면 반복 알림을 중지합니다.
+
+/ops logs service:report mode:events query:<assignmentId> since:24h limit:20
+→ Report EVENT 로그에서 해당 assignmentId를 검색합니다.
 ```
 
 `/ops logs ... query:<value>`는 가능한 경우 구조화 필드(`trace.traceId`, `trace.requestId`, `event.eventType`, `assignmentId`, `request.pathVariables.assignmentId`, `response.error.code`, `response.error.value`, `http.path`, `http.route`)를 검색합니다. `@message` 검색은 fallback search로만 사용하며 alert 판단 조건에는 사용하지 않습니다.

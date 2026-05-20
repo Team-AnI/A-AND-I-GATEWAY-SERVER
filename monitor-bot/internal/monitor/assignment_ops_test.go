@@ -331,6 +331,46 @@ func TestAssignmentAlertIncludesEvidenceAndExplainedNextCommands(t *testing.T) {
 	}
 }
 
+func TestAssignmentIssueNotificationsAreBatchedWithSuppressedCount(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	report := &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {
+				{ID: "a1", Title: "one", Status: "draft", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"},
+				{ID: "a2", Title: "two", Status: "published", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z", ProblemID: "p1"},
+			},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}, "kotlin:a2": {}},
+	}
+	service := newAssignmentOpsTestService(store, report)
+	_ = service.collectAssignmentOps(context.Background(), now.Add(-time.Minute))
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	report.assignments["kotlin"][1] = reportadmin.Assignment{ID: "a2", Title: "two", Status: "draft", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"}
+	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if fakeDiscord.sends != 3 || fakeDiscord.edits != 1 {
+		t.Fatalf("expected dashboard + two digests and one edit, sends=%d edits=%d contents=%#v", fakeDiscord.sends, fakeDiscord.edits, fakeDiscord.sentContents)
+	}
+	digest := fakeDiscord.sentContents[2]
+	for _, want := range []string{"과제 상태 점검 2건", "eventType: ASSIGNMENT_PUBLISH_DELAYED", "- newly opened: 1", "- repeated suppressed: 1", "/ops assignment course:kotlin id:a2 view:diagnosis", "/ops logs service:report mode:events query:a2"} {
+		if !strings.Contains(digest, want) {
+			t.Fatalf("assignment issue digest missing %q: %s", want, digest)
+		}
+	}
+}
+
 func TestAssignmentDashboardReusesMessageIDAndLimitsRecentEvents(t *testing.T) {
 	store := state.NewStore(t.TempDir() + "/state.json")
 	if err := store.Load(); err != nil {

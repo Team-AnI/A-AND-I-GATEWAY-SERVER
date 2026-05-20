@@ -238,7 +238,7 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 			return "지원하지 않는 storage view입니다."
 		}
 	case "help":
-		return formatting.HelpTextFor(optionStringFromOptions(subcommand.Options, "topic"), optionStringFromOptions(subcommand.Options, "command"))
+		return formatting.HelpTextFor(optionStringFromOptions(subcommand.Options, "topic"), optionStringFromOptions(subcommand.Options, "command"), optionStringFromOptions(subcommand.Options, "query"))
 	default:
 		return "지원하지 않는 /ops subcommand입니다. /ops help 를 확인하세요."
 	}
@@ -784,6 +784,49 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 	if !security.ValidateAssignmentID(assignmentID) {
 		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
 	}
+	action := strings.TrimSpace(optionString(interaction, "action"))
+	if action != "" {
+		if h.ops == nil {
+			return "Service Ops controller is not ready."
+		}
+		switch action {
+		case "ack":
+			reason := optionString(interaction, "reason")
+			if strings.TrimSpace(reason) == "" {
+				return "assignment ack에는 reason이 필요합니다."
+			}
+			result, err := h.ops.AcknowledgeAssignmentIssue(
+				courseSlug,
+				assignmentID,
+				optionString(interaction, "event"),
+				optionString(interaction, "until"),
+				reason,
+				"discord",
+			)
+			if err != nil {
+				return security.SanitizeText(err.Error())
+			}
+			return result
+		case "unack":
+			result, err := h.ops.UnacknowledgeAssignmentIssue(courseSlug, assignmentID, optionString(interaction, "event"))
+			if err != nil {
+				return security.SanitizeText(err.Error())
+			}
+			return result
+		default:
+			return "지원하지 않는 assignment action입니다. ack 또는 unack을 사용하세요."
+		}
+	}
+	view := optionString(interaction, "view")
+	if view == "" {
+		view = "summary"
+	}
+	if view == "events" {
+		if h.ops == nil {
+			return "Service Ops controller is not ready."
+		}
+		return h.ops.AssignmentIssueHistory(courseSlug, assignmentID)
+	}
 	notice := h.courseManualNotice(ctx, courseSlug)
 	assignment, err := h.reportAdmin.GetAssignment(ctx, courseSlug, assignmentID)
 	if err != nil {
@@ -797,10 +840,6 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 		}
 		return h.assignmentLogFallback(ctx, "Assignment", courseSlug, assignmentID, status, err)
 	}
-	view := optionString(interaction, "view")
-	if view == "" {
-		view = "summary"
-	}
 	switch view {
 	case "summary":
 		return formatting.WithAdminNotice(formatting.FormatAdminAssignment(courseSlug, assignment), notice)
@@ -812,7 +851,7 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 	case "raw":
 		return formatting.WithAdminNotice(formatting.FormatAdminAssignmentRaw(courseSlug, assignment), notice)
 	default:
-		return "지원하지 않는 assignment view입니다. summary, diagnosis, raw 중 하나를 사용하세요."
+		return "지원하지 않는 assignment view입니다. summary, diagnosis, raw, events 중 하나를 사용하세요."
 	}
 }
 

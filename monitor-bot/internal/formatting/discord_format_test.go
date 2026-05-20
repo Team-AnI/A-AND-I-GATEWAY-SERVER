@@ -414,8 +414,8 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops trace trace_id:<traceId>",
 		"/ops assignments course:3rd-cs status:all",
 		"/ops assignment course:3rd-cs id:<assignmentId> view:diagnosis",
-		"/ops assignment-events course:3rd-cs id:<assignmentId>",
-		"/ops assignment-ack course:3rd-cs id:<assignmentId> event:draft-past-start until:7d reason:<reason>",
+		"/ops assignment course:3rd-cs id:<assignmentId> view:events",
+		"/ops assignment course:3rd-cs id:<assignmentId> action:ack event:draft-past-start until:7d reason:<reason>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("help text missing %q: %s", want, got)
@@ -429,16 +429,31 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 }
 
 func TestHelpTopicAssignmentsAndCommandAssignmentCheckExplainPurpose(t *testing.T) {
-	topic := HelpTextFor("assignments", "")
-	for _, want := range []string{"/ops assignment", "view:diagnosis", "/ops assignment-events", "/ops assignment-ack", "/ops logs ... query:", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
+	topic := HelpTextFor("assignments", "", "")
+	for _, want := range []string{"/ops assignment", "view:diagnosis", "view:events", "action:ack", "/ops logs ... query:", "Assignment audit notifications", "bot은 과제를 생성/수정/삭제/공개하지 않습니다", "mode:events"} {
 		if !strings.Contains(topic, want) {
 			t.Fatalf("assignment topic missing %q: %s", want, topic)
 		}
 	}
-	command := HelpTextFor("", "assignment-check")
-	for _, want := range []string{"역할:", "확인하는 것:", "problemId", "감지 이력 확인", "의도된 상태면 ack"} {
+	command := HelpTextFor("", "assignment-check", "")
+	for _, want := range []string{"역할:", "확인하는 것:", "problemId", "view:events", "action:ack"} {
 		if !strings.Contains(command, want) {
 			t.Fatalf("assignment-check help missing %q: %s", want, command)
+		}
+	}
+}
+
+func TestHelpQueryExplainsAssignmentAuditAndRouting(t *testing.T) {
+	got := HelpTextFor("", "", "과제 수정 누가")
+	for _, want := range []string{"Report EVENT logs", "ASSIGNMENT_CREATED/UPDATED/DELETED/PUBLISHED/UNPUBLISHED", "/ops logs service:report mode:events", "bot은 과제를 생성/수정/삭제/공개하지 않습니다"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("assignment audit query help missing %q: %s", want, got)
+		}
+	}
+	got = HelpTextFor("", "", "critical role")
+	for _, want := range []string{"target:critical", "/ops alert action:role", "HIGH 알림은 general 채널"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("critical routing query help missing %q: %s", want, got)
 		}
 	}
 }
