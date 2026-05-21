@@ -8,6 +8,7 @@ import org.springframework.http.MediaType
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import org.springframework.web.server.WebFilterChain
+import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Mono
 import tools.jackson.databind.ObjectMapper
 import java.net.ConnectException
@@ -176,6 +177,42 @@ class ApiLoggingContractTests {
         val body = exchange.response.bodyAsString.block().orEmpty()
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exchange.response.statusCode)
         assertTrue(body.contains("\"code\":18801"))
+    }
+
+    @Test
+    fun `response status 401 maps to authentication failed`() {
+        val exchange = exchange("/v2/lectures")
+        val handler = GlobalExceptionHandler(
+            responseWriter = GatewayResponseWriter(ObjectMapper(), "https://*"),
+            apiLogFactory = factory,
+            apiStructuredLogger = ApiStructuredLogger()
+        )
+
+        handler.handle(exchange, ResponseStatusException(HttpStatus.UNAUTHORIZED, "unauthorized")).block()
+
+        val body = exchange.response.bodyAsString.block().orEmpty()
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.response.statusCode)
+        assertTrue(body.contains("\"code\":11001"))
+        assertTrue(body.contains("\"value\":\"AUTHENTICATION_FAILED\""))
+        assertTrue(!body.contains("\"code\":18801"))
+    }
+
+    @Test
+    fun `response status 403 maps to access denied`() {
+        val exchange = exchange("/v2/problems/assignment-1/submissions/me")
+        val handler = GlobalExceptionHandler(
+            responseWriter = GatewayResponseWriter(ObjectMapper(), "https://*"),
+            apiLogFactory = factory,
+            apiStructuredLogger = ApiStructuredLogger()
+        )
+
+        handler.handle(exchange, ResponseStatusException(HttpStatus.FORBIDDEN, "forbidden")).block()
+
+        val body = exchange.response.bodyAsString.block().orEmpty()
+        assertEquals(HttpStatus.FORBIDDEN, exchange.response.statusCode)
+        assertTrue(body.contains("\"code\":12001"))
+        assertTrue(body.contains("\"value\":\"ACCESS_DENIED\""))
+        assertTrue(!body.contains("\"code\":18801"))
     }
 
     @Test
