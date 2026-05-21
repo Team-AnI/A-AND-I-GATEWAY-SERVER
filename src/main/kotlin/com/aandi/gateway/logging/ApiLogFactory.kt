@@ -155,12 +155,7 @@ class ApiLogFactory(
             return ApiLogResponse(
                 success = statusCode < 400,
                 data = if (statusCode < 400) emptyMap<String, Any?>() else null,
-                error = if (statusCode < 400) null else (context.responseError ?: ApiLogError(
-                    code = GatewayErrorCode.INTERNAL_SERVER_ERROR.code,
-                    message = context.failureMessage ?: GatewayErrorCode.INTERNAL_SERVER_ERROR.message,
-                    value = GatewayErrorCode.INTERNAL_SERVER_ERROR.value,
-                    alert = GatewayErrorCode.INTERNAL_SERVER_ERROR.alert
-                )),
+                error = if (statusCode < 400) null else (context.responseError ?: fallbackApiLogError(statusCode, context)),
                 timestamp = context.responseTimestamp ?: now()
             )
         }
@@ -168,13 +163,12 @@ class ApiLogFactory(
         return runCatching {
             val root = objectMapper.readTree(rawBody)
             val errorNode = root.get("error")
-            val error = if (errorNode != null && !errorNode.isNull) {
-                ApiLogError(
-                    code = errorNode.path("code").asInt(GatewayErrorCode.INTERNAL_SERVER_ERROR.code),
-                    message = errorNode.path("message").asText(GatewayErrorCode.INTERNAL_SERVER_ERROR.message),
-                    value = errorNode.path("value").asText(GatewayErrorCode.INTERNAL_SERVER_ERROR.value),
-                    alert = errorNode.path("alert").asText(GatewayErrorCode.INTERNAL_SERVER_ERROR.alert)
-                )
+            val error = if (statusCode >= 400 && context.responseError != null) {
+                context.responseError
+            } else if (errorNode != null && !errorNode.isNull) {
+                apiLogErrorFromNode(errorNode, statusCode)
+            } else if (statusCode >= 400) {
+                fallbackApiLogError(statusCode, context)
             } else {
                 null
             }
@@ -189,14 +183,44 @@ class ApiLogFactory(
             ApiLogResponse(
                 success = statusCode < 400,
                 data = if (statusCode < 400) mapOf("raw" to rawBody) else null,
-                error = if (statusCode < 400) null else (context.responseError ?: ApiLogError(
-                    code = GatewayErrorCode.INTERNAL_SERVER_ERROR.code,
-                    message = context.failureMessage ?: GatewayErrorCode.INTERNAL_SERVER_ERROR.message,
-                    value = GatewayErrorCode.INTERNAL_SERVER_ERROR.value,
-                    alert = GatewayErrorCode.INTERNAL_SERVER_ERROR.alert
-                )),
+                error = if (statusCode < 400) null else (context.responseError ?: fallbackApiLogError(statusCode, context)),
                 timestamp = context.responseTimestamp ?: now()
             )
+        }
+    }
+
+    private fun apiLogErrorFromNode(errorNode: JsonNode, statusCode: Int): ApiLogError {
+        val statusFallback = fallbackErrorCodeForStatus(statusCode)
+        val providedCode = errorNode.path("code").asInt(0)
+        val selectedFallback = GatewayErrorCode.values().firstOrNull { it.code == providedCode } ?: statusFallback
+        return ApiLogError(
+            code = providedCode.takeIf { it > 0 } ?: statusFallback.code,
+            message = errorNode.path("message").asText("").takeIf { it.isNotBlank() } ?: selectedFallback.message,
+            value = errorNode.path("value").asText("").takeIf { it.isNotBlank() } ?: selectedFallback.value,
+            alert = errorNode.path("alert").asText("").takeIf { it.isNotBlank() } ?: selectedFallback.alert
+        )
+    }
+
+    private fun fallbackApiLogError(statusCode: Int, context: ApiLogContext): ApiLogError {
+        val errorCode = fallbackErrorCodeForStatus(statusCode)
+        return ApiLogError(
+            code = errorCode.code,
+            message = if (errorCode == GatewayErrorCode.INTERNAL_SERVER_ERROR) {
+                context.failureMessage ?: errorCode.message
+            } else {
+                errorCode.message
+            },
+            value = errorCode.value,
+            alert = errorCode.alert
+        )
+    }
+
+    private fun fallbackErrorCodeForStatus(statusCode: Int): GatewayErrorCode {
+        return when (statusCode) {
+            HttpStatus.UNAUTHORIZED.value() -> GatewayErrorCode.AUTHENTICATION_FAILED
+            HttpStatus.FORBIDDEN.value() -> GatewayErrorCode.ACCESS_DENIED
+            HttpStatus.NOT_FOUND.value() -> GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
+            else -> GatewayErrorCode.INTERNAL_SERVER_ERROR
         }
     }
 

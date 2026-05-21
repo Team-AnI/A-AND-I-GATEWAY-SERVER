@@ -1,5 +1,6 @@
 package com.aandi.gateway.logging
 
+import com.aandi.gateway.common.response.GatewayErrorCode
 import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.junit.jupiter.api.Test
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils
@@ -117,6 +118,141 @@ class ApiLoggingContractTests {
     }
 
     @Test
+    fun `blank 401 403 and 404 response bodies use status aware fallback`() {
+        assertGatewayError(
+            logForResponse(HttpStatus.UNAUTHORIZED),
+            GatewayErrorCode.AUTHENTICATION_FAILED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.FORBIDDEN),
+            GatewayErrorCode.ACCESS_DENIED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.NOT_FOUND),
+            GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
+        )
+    }
+
+    @Test
+    fun `non json 401 403 and 404 response bodies use status aware fallback`() {
+        assertGatewayError(
+            logForResponse(HttpStatus.UNAUTHORIZED, "unauthorized"),
+            GatewayErrorCode.AUTHENTICATION_FAILED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.FORBIDDEN, "forbidden"),
+            GatewayErrorCode.ACCESS_DENIED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.NOT_FOUND, "not found"),
+            GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
+        )
+    }
+
+    @Test
+    fun `json errors missing structured error use status aware fallback`() {
+        assertGatewayError(
+            logForResponse(HttpStatus.UNAUTHORIZED, """{"success":false,"data":null}"""),
+            GatewayErrorCode.AUTHENTICATION_FAILED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.FORBIDDEN, """{"success":false,"data":null}"""),
+            GatewayErrorCode.ACCESS_DENIED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.NOT_FOUND, """{"success":false,"data":null}"""),
+            GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
+        )
+    }
+
+    @Test
+    fun `partial error object without code uses status aware fallback fields`() {
+        assertGatewayError(
+            logForResponse(HttpStatus.UNAUTHORIZED, """{"success":false,"error":{}}"""),
+            GatewayErrorCode.AUTHENTICATION_FAILED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.FORBIDDEN, """{"success":false,"error":{}}"""),
+            GatewayErrorCode.ACCESS_DENIED
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.NOT_FOUND, """{"success":false,"error":{}}"""),
+            GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
+        )
+    }
+
+    @Test
+    fun `valid structured 401 and 403 error bodies are preserved`() {
+        val unauthorized = logForResponse(
+            HttpStatus.UNAUTHORIZED,
+            """
+                {
+                  "success": false,
+                  "data": null,
+                  "error": {
+                    "code": 21101,
+                    "message": "access token is invalid",
+                    "value": "ACCESS_TOKEN_INVALID",
+                    "alert": "login required"
+                  }
+                }
+            """.trimIndent()
+        )
+        val forbidden = logForResponse(
+            HttpStatus.FORBIDDEN,
+            """
+                {
+                  "success": false,
+                  "data": null,
+                  "error": {
+                    "code": 12001,
+                    "message": "custom denied",
+                    "value": "ACCESS_DENIED",
+                    "alert": "custom alert"
+                  }
+                }
+            """.trimIndent()
+        )
+
+        assertEquals(21101, unauthorized.response.error?.code)
+        assertEquals("ACCESS_TOKEN_INVALID", unauthorized.response.error?.value)
+        assertEquals("access token is invalid", unauthorized.response.error?.message)
+        assertEquals(GatewayErrorCode.ACCESS_DENIED.code, forbidden.response.error?.code)
+        assertEquals("custom denied", forbidden.response.error?.message)
+        assertEquals("custom alert", forbidden.response.error?.alert)
+    }
+
+    @Test
+    fun `context response error is preserved over response body fallback`() {
+        val exchange = exchange("/v2/lectures")
+        exchange.response.statusCode = HttpStatus.UNAUTHORIZED
+        val context = ApiLogContext.initialize(exchange)
+        context.responseError = ApiLogError(
+            code = GatewayErrorCode.AUTHENTICATION_FAILED.code,
+            message = GatewayErrorCode.AUTHENTICATION_FAILED.message,
+            value = GatewayErrorCode.AUTHENTICATION_FAILED.value,
+            alert = GatewayErrorCode.AUTHENTICATION_FAILED.alert
+        )
+        context.responseBody = """{"success":false,"error":{"code":18801}}"""
+
+        val log = factory.create(exchange, context, null)
+
+        assertGatewayError(log, GatewayErrorCode.AUTHENTICATION_FAILED)
+    }
+
+    @Test
+    fun `server errors without structured body remain internal error`() {
+        assertGatewayError(
+            logForResponse(HttpStatus.INTERNAL_SERVER_ERROR),
+            GatewayErrorCode.INTERNAL_SERVER_ERROR
+        )
+        assertGatewayError(
+            logForResponse(HttpStatus.INTERNAL_SERVER_ERROR, "server failure"),
+            GatewayErrorCode.INTERNAL_SERVER_ERROR
+        )
+    }
+
+    @Test
     fun `downstream standard error response body is preserved for client`() {
         val body = """
             {
@@ -216,6 +352,24 @@ class ApiLoggingContractTests {
     }
 
     @Test
+    fun `response status 404 maps to endpoint not allowlisted`() {
+        val exchange = exchange("/v2/unknown")
+        val handler = GlobalExceptionHandler(
+            responseWriter = GatewayResponseWriter(ObjectMapper(), "https://*"),
+            apiLogFactory = factory,
+            apiStructuredLogger = ApiStructuredLogger()
+        )
+
+        handler.handle(exchange, ResponseStatusException(HttpStatus.NOT_FOUND, "not found")).block()
+
+        val body = exchange.response.bodyAsString.block().orEmpty()
+        assertEquals(HttpStatus.NOT_FOUND, exchange.response.statusCode)
+        assertTrue(body.contains("\"code\":15001"))
+        assertTrue(body.contains("\"value\":\"ENDPOINT_NOT_ALLOWLISTED\""))
+        assertTrue(!body.contains("\"code\":18801"))
+    }
+
+    @Test
     fun `sensitive keys are masked`() {
         val masked = MaskingUtil.maskObject(
             mapOf(
@@ -254,5 +408,26 @@ class ApiLoggingContractTests {
 
     private fun exchange(path: String): MockServerWebExchange {
         return MockServerWebExchange.from(MockServerHttpRequest.get(path).build())
+    }
+
+    private fun logForResponse(status: HttpStatus, body: String = ""): ApiStructuredLog {
+        val exchange = exchange("/v2/test")
+        exchange.response.statusCode = status
+        val context = ApiLogContext.initialize(exchange)
+        context.responseBody = body
+        return factory.create(exchange, context, null)
+    }
+
+    private fun assertGatewayError(log: ApiStructuredLog, errorCode: GatewayErrorCode) {
+        val error = log.response.error
+        assertNotNull(error)
+        assertEquals(errorCode.code, error.code)
+        assertEquals(errorCode.value, error.value)
+        assertEquals(errorCode.message, error.message)
+        assertEquals(errorCode.alert, error.alert)
+        if (errorCode != GatewayErrorCode.INTERNAL_SERVER_ERROR) {
+            assertTrue(error.code != GatewayErrorCode.INTERNAL_SERVER_ERROR.code)
+            assertTrue(error.value != GatewayErrorCode.INTERNAL_SERVER_ERROR.value)
+        }
     }
 }
