@@ -277,7 +277,7 @@ func TestFormatV2AlertSanitizesSecrets(t *testing.T) {
 			t.Fatalf("alert leaked %q: %s", forbidden, content)
 		}
 	}
-	for _, want := range []string{"API_ERROR | gateway", "Code      17801", "external_system", "/ops logs mode:trace query:trace-1"} {
+	for _, want := range []string{"API_ERROR | gateway", "Code      17801", "external_system", "버튼으로 상세 로그를 확인하세요.", "fallback:", "/ops logs mode:trace query:trace-1"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}
@@ -302,9 +302,29 @@ func TestFormatV2AlertSanitizesAuthSecrets(t *testing.T) {
 			t.Fatalf("auth alert leaked %q: %s", forbidden, content)
 		}
 	}
-	for _, want := range []string{"API_ERROR | auth", "Code      21801", "internal_error", "/ops logs service:auth mode:errors"} {
+	for _, want := range []string{"API_ERROR | auth", "Code      21801", "internal_error", "fallback:", "/ops logs service:auth mode:errors"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("auth alert missing %q: %s", want, content)
 		}
+	}
+}
+
+func TestFormatV2AlertWithoutTraceOmitsEmptyTraceFallback(t *testing.T) {
+	log := V2OpsLog{
+		LogType:  "API_ERROR",
+		Service:  V2Service{Name: "gateway", Domain: "gateway"},
+		Trace:    &V2Trace{},
+		HTTP:     &V2HTTP{Method: "GET", Route: "/api/v2/test", StatusCode: 502},
+		Response: &V2Response{Error: &V2Error{Code: 18801}},
+	}
+	content := FormatV2Alert(log, DecideV2Alert(log), "")
+	if !strings.Contains(content, "버튼으로 최근 서비스 로그를 확인하세요.") {
+		t.Fatalf("alert should guide service log button: %s", content)
+	}
+	if !strings.Contains(content, "/ops logs service:gateway mode:errors since:30m limit:10") {
+		t.Fatalf("service fallback missing: %s", content)
+	}
+	if strings.Contains(content, "/ops logs mode:trace query:") {
+		t.Fatalf("empty trace fallback leaked: %s", content)
 	}
 }

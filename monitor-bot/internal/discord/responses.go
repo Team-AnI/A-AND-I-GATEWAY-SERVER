@@ -23,9 +23,10 @@ type interactionResponse struct {
 }
 
 type interactionCallback struct {
-	Content         string           `json:"content,omitempty"`
-	Flags           int              `json:"flags,omitempty"`
-	AllowedMentions *allowedMentions `json:"allowed_mentions,omitempty"`
+	Content         string             `json:"content,omitempty"`
+	Flags           int                `json:"flags,omitempty"`
+	AllowedMentions *allowedMentions   `json:"allowed_mentions,omitempty"`
+	Components      []messageComponent `json:"components,omitempty"`
 }
 
 func pongResponse() interactionResponse {

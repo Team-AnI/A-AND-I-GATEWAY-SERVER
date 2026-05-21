@@ -406,6 +406,70 @@ func TestAssignmentDashboardReusesMessageIDAndLimitsRecentEvents(t *testing.T) {
 	if !strings.Contains(content, "📌 A&I 과제 운영 대시보드") || !strings.Contains(content, "상세 확인") {
 		t.Fatalf("dashboard should be Korean single-message format: %s", content)
 	}
+	for _, want := range []string{"/ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis", "/ops assignment course:<courseSlug> id:<assignmentId> view:events", "/ops assignment course:<courseSlug> id:<assignmentId> action:submissions", "/ops logs service:report mode:events query:<assignmentId> since:24h limit:20"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("dashboard footer missing explicit placeholder %q: %s", want, content)
+		}
+	}
+	for _, forbidden := range []string{"/ops assignment course: id:", "query: since", "/ops assignment-events", "/ops submissions course:", "/ops trace trace_id:"} {
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("dashboard footer should not contain empty/legacy command %q: %s", forbidden, content)
+		}
+	}
+}
+
+func TestAssignmentDashboardGroupsRecentIssueEvents(t *testing.T) {
+	base := time.Date(2026, 5, 20, 15, 28, 0, 0, time.FixedZone("KST", 9*60*60))
+	recent := []state.AssignmentEventState{
+		{EventType: "ASSIGNMENT_STALE_DRAFT", Severity: "INFO", CourseSlug: "3rd-cs", AssignmentID: "a1b2c3", Summary: "오래된 DRAFT 과제입니다.", ReasonCode: "stale-draft", IssueKey: "3rd-cs:a1b2c3:stale", EvidenceHash: "hash-a", CreatedAt: base},
+		{EventType: "ASSIGNMENT_STALE_DRAFT", Severity: "INFO", CourseSlug: "3rd-cs", AssignmentID: "d4e5f6", Summary: "오래된 DRAFT 과제입니다.", ReasonCode: "stale-draft", CreatedAt: base.Add(-4 * time.Minute)},
+		{EventType: "ASSIGNMENT_STALE_DRAFT", Severity: "INFO", CourseSlug: "3rd-cs", AssignmentID: "g7h8i9", Summary: "오래된 DRAFT 과제입니다.", ReasonCode: "stale-draft", CreatedAt: base.Add(-8 * time.Minute)},
+		{EventType: "ASSIGNMENT_STALE_DRAFT", Severity: "INFO", CourseSlug: "3rd-cs", AssignmentID: "j1k2l3", Summary: "오래된 DRAFT 과제입니다.", ReasonCode: "stale-draft", CreatedAt: base.Add(-12 * time.Minute)},
+		{EventType: "ASSIGNMENT_STALE_DRAFT", Severity: "INFO", CourseSlug: "3rd-cs", AssignmentID: "m4n5o6", Summary: "오래된 DRAFT 과제입니다.", ReasonCode: "stale-draft", CreatedAt: base.Add(-16 * time.Minute)},
+	}
+	content := formatAssignmentDashboard(assignmentPollResult{
+		UpdatedAt:     base,
+		APIStatus:     reportadmin.StatusOK,
+		ActiveCourses: 1,
+		RecentEvents:  recent,
+	})
+	for _, want := range []string{"ℹ️ 3rd-cs ASSIGNMENT_STALE_DRAFT ×5", "latest=15:28 first=15:12", "assignments: a1b2c3, d4e5f6, g7h8i9 (+2)", "issue: 3rd-cs:a1b2c3:stale", "evidence: hash-a", "/ops assignment course:3rd-cs id:a1b2c3 view:events", "/ops logs service:report mode:events query:a1b2c3 since:24h limit:20"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("assignment dashboard missing %q: %s", want, content)
+		}
+	}
+	if strings.Contains(content, "✅ 3rd-cs 오래된 DRAFT") {
+		t.Fatalf("stale draft should not look like a success event: %s", content)
+	}
+	if strings.Count(content, "오래된 DRAFT 과제입니다.") != 1 {
+		t.Fatalf("dashboard should not repeat identical summaries: %s", content)
+	}
+	for _, legacy := range []string{"/ops assignment-events", "/ops submissions course:", "/ops trace trace_id:"} {
+		if strings.Contains(content, legacy) {
+			t.Fatalf("dashboard should not include legacy command %q: %s", legacy, content)
+		}
+	}
+}
+
+func TestAssignmentDashboardWarnGroupUsesDiagnosisAndAck(t *testing.T) {
+	base := time.Date(2026, 5, 20, 15, 28, 0, 0, time.FixedZone("KST", 9*60*60))
+	content := formatAssignmentDashboard(assignmentPollResult{
+		UpdatedAt:     base,
+		APIStatus:     reportadmin.StatusOK,
+		ActiveCourses: 1,
+		RecentEvents: []state.AssignmentEventState{
+			{EventType: "ASSIGNMENT_DRAFT_PAST_START", Severity: "WARN", CourseSlug: "3rd-cs", AssignmentID: "a1b2c3", Summary: "공개 지연으로 단정할 수 없는 DRAFT 과제입니다.", ReasonCode: "draft-past-start", CreatedAt: base},
+			{EventType: "ASSIGNMENT_DRAFT_PAST_START", Severity: "WARN", CourseSlug: "3rd-cs", AssignmentID: "d4e5f6", Summary: "공개 지연으로 단정할 수 없는 DRAFT 과제입니다.", ReasonCode: "draft-past-start", CreatedAt: base.Add(-15 * time.Minute)},
+		},
+	})
+	for _, want := range []string{"⚠️ 3rd-cs ASSIGNMENT_DRAFT_PAST_START ×2", "/ops assignment course:3rd-cs id:a1b2c3 view:diagnosis", "/ops assignment course:3rd-cs id:a1b2c3 view:events", "/ops assignment course:3rd-cs id:a1b2c3 action:ack event:draft-past-start until:7d reason:<reason>"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("warn assignment dashboard missing %q: %s", want, content)
+		}
+	}
+	if strings.Contains(content, "reason:\n") || strings.HasSuffix(content, "reason:") {
+		t.Fatalf("warn assignment dashboard should not contain bare reason placeholder: %s", content)
+	}
 }
 
 func TestAssignmentOpsUsesConfiguredAlertChannelFromState(t *testing.T) {

@@ -742,23 +742,215 @@ func formatAssignmentDashboard(result assignmentPollResult) string {
 	fmt.Fprintf(&b, "최근 채점 완료 업데이트: %d건\n", result.GradingCompletedDelta)
 	fmt.Fprintf(&b, "채점 실패 감지: %d건\n\n", result.GradingFailedDelta)
 	b.WriteString("최근 이벤트\n")
-	recent := result.RecentEvents
-	if len(recent) == 0 {
+	recentGroups := groupRecentAssignmentEvents(result.RecentEvents, 5)
+	if len(recentGroups) == 0 {
 		b.WriteString("- 아직 이벤트 없음\n")
 	} else {
-		for i, event := range recent {
-			if i >= 5 {
-				break
-			}
-			fmt.Fprintf(&b, "%d. %s %s %s\n", i+1, eventIcon(event), security.SanitizeText(event.CourseSlug), security.SanitizeText(event.Summary))
+		for i, group := range recentGroups {
+			fmt.Fprintf(&b, "%d. %s\n", i+1, formatAssignmentRecentEventGroup(group))
 		}
 	}
 	b.WriteString("\n상세 확인\n")
 	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis\n")
 	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> view:events\n")
 	b.WriteString("/ops assignment course:<courseSlug> id:<assignmentId> action:submissions\n")
-	b.WriteString("/ops logs service:report mode:recent query:<assignmentId> since:24h limit:20")
+	b.WriteString("/ops logs service:report mode:events query:<assignmentId> since:24h limit:20")
 	return formatting.TruncateDiscordMessage(b.String())
+}
+
+type assignmentRecentEventGroup struct {
+	Key           string
+	EventType     string
+	Severity      string
+	CourseSlug    string
+	Summary       string
+	ReasonCode    string
+	Count         int
+	FirstAt       time.Time
+	LatestAt      time.Time
+	AssignmentIDs []string
+	IssueKey      string
+	EvidenceHash  string
+}
+
+func groupRecentAssignmentEvents(events []state.AssignmentEventState, limit int) []assignmentRecentEventGroup {
+	if limit <= 0 {
+		limit = 5
+	}
+	groups := map[string]*assignmentRecentEventGroup{}
+	order := make([]string, 0, len(events))
+	for _, event := range events {
+		key := assignmentRecentEventGroupKey(event)
+		if key == "" {
+			continue
+		}
+		group, ok := groups[key]
+		if !ok {
+			group = &assignmentRecentEventGroup{
+				Key:        key,
+				EventType:  strings.TrimSpace(event.EventType),
+				Severity:   strings.TrimSpace(event.Severity),
+				CourseSlug: strings.TrimSpace(event.CourseSlug),
+				Summary:    strings.TrimSpace(event.Summary),
+				ReasonCode: strings.TrimSpace(event.ReasonCode),
+			}
+			groups[key] = group
+			order = append(order, key)
+		}
+		group.Count++
+		if severityRank(event.Severity) > severityRank(group.Severity) {
+			group.Severity = strings.TrimSpace(event.Severity)
+		}
+		if group.EventType == "" {
+			group.EventType = strings.TrimSpace(event.EventType)
+		}
+		if group.CourseSlug == "" {
+			group.CourseSlug = strings.TrimSpace(event.CourseSlug)
+		}
+		if group.Summary == "" {
+			group.Summary = strings.TrimSpace(event.Summary)
+		}
+		if group.ReasonCode == "" {
+			group.ReasonCode = strings.TrimSpace(event.ReasonCode)
+		}
+		if group.IssueKey == "" {
+			group.IssueKey = strings.TrimSpace(event.IssueKey)
+		}
+		if group.EvidenceHash == "" {
+			group.EvidenceHash = strings.TrimSpace(event.EvidenceHash)
+		}
+		if !event.CreatedAt.IsZero() {
+			if group.FirstAt.IsZero() || event.CreatedAt.Before(group.FirstAt) {
+				group.FirstAt = event.CreatedAt
+			}
+			if group.LatestAt.IsZero() || event.CreatedAt.After(group.LatestAt) {
+				group.LatestAt = event.CreatedAt
+			}
+		}
+		addAssignmentRecentID(group, event.AssignmentID)
+	}
+	result := make([]assignmentRecentEventGroup, 0, len(groups))
+	for _, key := range order {
+		result = append(result, *groups[key])
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		if result[i].LatestAt.Equal(result[j].LatestAt) {
+			return result[i].Key < result[j].Key
+		}
+		if result[i].LatestAt.IsZero() {
+			return false
+		}
+		if result[j].LatestAt.IsZero() {
+			return true
+		}
+		return result[i].LatestAt.After(result[j].LatestAt)
+	})
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	return result
+}
+
+func assignmentRecentEventGroupKey(event state.AssignmentEventState) string {
+	parts := []string{
+		strings.TrimSpace(event.EventType),
+		strings.TrimSpace(event.CourseSlug),
+		strings.TrimSpace(event.Summary),
+		strings.TrimSpace(event.ReasonCode),
+	}
+	if strings.Join(parts, "") == "" {
+		parts = append(parts, strings.TrimSpace(event.Fingerprint))
+	}
+	for i, part := range parts {
+		parts[i] = strings.ToLower(part)
+	}
+	return strings.Trim(strings.Join(parts, "\x00"), "\x00")
+}
+
+func addAssignmentRecentID(group *assignmentRecentEventGroup, assignmentID string) {
+	assignmentID = strings.TrimSpace(assignmentID)
+	if assignmentID == "" || !security.ValidateAssignmentID(assignmentID) {
+		return
+	}
+	for _, existing := range group.AssignmentIDs {
+		if existing == assignmentID {
+			return
+		}
+	}
+	group.AssignmentIDs = append(group.AssignmentIDs, assignmentID)
+}
+
+func formatAssignmentRecentEventGroup(group assignmentRecentEventGroup) string {
+	var b strings.Builder
+	eventType := firstNonEmpty(group.EventType, "EVENT")
+	course := firstNonEmpty(group.CourseSlug, "<course>")
+	count := group.Count
+	if count <= 0 {
+		count = 1
+	}
+	fmt.Fprintf(&b, "%s %s %s ×%d\n", assignmentDashboardEventIcon(group), security.SanitizeText(course), security.SanitizeText(eventType), count)
+	if strings.TrimSpace(group.Summary) != "" {
+		fmt.Fprintf(&b, "   %s\n", security.SanitizeText(group.Summary))
+	}
+	if !group.LatestAt.IsZero() {
+		fmt.Fprintf(&b, "   latest=%s", formatAssignmentClock(group.LatestAt))
+		if !group.FirstAt.IsZero() && !group.FirstAt.Equal(group.LatestAt) {
+			fmt.Fprintf(&b, " first=%s", formatAssignmentClock(group.FirstAt))
+		}
+		b.WriteString("\n")
+	}
+	if len(group.AssignmentIDs) > 0 {
+		b.WriteString("   assignments: ")
+		for i, assignmentID := range group.AssignmentIDs {
+			if i >= 3 {
+				break
+			}
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(security.SanitizeText(assignmentID))
+		}
+		if extra := len(group.AssignmentIDs) - 3; extra > 0 {
+			fmt.Fprintf(&b, " (+%d)", extra)
+		}
+		b.WriteString("\n")
+	}
+	if group.IssueKey != "" {
+		fmt.Fprintf(&b, "   issue: %s\n", security.SanitizeText(group.IssueKey))
+	}
+	if group.EvidenceHash != "" {
+		fmt.Fprintf(&b, "   evidence: %s\n", security.SanitizeText(group.EvidenceHash))
+	}
+	if len(group.AssignmentIDs) == 0 {
+		return strings.TrimRight(b.String(), "\n")
+	}
+	assignmentID := security.SanitizeText(group.AssignmentIDs[0])
+	course = security.SanitizeText(course)
+	if strings.EqualFold(group.Severity, "WARN") {
+		fmt.Fprintf(&b, "   detail: /ops assignment course:%s id:%s view:diagnosis\n", course, assignmentID)
+		fmt.Fprintf(&b, "   events: /ops assignment course:%s id:%s view:events\n", course, assignmentID)
+		fmt.Fprintf(&b, "   ack: /ops assignment course:%s id:%s action:ack event:%s until:7d reason:<reason>\n", course, assignmentID, assignmentEventSlug(group.EventType))
+	} else {
+		fmt.Fprintf(&b, "   detail: /ops assignment course:%s id:%s view:events\n", course, assignmentID)
+	}
+	fmt.Fprintf(&b, "   logs: /ops logs service:report mode:events query:%s since:24h limit:20", assignmentID)
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func assignmentDashboardEventIcon(group assignmentRecentEventGroup) string {
+	if strings.EqualFold(group.Severity, "WARN") || strings.EqualFold(group.Severity, "ERROR") || strings.EqualFold(group.Severity, "CRITICAL") {
+		return "⚠️"
+	}
+	switch group.EventType {
+	case "ASSIGNMENT_CREATED", "ASSIGNMENT_PUBLISHED", "ASSIGNMENT_UNPUBLISHED", "ASSIGNMENT_DELETED", "ASSIGNMENT_UPDATED", "GRADING_COMPLETED":
+		return "✅"
+	default:
+		return "ℹ️"
+	}
+}
+
+func formatAssignmentClock(value time.Time) string {
+	return value.In(time.FixedZone("KST", 9*60*60)).Format("15:04")
 }
 
 const assignmentIssueSource = "WEB_ADMIN_API"
@@ -905,13 +1097,15 @@ func assignmentEventTitle(eventType string) string {
 }
 
 func eventIcon(event state.AssignmentEventState) string {
-	if event.Severity == "WARN" {
+	if strings.EqualFold(event.Severity, "WARN") || strings.EqualFold(event.Severity, "ERROR") || strings.EqualFold(event.Severity, "CRITICAL") {
 		return "⚠️"
 	}
-	if event.EventType == "GRADING_COMPLETED" {
-		return "🧪"
+	switch event.EventType {
+	case "ASSIGNMENT_CREATED", "ASSIGNMENT_PUBLISHED", "ASSIGNMENT_UNPUBLISHED", "ASSIGNMENT_DELETED", "ASSIGNMENT_UPDATED", "GRADING_COMPLETED":
+		return "✅"
+	default:
+		return "ℹ️"
 	}
-	return "✅"
 }
 
 func writeAssignmentNextCommands(b *strings.Builder, event state.AssignmentEventState) {
@@ -924,7 +1118,7 @@ func writeAssignmentNextCommands(b *strings.Builder, event state.AssignmentEvent
 		b.WriteString("   - problemId 연결과 제출 가능성 체크리스트를 확인합니다.\n")
 		fmt.Fprintf(b, "2. /ops assignment course:%s id:%s action:submissions\n", course, id)
 		b.WriteString("   - 제출/채점 상태가 누락 문제와 연결되는지 확인합니다.\n")
-		fmt.Fprintf(b, "3. /ops logs service:report mode:recent query:%s since:24h limit:20\n", id)
+		fmt.Fprintf(b, "3. /ops logs service:report mode:events query:%s since:24h limit:20\n", id)
 		b.WriteString("   - Report 로그에서 해당 assignmentId를 검색합니다.")
 	case "ASSIGNMENT_PUBLISH_DELAYED":
 		fmt.Fprintf(b, "1. /ops assignment course:%s id:%s view:diagnosis\n", course, id)
@@ -947,7 +1141,7 @@ func writeAssignmentNextCommands(b *strings.Builder, event state.AssignmentEvent
 	default:
 		fmt.Fprintf(b, "1. /ops assignment course:%s id:%s view:diagnosis\n", course, id)
 		b.WriteString("   - 과제 필드와 봇 판단 근거를 확인합니다.\n")
-		fmt.Fprintf(b, "2. /ops logs service:report mode:recent query:%s since:24h limit:20\n", id)
+		fmt.Fprintf(b, "2. /ops logs service:report mode:events query:%s since:24h limit:20\n", id)
 		b.WriteString("   - Report 로그에서 관련 이벤트를 검색합니다.")
 	}
 }

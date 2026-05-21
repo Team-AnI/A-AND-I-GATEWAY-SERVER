@@ -69,8 +69,10 @@ type Member struct {
 }
 
 type ApplicationCommandData struct {
-	Name    string                  `json:"name"`
-	Options []ApplicationCommandOpt `json:"options,omitempty"`
+	Name          string                  `json:"name"`
+	Options       []ApplicationCommandOpt `json:"options,omitempty"`
+	CustomID      string                  `json:"custom_id,omitempty"`
+	ComponentType int                     `json:"component_type,omitempty"`
 }
 
 type ApplicationCommandOpt struct {
@@ -127,7 +129,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, pongResponse())
 		return
 	}
-	if interaction.Type != interactionTypeApplicationCommand {
+	if interaction.Type != interactionTypeApplicationCommand && interaction.Type != interactionTypeMessageComponent {
 		writeJSON(w, messageResponse("지원하지 않는 interaction type입니다.", h.cfg.DiscordEphemeralResponses))
 		return
 	}
@@ -136,15 +138,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, deferredResponse(h.cfg.DiscordEphemeralResponses))
+	ephemeral := h.cfg.DiscordEphemeralResponses
+	if interaction.Type == interactionTypeMessageComponent {
+		ephemeral = true
+	}
+	writeJSON(w, deferredResponse(ephemeral))
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), h.commandTimeout(interaction.Data.Name))
 		defer cancel()
-		content := h.execute(ctx, interaction)
-		if err := SendFollowUp(ctx, h.httpClient, h.cfg.DiscordApplicationID, interaction.Token, content, h.cfg.DiscordEphemeralResponses); err != nil {
+		content := h.executeInteraction(ctx, interaction)
+		if err := SendFollowUp(ctx, h.httpClient, h.cfg.DiscordApplicationID, interaction.Token, content, ephemeral); err != nil {
 			log.Printf("discord follow-up failed: %v", err)
 		}
 	}()
+}
+
+func (h *Handler) executeInteraction(ctx context.Context, interaction Interaction) string {
+	if interaction.Type == interactionTypeMessageComponent {
+		return h.executeComponent(ctx, interaction)
+	}
+	return h.execute(ctx, interaction)
 }
 
 func (h *Handler) authorize(interaction Interaction) error {
@@ -175,6 +188,33 @@ func (h *Handler) execute(ctx context.Context, interaction Interaction) string {
 		return h.opsCommand(ctx, interaction)
 	default:
 		return "지원하지 않는 명령어입니다. /ops help 를 확인하세요."
+	}
+}
+
+func (h *Handler) executeComponent(ctx context.Context, interaction Interaction) string {
+	action, err := parseOpsButtonCustomID(interaction.Data.CustomID)
+	if err != nil {
+		return "지원하지 않는 버튼입니다. 메시지의 fallback 명령어를 사용하세요."
+	}
+	return h.executeButtonAction(ctx, interaction, action)
+}
+
+func (h *Handler) executeButtonAction(ctx context.Context, interaction Interaction, action opsButtonAction) string {
+	switch action.Kind {
+	case "trace":
+		return h.opsLogsCommand(ctx, interaction, ApplicationCommandOpt{Options: []ApplicationCommandOpt{
+			stringInteractionOption("mode", "trace"),
+			stringInteractionOption("query", action.TraceID),
+		}})
+	case "logs":
+		return h.opsLogsCommand(ctx, interaction, ApplicationCommandOpt{Options: []ApplicationCommandOpt{
+			stringInteractionOption("service", action.Service),
+			stringInteractionOption("mode", action.Mode),
+			stringInteractionOption("since", action.Since),
+			stringInteractionOption("limit", strconv.Itoa(action.Limit)),
+		}})
+	default:
+		return "지원하지 않는 버튼입니다. 메시지의 fallback 명령어를 사용하세요."
 	}
 }
 

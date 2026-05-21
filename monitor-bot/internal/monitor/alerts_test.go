@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/discord"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/opslog"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
@@ -33,6 +34,19 @@ func TestAlertFingerprintDedupeAndCooldown(t *testing.T) {
 
 	if fakeDiscord.sends != 1 {
 		t.Fatalf("expected one V2 alert within cooldown, got %d", fakeDiscord.sends)
+	}
+}
+
+func TestV2AlertKeepsTraceFingerprintWhileIncidentKeyExcludesTrace(t *testing.T) {
+	row1 := map[string]string{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/reports", "response.error.code": "18801", "trace.traceId": "trace-1"}
+	row2 := map[string]string{"@timestamp": "2026-05-14T10:00:01+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/reports", "response.error.code": "18801", "trace.traceId": "trace-2"}
+	alert1 := makeV2Alert(row1)
+	alert2 := makeV2Alert(row2)
+	if alert1.Fingerprint == "" || alert2.Fingerprint == "" || alert1.Fingerprint == alert2.Fingerprint {
+		t.Fatalf("trace-scoped alert fingerprint behavior should remain unchanged: %q %q", alert1.Fingerprint, alert2.Fingerprint)
+	}
+	if serviceAlertIncidentKey(alert1) != serviceAlertIncidentKey(alert2) {
+		t.Fatalf("incident key should group same incident with different trace IDs: %q %q", serviceAlertIncidentKey(alert1), serviceAlertIncidentKey(alert2))
 	}
 }
 
@@ -73,6 +87,41 @@ func TestServiceAlertsCollectAuthV2Alert(t *testing.T) {
 	}
 }
 
+func TestMarkAlertSentPersistsRecentIncidentEvidence(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	alert := Alert{
+		Fingerprint: "prod:gateway:v2:API_ERROR:trace-1",
+		Service:     "gateway",
+		Severity:    "CRITICAL",
+		AlertType:   "v2-log",
+		Reason:      "critical",
+		Path:        "/v2/reports",
+		ErrorCode:   "18801",
+		Traces:      []string{"trace-1", "trace-1", "bad trace with space"},
+	}
+	if err := service.markAlertSent(alert, true); err != nil {
+		t.Fatal(err)
+	}
+	got := store.Snapshot().RecentServiceAlerts
+	if len(got) != 1 {
+		t.Fatalf("expected one recent service alert, got %#v", got)
+	}
+	event := got[0]
+	if event.IncidentKey == "" || strings.Contains(event.IncidentKey, "trace-1") {
+		t.Fatalf("incident key should exist and exclude trace id: %#v", event)
+	}
+	if event.Reason != "critical" || event.Path != "/v2/reports" || event.ErrorCode != "18801" {
+		t.Fatalf("incident metadata not persisted: %#v", event)
+	}
+	if len(event.TraceIDs) != 1 || event.TraceIDs[0] != "trace-1" {
+		t.Fatalf("trace ids should be sanitized and deduped: %#v", event.TraceIDs)
+	}
+}
+
 func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
 	if err := store.Load(); err != nil {
@@ -95,11 +144,42 @@ func TestServiceAlertMentionsOperatorRoleAndUsesOpsCommands(t *testing.T) {
 	if got := strings.Join(fakeDiscord.roleIDs, ","); got != "1234567890" {
 		t.Fatalf("critical alert should use fallback role id, got %q", got)
 	}
+	buttons := alertButtons(t, fakeDiscord.roleComponents[0])
+	if len(buttons) != 2 {
+		t.Fatalf("expected trace and service buttons: %#v", buttons)
+	}
+	if buttons[0].Label != "Trace 상세" || buttons[0].CustomID != "ops:v1:trace:trace-1" {
+		t.Fatalf("trace button mismatch: %#v", buttons[0])
+	}
+	if buttons[1].Label != "report 오류 30m" || buttons[1].CustomID != "ops:v1:logs:report:errors:30m:10" {
+		t.Fatalf("service button mismatch: %#v", buttons[1])
+	}
 	content := fakeDiscord.roleContents[0]
-	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "/ops logs service:report mode:errors", "/ops logs mode:trace query:trace-1"} {
+	for _, want := range []string{"<@&1234567890>", "API_ERROR | report", "Code      18801", "버튼으로 상세 로그를 확인하세요.", "fallback:", "/ops logs service:report mode:errors", "/ops logs mode:trace query:trace-1"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("alert missing %q: %s", want, content)
 		}
+	}
+}
+
+func TestV2AlertWithoutTraceOmitsTraceButtonAndEmptyFallback(t *testing.T) {
+	alert := alertForErrorCode(18801)
+	alert.V2Log.Trace = nil
+
+	components := alertDrilldownComponents(alert)
+	buttons := alertButtons(t, components)
+	if len(buttons) != 1 {
+		t.Fatalf("expected only service button: %#v", buttons)
+	}
+	if buttons[0].Label != "gateway 오류 30m" || buttons[0].CustomID != "ops:v1:logs:gateway:errors:30m:10" {
+		t.Fatalf("service button mismatch: %#v", buttons[0])
+	}
+	content := formatAlert(alert, "")
+	if !strings.Contains(content, "버튼") || !strings.Contains(content, "fallback:") {
+		t.Fatalf("alert should keep button-first fallback text: %s", content)
+	}
+	if strings.Contains(content, "/ops logs mode:trace query:") {
+		t.Fatalf("alert must not print empty trace command: %s", content)
 	}
 }
 
@@ -512,6 +592,17 @@ func serviceForErrorCode(code int) (domain string, name string) {
 	default:
 		return "gateway", "gateway"
 	}
+}
+
+func alertButtons(t *testing.T, components []discord.MessageComponent) []discord.MessageComponent {
+	t.Helper()
+	if len(components) == 0 {
+		return nil
+	}
+	if len(components) != 1 || len(components[0].Components) == 0 {
+		t.Fatalf("expected one action row with buttons: %#v", components)
+	}
+	return components[0].Components
 }
 
 func TestResolvedAlertStateTransition(t *testing.T) {

@@ -69,6 +69,37 @@ func TestStorePersistsServiceOpsState(t *testing.T) {
 	}
 }
 
+func TestStoreLoadsLegacyRecentServiceAlerts(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	body := []byte(`{
+  "version": 2,
+  "recentServiceAlerts": [
+    {
+      "fingerprint": "legacy-trace-fingerprint",
+      "severity": "CRITICAL",
+      "service": "gateway",
+      "alertType": "v2-log",
+      "summary": "gateway CRITICAL - critical",
+      "createdAt": "2026-05-20T05:09:00Z"
+    }
+  ]
+}`)
+	if err := os.WriteFile(path, body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := NewStore(path)
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := store.Snapshot().RecentServiceAlerts
+	if len(got) != 1 {
+		t.Fatalf("legacy recent service alert not loaded: %#v", got)
+	}
+	if got[0].IncidentKey != "" || len(got[0].TraceIDs) != 0 {
+		t.Fatalf("missing new fields should stay zero-value for compatibility: %#v", got[0])
+	}
+}
+
 func TestStoreCorruptedStateFallsBackGracefully(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.json")

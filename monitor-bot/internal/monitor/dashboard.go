@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -46,7 +47,9 @@ type ReportAdminAPI interface {
 
 type DiscordMessenger interface {
 	SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (discord.Message, error)
+	SendChannelMessageWithComponents(ctx context.Context, client *http.Client, botToken, channelID, content string, components []discord.MessageComponent) (discord.Message, error)
 	SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error)
+	SendChannelMessageWithRoleMentionAndComponents(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string, components []discord.MessageComponent) (discord.Message, error)
 	EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error
 }
 
@@ -56,8 +59,16 @@ func (discordAPI) SendChannelMessage(ctx context.Context, client *http.Client, b
 	return discord.SendChannelMessage(ctx, client, botToken, channelID, content)
 }
 
+func (discordAPI) SendChannelMessageWithComponents(ctx context.Context, client *http.Client, botToken, channelID, content string, components []discord.MessageComponent) (discord.Message, error) {
+	return discord.SendChannelMessageWithComponents(ctx, client, botToken, channelID, content, components)
+}
+
 func (discordAPI) SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error) {
 	return discord.SendChannelMessageWithRoleMention(ctx, client, botToken, channelID, content, roleID)
+}
+
+func (discordAPI) SendChannelMessageWithRoleMentionAndComponents(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string, components []discord.MessageComponent) (discord.Message, error) {
+	return discord.SendChannelMessageWithRoleMentionAndComponents(ctx, client, botToken, channelID, content, roleID, components)
 }
 
 func (discordAPI) EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error {
@@ -208,12 +219,13 @@ func (s *Service) RenderDashboard(ctx context.Context, sinceLabel string, interv
 		sinceLabel = "30m"
 		since, _ = security.ParseSince(sinceLabel)
 	}
+	now := time.Now()
 	alarmNames, err := s.alarms.AlarmNames(ctx)
 	if err != nil {
 		alarmNames = nil
 	}
 	inputs := s.dashboardInputs(ctx, since, alarmNames, s.cfg.Dashboard.MaxCloudWatchQueries)
-	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, time.Now(), interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5))
+	return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, alarmNames, now, interval, recentServiceAlertLines(snapshot.RecentServiceAlerts, 5, sinceLabel, since, now))
 }
 
 func (s *Service) RefreshDashboard(ctx context.Context) error {
@@ -342,8 +354,11 @@ func (s *Service) RenderServiceDashboard(ctx context.Context, service, sinceLabe
 		if item.Name != normalized {
 			continue
 		}
+		now := time.Now()
+		snapshot := s.store.Snapshot()
+		recentAlerts := filterRecentServiceAlertsByService(snapshot.RecentServiceAlerts, normalized)
 		inputs := s.dashboardInputsForRegistry(ctx, since, []string{}, s.cfg.Dashboard.MaxCloudWatchQueries, []config.ServiceDefinition{item})
-		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, time.Now(), interval, recentServiceAlertLines(s.store.Snapshot().RecentServiceAlerts, 5))
+		return formatting.FormatDashboardWithMetaAndAlerts(sinceLabel, inputs, nil, now, interval, recentServiceAlertLines(recentAlerts, 5, sinceLabel, since, now))
 	}
 	return "service registry에 없는 서비스입니다."
 }
@@ -438,25 +453,231 @@ func logStatusFromQueryError(err error) string {
 	}
 }
 
-func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int) []string {
+type serviceAlertGroup struct {
+	Key             string
+	Service         string
+	Severity        string
+	AlertType       string
+	Summary         string
+	Count           int
+	FirstAt         time.Time
+	LatestAt        time.Time
+	TraceIDs        []string
+	TotalTraceCount int
+}
+
+func recentServiceAlertLines(events []state.ServiceAlertEventState, limit int, sinceLabel string, since time.Duration, now time.Time) []string {
 	if limit <= 0 {
 		limit = 5
 	}
-	lines := make([]string, 0, limit)
-	for _, event := range events {
-		if len(lines) >= limit {
-			break
-		}
-		summary := strings.TrimSpace(event.Summary)
-		if summary == "" {
-			summary = strings.TrimSpace(event.Service + " " + event.AlertType)
-		}
-		if !event.CreatedAt.IsZero() {
-			summary = fmt.Sprintf("%s (%s)", summary, event.CreatedAt.In(time.FixedZone("KST", 9*60*60)).Format("15:04"))
-		}
-		lines = append(lines, summary)
+	groups := groupRecentServiceAlerts(filterRecentServiceAlertsByWindow(events, since, now), limit)
+	lines := make([]string, 0, len(groups))
+	for _, group := range groups {
+		lines = append(lines, formatServiceAlertGroup(group, sinceLabel))
 	}
 	return lines
+}
+
+func filterRecentServiceAlertsByWindow(events []state.ServiceAlertEventState, since time.Duration, now time.Time) []state.ServiceAlertEventState {
+	if since <= 0 {
+		since = 30 * time.Minute
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	filtered := make([]state.ServiceAlertEventState, 0, len(events))
+	for _, event := range events {
+		if event.CreatedAt.IsZero() {
+			continue
+		}
+		if now.Sub(event.CreatedAt) <= since {
+			filtered = append(filtered, event)
+		}
+	}
+	return filtered
+}
+
+func filterRecentServiceAlertsByService(events []state.ServiceAlertEventState, service string) []state.ServiceAlertEventState {
+	service = canonicalRecentServiceName(service)
+	filtered := make([]state.ServiceAlertEventState, 0, len(events))
+	for _, event := range events {
+		if canonicalRecentServiceName(event.Service) == service {
+			filtered = append(filtered, event)
+		}
+	}
+	return filtered
+}
+
+func groupRecentServiceAlerts(events []state.ServiceAlertEventState, limit int) []serviceAlertGroup {
+	if limit <= 0 {
+		limit = 5
+	}
+	groups := map[string]*serviceAlertGroup{}
+	order := make([]string, 0, len(events))
+	for _, event := range events {
+		key := serviceAlertGroupKey(event)
+		if key == "" {
+			continue
+		}
+		group, ok := groups[key]
+		if !ok {
+			group = &serviceAlertGroup{
+				Key:       key,
+				Service:   strings.TrimSpace(event.Service),
+				Severity:  strings.TrimSpace(event.Severity),
+				AlertType: strings.TrimSpace(event.AlertType),
+				Summary:   serviceAlertEventSummary(event),
+			}
+			groups[key] = group
+			order = append(order, key)
+		}
+		group.Count++
+		if group.Service == "" {
+			group.Service = strings.TrimSpace(event.Service)
+		}
+		if group.Severity == "" {
+			group.Severity = strings.TrimSpace(event.Severity)
+		}
+		if group.AlertType == "" {
+			group.AlertType = strings.TrimSpace(event.AlertType)
+		}
+		if group.Summary == "" {
+			group.Summary = serviceAlertEventSummary(event)
+		}
+		if !event.CreatedAt.IsZero() {
+			if group.FirstAt.IsZero() || event.CreatedAt.Before(group.FirstAt) {
+				group.FirstAt = event.CreatedAt
+			}
+			if group.LatestAt.IsZero() || event.CreatedAt.After(group.LatestAt) {
+				group.LatestAt = event.CreatedAt
+			}
+		}
+		addServiceAlertGroupTraceIDs(group, event.TraceIDs)
+	}
+	result := make([]serviceAlertGroup, 0, len(groups))
+	for _, key := range order {
+		result = append(result, *groups[key])
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		if result[i].LatestAt.Equal(result[j].LatestAt) {
+			return result[i].Key < result[j].Key
+		}
+		if result[i].LatestAt.IsZero() {
+			return false
+		}
+		if result[j].LatestAt.IsZero() {
+			return true
+		}
+		return result[i].LatestAt.After(result[j].LatestAt)
+	})
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	return result
+}
+
+func serviceAlertGroupKey(event state.ServiceAlertEventState) string {
+	if key := strings.TrimSpace(event.IncidentKey); key != "" {
+		return key
+	}
+	parts := []string{
+		strings.TrimSpace(event.Service),
+		strings.TrimSpace(event.Severity),
+		strings.TrimSpace(event.AlertType),
+		strings.TrimSpace(event.Summary),
+	}
+	if strings.Join(parts, "") == "" {
+		parts = append(parts, strings.TrimSpace(event.Fingerprint))
+	}
+	for i, part := range parts {
+		parts[i] = strings.ToLower(part)
+	}
+	return strings.Trim(strings.Join(parts, "\x00"), "\x00")
+}
+
+func serviceAlertEventSummary(event state.ServiceAlertEventState) string {
+	summary := strings.TrimSpace(event.Summary)
+	if summary != "" {
+		return summary
+	}
+	return strings.TrimSpace(strings.Join([]string{event.Service, event.Severity, "-", event.AlertType}, " "))
+}
+
+func addServiceAlertGroupTraceIDs(group *serviceAlertGroup, traceIDs []string) {
+	seen := map[string]struct{}{}
+	for _, traceID := range group.TraceIDs {
+		seen[traceID] = struct{}{}
+	}
+	for _, traceID := range traceIDs {
+		traceID = strings.TrimSpace(traceID)
+		if traceID == "" || !security.ValidateTraceID(traceID) {
+			continue
+		}
+		if _, ok := seen[traceID]; ok {
+			continue
+		}
+		seen[traceID] = struct{}{}
+		group.TotalTraceCount++
+		if len(group.TraceIDs) < 3 {
+			group.TraceIDs = append(group.TraceIDs, traceID)
+		}
+	}
+}
+
+func formatServiceAlertGroup(group serviceAlertGroup, since string) string {
+	var b strings.Builder
+	summary := security.SanitizeText(firstNonEmpty(group.Summary, strings.TrimSpace(group.Service+" "+group.Severity+" - "+group.AlertType), "unknown alert"))
+	count := group.Count
+	if count <= 0 {
+		count = 1
+	}
+	fmt.Fprintf(&b, "%s ×%d\n", summary, count)
+	if !group.LatestAt.IsZero() {
+		fmt.Fprintf(&b, "   latest=%s", formatDashboardClock(group.LatestAt))
+		if !group.FirstAt.IsZero() && !group.FirstAt.Equal(group.LatestAt) {
+			fmt.Fprintf(&b, " first=%s", formatDashboardClock(group.FirstAt))
+		}
+		b.WriteString("\n")
+	}
+	if len(group.TraceIDs) == 0 {
+		b.WriteString("   trace: none\n")
+	} else {
+		b.WriteString("   traces: ")
+		for i, traceID := range group.TraceIDs {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(security.SanitizeText(traceID))
+		}
+		if extra := group.TotalTraceCount - len(group.TraceIDs); extra > 0 {
+			fmt.Fprintf(&b, " (+%d)", extra)
+		}
+		b.WriteString("\n")
+	}
+	service := security.SanitizeText(firstNonEmpty(canonicalRecentServiceName(group.Service), "gateway"))
+	mode := "errors"
+	if strings.EqualFold(group.Severity, "CRITICAL") || strings.Contains(strings.ToLower(group.Summary), "critical") {
+		mode = "critical"
+	}
+	fmt.Fprintf(&b, "   logs: /ops logs service:%s mode:%s since:%s limit:10\n", service, mode, security.SanitizeText(firstNonEmpty(since, "30m")))
+	if len(group.TraceIDs) > 0 {
+		fmt.Fprintf(&b, "   trace: /ops logs mode:trace query:%s", security.SanitizeText(group.TraceIDs[0]))
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func formatDashboardClock(value time.Time) string {
+	return value.In(time.FixedZone("KST", 9*60*60)).Format("15:04")
+}
+
+func canonicalRecentServiceName(service string) string {
+	normalized := strings.ToLower(strings.TrimSpace(service))
+	switch normalized {
+	case "blog":
+		return "post"
+	default:
+		return normalized
+	}
 }
 
 func (s *Service) dashboardInterval(snapshot state.Data) time.Duration {
