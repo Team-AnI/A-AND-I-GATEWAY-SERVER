@@ -784,8 +784,8 @@ func HelpTextFor(topic, command, query string) string {
 4. /ops assignment
    - 과제 목록, 상세, 진단, 이벤트 이력, ack, 제출 상태를 봅니다.
    - 예: /ops assignment course:3rd-cs
-   - 예: /ops assignment course:<course> id:<assignmentId> view:diagnosis
-   - 예: /ops assignment course:<course> id:<assignmentId> view:events
+   - 예: /ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis
+   - 예: /ops assignment course:<courseSlug> id:<assignmentId> view:events
 
 5. /ops help
    - 상황별로 쓸 명령을 검색합니다.
@@ -913,12 +913,12 @@ func helpAssignmentsText() string {
 - 목적: 과제 목록, 상세, 진단, 감지 이력, 체크리스트, 제출 상태, ack/unack을 한 명령에서 처리
 - list: /ops assignment course:3rd-cs action:list status:draft
 - all list: /ops assignment scope:all action:list window:today
-- summary: /ops assignment course:<course> id:<assignmentId>
-- diagnosis: /ops assignment course:<course> id:<assignmentId> view:diagnosis
-- events: /ops assignment course:<course> id:<assignmentId> view:events
-- check: /ops assignment course:<course> id:<assignmentId> action:check
-- submissions: /ops assignment course:<course> id:<assignmentId> action:submissions
-- ack: /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>
+- summary: /ops assignment course:<courseSlug> id:<assignmentId>
+- diagnosis: /ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis
+- events: /ops assignment course:<courseSlug> id:<assignmentId> view:events
+- check: /ops assignment course:<courseSlug> id:<assignmentId> action:check
+- submissions: /ops assignment course:<courseSlug> id:<assignmentId> action:submissions
+- ack: /ops assignment course:<courseSlug> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>
 - 주의: 누가 변경했는지 증명하는 audit trail이 아닙니다.
 
 /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
@@ -974,8 +974,8 @@ CRITICAL role mention이 동작하지 않음:
 과제 WARN이 많음:
 - Too many assignment warnings:
 - issue digest와 repeated suppressed count를 확인합니다.
-- /ops assignment course:<course> id:<assignmentId> view:events로 감지 이력을 봅니다.
-- 의도된 stale issue는 /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>으로 묶습니다.
+- /ops assignment course:<courseSlug> id:<assignmentId> view:events로 감지 이력을 봅니다.
+- 의도된 stale issue는 /ops assignment course:<courseSlug> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>으로 묶습니다.
 
 누가 과제를 수정했는지 확인:
 - /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
@@ -1004,8 +1004,8 @@ func helpCommandText(command string) string {
 
 다음 단계:
 - 서버 로그 검색: /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20
-- 감지 이력 확인: /ops assignment course:<course> id:<assignmentId> view:events
-- 의도된 상태면 ack: /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`)
+- 감지 이력 확인: /ops assignment course:<courseSlug> id:<assignmentId> view:events
+- 의도된 상태면 ack: /ops assignment course:<courseSlug> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`)
 	case "dashboard":
 		return strings.TrimSpace(`/ops dashboard
 
@@ -1068,10 +1068,10 @@ action:
 
 예시:
 /ops assignment course:3rd-cs action:list status:draft
-/ops assignment course:<course> id:<assignmentId> view:events
-/ops assignment course:<course> id:<assignmentId> action:check
-/ops assignment course:<course> id:<assignmentId> action:submissions
-/ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`)
+/ops assignment course:<courseSlug> id:<assignmentId> view:events
+/ops assignment course:<courseSlug> id:<assignmentId> action:check
+/ops assignment course:<courseSlug> id:<assignmentId> action:submissions
+/ops assignment course:<courseSlug> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>`)
 	case "help":
 		return strings.TrimSpace(`/ops help
 
@@ -1080,8 +1080,8 @@ action:
 
 사용 방식:
 - /ops help
-- /ops help topic:<dashboard|logs|alerts|assignments|routing|audit|troubleshooting>
-- /ops help command:<dashboard|logs|alert|assignment|help>
+- /ops help topic:<topic>
+- /ops help command:<command>
 - /ops help query:"과제 수정 누가"
 - /ops help query:"critical role"`)
 	default:
@@ -1117,8 +1117,8 @@ func helpQueryText(query string) string {
 		b.WriteString("- publishedAt unknown + DRAFT + startAt past는 ASSIGNMENT_DRAFT_PAST_START입니다.\n")
 		b.WriteString("- stale draft는 반복 WARN으로 spam하지 않습니다.\n\n")
 		b.WriteString("확인:\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:diagnosis\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events")
+		b.WriteString("- /ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis\n")
+		b.WriteString("- /ops assignment course:<courseSlug> id:<assignmentId> view:events")
 	case criticalRoleQuery:
 		b.WriteString("CRITICAL role mention 설정:\n")
 		b.WriteString("- /ops alert action:channel target:critical channel:#ops-critical\n")
@@ -1137,13 +1137,13 @@ func helpQueryText(query string) string {
 		b.WriteString("- /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
 		b.WriteString("  → 삭제 actor/time은 Report V2 EVENT logs에서 확인합니다.\n\n")
 		b.WriteString("주의:\n")
-		b.WriteString("- 삭제된 assignment는 /ops assignment course:<course> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다.\n")
+		b.WriteString("- 삭제된 assignment는 /ops assignment course:<courseSlug> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다.\n")
 		b.WriteString("- /ops assignment는 현재 WEB Admin state만 보여줍니다.\n")
 		b.WriteString("- bot은 과제를 삭제하거나 업데이트하지 않습니다.")
 	case assignmentQuery && updateActorQuery:
 		b.WriteString("과제 수정 actor 확인:\n")
 		b.WriteString("- /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events\n\n")
+		b.WriteString("- /ops assignment course:<courseSlug> id:<assignmentId> view:events\n\n")
 		b.WriteString("정책:\n")
 		b.WriteString("- who/when은 Report EVENT logs에서 확인합니다.\n")
 		b.WriteString("- 현재 assignment state does not prove actor.\n")
@@ -1158,7 +1158,7 @@ func helpQueryText(query string) string {
 		b.WriteString("   /ops logs service:report mode:events query:<assignmentId|traceId|actorId> since:24h limit:20\n")
 		b.WriteString("   → 과제 생성/수정/삭제/공개 EVENT 로그를 검색합니다.\n\n")
 		b.WriteString("3. 과제별 이력\n")
-		b.WriteString("   /ops assignment course:<course> id:<assignmentId> view:events\n")
+		b.WriteString("   /ops assignment course:<courseSlug> id:<assignmentId> view:events\n")
 		b.WriteString("   → 봇 감지 이력과 audit event 요약을 봅니다.\n\n")
 		b.WriteString("주의:\n")
 		b.WriteString("- /ops assignment는 현재 상태 조회입니다.\n")
@@ -1170,8 +1170,8 @@ func helpQueryText(query string) string {
 		b.WriteString("- 같은 open issue는 cooldown마다 다시 전송하지 않습니다.\n")
 		b.WriteString("- digest groups repeated assignment issues and shows repeated suppressed count.\n\n")
 		b.WriteString("확인/조치:\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> view:events\n")
-		b.WriteString("- /ops assignment course:<course> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>")
+		b.WriteString("- /ops assignment course:<courseSlug> id:<assignmentId> view:events\n")
+		b.WriteString("- /ops assignment course:<courseSlug> id:<assignmentId> action:ack event:<eventType> until:7d reason:<reason>")
 	case strings.Contains(normalized, "로그") || strings.Contains(normalized, "검색") || strings.Contains(normalized, "trace"):
 		b.WriteString("관련 기능:\n")
 		b.WriteString("- /ops logs service:report mode:recent query:<assignmentId|traceId|eventType> since:24h limit:20\n")

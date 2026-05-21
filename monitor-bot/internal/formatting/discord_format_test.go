@@ -415,8 +415,8 @@ func TestHelpUsesOpsFocusedOutput(t *testing.T) {
 		"/ops alert action:channel target:critical channel:#ops-critical",
 		"/ops alert action:role role:@운영팀",
 		"/ops assignment course:3rd-cs",
-		"/ops assignment course:<course> id:<assignmentId> view:diagnosis",
-		"/ops assignment course:<course> id:<assignmentId> view:events",
+		"/ops assignment course:<courseSlug> id:<assignmentId> view:diagnosis",
+		"/ops assignment course:<courseSlug> id:<assignmentId> view:events",
 		"봇은 과제를 생성/수정/삭제/공개하지 않습니다",
 		"CRITICAL 서버 장애만 role mention",
 	} {
@@ -471,7 +471,7 @@ func TestHelpCommandPagesMatchFiveCommandFamilies(t *testing.T) {
 		"logs":       {"mode:events", "mode:trace", "structured V2 fields"},
 		"alert":      {"target:general", "target:critical", "CRITICAL 서버 장애만"},
 		"assignment": {"action:submissions", "view:events", "read-only"},
-		"help":       {"query:", "topic:", "command:"},
+		"help":       {"query:", "topic:<topic>", "command:<command>"},
 	}
 	for command, wants := range cases {
 		got := HelpTextFor("", command, "ignored query")
@@ -485,13 +485,13 @@ func TestHelpCommandPagesMatchFiveCommandFamilies(t *testing.T) {
 
 func TestHelpQueryExplainsAssignmentAuditAndRouting(t *testing.T) {
 	got := HelpTextFor("", "", "과제 수정 누가")
-	for _, want := range []string{"Report EVENT logs", "query:<assignmentId|traceId|actorId>", "/ops assignment course:<course> id:<assignmentId> view:events", "현재 assignment state does not prove actor", "bot은 과제를 업데이트하지 않습니다"} {
+	for _, want := range []string{"Report EVENT logs", "query:<assignmentId|traceId|actorId>", "/ops assignment course:<courseSlug> id:<assignmentId> view:events", "현재 assignment state does not prove actor", "bot은 과제를 업데이트하지 않습니다"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("assignment audit query help missing %q: %s", want, got)
 		}
 	}
 	got = HelpTextFor("", "", "과제 삭제 언제")
-	for _, want := range []string{"mode:events", "query:<assignmentId|traceId|actorId>", "삭제된 assignment는 /ops assignment course:<course> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다", "Report V2 EVENT logs", "현재 WEB Admin state"} {
+	for _, want := range []string{"mode:events", "query:<assignmentId|traceId|actorId>", "삭제된 assignment는 /ops assignment course:<courseSlug> id:<assignmentId>에서 더 이상 조회되지 않을 수 있습니다", "Report V2 EVENT logs", "현재 WEB Admin state"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("assignment deletion query help missing %q: %s", want, got)
 		}
@@ -564,7 +564,7 @@ func TestHelpExamplesUseExplicitPlaceholders(t *testing.T) {
 		}
 	}
 	for name, got := range pages {
-		for _, want := range []string{"<assignmentId>", "<course>"} {
+		for _, want := range []string{"<assignmentId>", "<courseSlug>"} {
 			if strings.Contains(got, "/ops assignment") && !strings.Contains(got, want) {
 				t.Fatalf("help page %s should include explicit placeholder %q: %s", name, want, got)
 			}
@@ -600,6 +600,43 @@ func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
 	for _, want := range []string{"Legacy Command Migration", "/ops service", "/ops dashboard service:<service>", "same assignment issue does not resend every cooldown", "DISCORD_REGISTER_COMMANDS=true", "No tag deployment"} {
 		if !strings.Contains(contents["opsdocs"], want) {
 			t.Fatalf("discord monitor docs missing %q", want)
+		}
+	}
+	for name, content := range contents {
+		for _, forbidden := range []string{
+			"query: since",
+			"query: \n",
+			"course: id:",
+			"event: until",
+			"/ops logs service: mode:",
+			"/ops logs mode:trace query:\n",
+			"/ops assignment course:<course>",
+			"/ops help topic:<dashboard|logs|alerts|assignments|routing|audit|troubleshooting>",
+			"/ops help command:<dashboard|logs|alert|assignment|help>",
+		} {
+			if strings.Contains(content, forbidden) {
+				t.Fatalf("%s docs contain bare placeholder %q", name, forbidden)
+			}
+		}
+		for _, line := range strings.Split(content, "\n") {
+			if strings.HasSuffix(line, "reason:") || strings.HasSuffix(line, "query:") {
+				t.Fatalf("%s docs contain bare placeholder line %q", name, line)
+			}
+		}
+	}
+	for _, want := range []string{
+		"query:<traceId>",
+		"query:<assignmentId|traceId|actorId>",
+		"course:<courseSlug>",
+		"id:<assignmentId>",
+		"event:<eventType>",
+		"reason:<reason>",
+	} {
+		if !strings.Contains(contents["bot"], want) {
+			t.Fatalf("monitor-bot README missing explicit placeholder %q", want)
+		}
+		if !strings.Contains(contents["opsdocs"], want) {
+			t.Fatalf("discord monitor docs missing explicit placeholder %q", want)
 		}
 	}
 	defaultHelpSection := contents["opsdocs"]

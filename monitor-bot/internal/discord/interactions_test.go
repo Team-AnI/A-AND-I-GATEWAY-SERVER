@@ -228,6 +228,48 @@ func TestMessageComponentUsesSameAuthorizationAsSlashCommands(t *testing.T) {
 	}
 }
 
+func TestMessageComponentRejectsNonButtonComponentType(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := newComponentTestHandler(nil)
+	h.cfg.DiscordPublicKey = hex.EncodeToString(publicKey)
+
+	body := []byte(`{"id":"interaction-1","application_id":"app-id","channel_id":"channel-1","type":3,"token":"token-1","guild_id":"guild-1","data":{"custom_id":"ops:v1:trace:trace-123","component_type":3}}`)
+	req := signedInteractionRequest(t, privateKey, body)
+	rr := httptest.NewRecorder()
+
+	h.ServeHTTP(rr, req)
+
+	var response interactionResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Type != InteractionResponseChannelMessage || response.Data == nil || response.Data.Flags != MessageFlagEphemeral {
+		t.Fatalf("expected ephemeral component rejection: %#v", response)
+	}
+	if !strings.Contains(response.Data.Content, "지원하지 않는 버튼") {
+		t.Fatalf("unexpected component response: %s", response.Data.Content)
+	}
+}
+
+func TestMessageComponentUsesOpsTimeout(t *testing.T) {
+	h := newComponentTestHandler(nil)
+	h.cfg.CloudWatchQueryTimeout = time.Second
+	componentTimeout := h.interactionTimeout(Interaction{Type: interactionTypeMessageComponent})
+	applicationTimeout := h.interactionTimeout(Interaction{Type: interactionTypeApplicationCommand})
+	if componentTimeout != h.commandTimeout("ops") {
+		t.Fatalf("component timeout = %s, want %s", componentTimeout, h.commandTimeout("ops"))
+	}
+	if applicationTimeout != h.commandTimeout("") {
+		t.Fatalf("application timeout = %s, want %s", applicationTimeout, h.commandTimeout(""))
+	}
+	if componentTimeout <= applicationTimeout {
+		t.Fatalf("component timeout should use ops budget, got component=%s application=%s", componentTimeout, applicationTimeout)
+	}
+}
+
 func TestPingAndUnsupportedInteractionBehavior(t *testing.T) {
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {

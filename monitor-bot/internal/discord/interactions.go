@@ -137,6 +137,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, messageResponse(err.Error(), true))
 		return
 	}
+	if interaction.Type == interactionTypeMessageComponent && interaction.Data.ComponentType != componentTypeButton {
+		writeJSON(w, messageResponse("지원하지 않는 버튼입니다. 메시지의 fallback 명령어를 사용하세요.", true))
+		return
+	}
 
 	ephemeral := h.cfg.DiscordEphemeralResponses
 	if interaction.Type == interactionTypeMessageComponent {
@@ -144,7 +148,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, deferredResponse(ephemeral))
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), h.commandTimeout(interaction.Data.Name))
+		ctx, cancel := context.WithTimeout(context.Background(), h.interactionTimeout(interaction))
 		defer cancel()
 		content := h.executeInteraction(ctx, interaction)
 		if err := SendFollowUp(ctx, h.httpClient, h.cfg.DiscordApplicationID, interaction.Token, content, ephemeral); err != nil {
@@ -1319,6 +1323,13 @@ func (h *Handler) commandTimeout(command string) time.Duration {
 	default:
 		return h.cfg.CloudWatchQueryTimeout + 3*time.Second
 	}
+}
+
+func (h *Handler) interactionTimeout(interaction Interaction) time.Duration {
+	if interaction.Type == interactionTypeMessageComponent {
+		return h.commandTimeout("ops")
+	}
+	return h.commandTimeout(interaction.Data.Name)
 }
 
 func opsSubcommand(interaction Interaction) (ApplicationCommandOpt, bool) {
