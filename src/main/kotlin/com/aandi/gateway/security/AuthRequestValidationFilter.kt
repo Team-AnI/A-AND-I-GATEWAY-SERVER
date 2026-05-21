@@ -1,11 +1,12 @@
 package com.aandi.gateway.security
 
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponseWriter
 import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jwt.SignedJWT
 import org.springframework.core.Ordered
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
@@ -19,7 +20,8 @@ import java.nio.charset.StandardCharsets
 @Component
 class AuthRequestValidationFilter(
     private val jwtPolicy: JwtPolicyProperties,
-    private val policy: SecurityPolicyProperties
+    private val policy: SecurityPolicyProperties,
+    private val responseWriter: GatewayResponseWriter
 ) : WebFilter, Ordered {
 
     private val parser = PathPatternParser.defaultInstance
@@ -71,8 +73,7 @@ class AuthRequestValidationFilter(
                 }
 
                 if (validation != null) {
-                    exchange.response.statusCode = validation
-                    return@flatMap exchange.response.setComplete()
+                    return@flatMap responseWriter.writeError(exchange, validation)
                 }
 
                 val decorated = exchange.mutate().request(cachedRequest(exchange, bytes)).build()
@@ -80,23 +81,23 @@ class AuthRequestValidationFilter(
             }
     }
 
-    private fun validateLoginBody(body: String): HttpStatus? {
+    private fun validateLoginBody(body: String): GatewayErrorCode? {
         val username = extractJsonField(body, "username")
         val password = extractJsonField(body, "password")
         if (username.isBlank() || password.isBlank()) {
-            return HttpStatus.BAD_REQUEST
+            return GatewayErrorCode.LOGIN_REQUEST_BODY_INVALID
         }
         return null
     }
 
-    private fun validateRefreshBody(body: String): HttpStatus? {
+    private fun validateRefreshBody(body: String): GatewayErrorCode? {
         val refreshToken = extractJsonField(body, "refreshToken")
         if (refreshToken.isBlank()) {
-            return HttpStatus.BAD_REQUEST
+            return GatewayErrorCode.REFRESH_TOKEN_REQUIRED
         }
 
         if (policy.prevalidateRefreshTokenType && !isRefreshToken(refreshToken)) {
-            return HttpStatus.UNAUTHORIZED
+            return GatewayErrorCode.REFRESH_TOKEN_INVALID
         }
         return null
     }

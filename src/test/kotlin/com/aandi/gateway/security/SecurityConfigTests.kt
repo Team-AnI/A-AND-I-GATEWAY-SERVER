@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.BodyInserters
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(
@@ -52,7 +53,7 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `swagger config includes online judge api docs entry`() {
+    fun `swagger config includes per service versioned api docs entries`() {
         webTestClient.get()
             .uri("/v3/api-docs/swagger-config")
             .exchange()
@@ -61,8 +62,31 @@ class SecurityConfigTests(
             .expectBody(String::class.java)
             .value { body ->
                 val swaggerConfig = body.orEmpty()
-                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs"))
-                assertTrue(swaggerConfig.contains("online-judge-service"))
+                assertTrue(swaggerConfig.contains("/v2/auth/v3/api-docs/v1"))
+                assertTrue(swaggerConfig.contains("/v2/auth/v3/api-docs/v2"))
+                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs/v1"))
+                assertTrue(swaggerConfig.contains("/v2/online-judge/v3/api-docs/v2"))
+                assertTrue(swaggerConfig.contains("auth-service-v1"))
+                assertTrue(swaggerConfig.contains("auth-service-v2"))
+            }
+    }
+
+    @Test
+    fun `swagger initializer injects authenticate bearer interceptor`() {
+        webTestClient.get()
+            .uri("/swagger-ui/swagger-initializer.js")
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectHeader()
+            .contentTypeCompatibleWith(MediaType.parseMediaType("application/javascript"))
+            .expectBody(String::class.java)
+            .value { body ->
+                val script = body.orEmpty()
+                assertTrue(script.contains("requestInterceptor"))
+                assertTrue(script.contains("Authenticate"))
+                assertTrue(script.contains("Bearer "))
+                assertTrue(script.contains("/v3/api-docs/swagger-config"))
             }
     }
 
@@ -102,6 +126,15 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(false)
+            .jsonPath("$.data").isEmpty()
+            .jsonPath("$.error.code").isEqualTo(11001)
+            .jsonPath("$.error.value").isEqualTo("AUTHENTICATION_FAILED")
+            .jsonPath("$.error.alert").isEqualTo("로그인 후 이용해주세요.")
+            .jsonPath("$.timestamp").exists()
     }
 
     @Test
@@ -203,6 +236,14 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(false)
+            .jsonPath("$.data").isEmpty()
+            .jsonPath("$.error.code").isEqualTo(12001)
+            .jsonPath("$.error.value").isEqualTo("ACCESS_DENIED")
+            .jsonPath("$.timestamp").exists()
     }
 
     @Test
@@ -265,15 +306,50 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `legacy admin invite mail endpoint is forbidden for non admin role`() {
+    fun `v2 admin invite mail endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .post()
-            .uri("/v2/auth/admin/invite-mail")
+            .uri("/v2/admin/invite-mail")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"email":"new_member@aandi.club","role":"USER"}""")
             .exchange()
             .expectStatus()
             .isForbidden
+    }
+
+    @Test
+    fun `v2 auth logout endpoint is allowlisted and validates refresh token`() {
+        webTestClient.post()
+            .uri("/v2/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"refreshToken":"token"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_INVALID")
+    }
+
+    @Test
+    fun `v2 me password endpoint is allowlisted and requires authentication`() {
+        webTestClient.patch()
+            .uri("/v2/me/password")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"currentPassword":"old","newPassword":"new-password"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 users endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/users/lookup?code=A00123")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
     }
 
     @Test
@@ -347,12 +423,13 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `legacy drafts me route maps to drafts me backend path`() {
-        val legacyDraftsMeRoute = routeById("post-service-drafts-me")
-        val setPathFilter = legacyDraftsMeRoute.filters.firstOrNull { it.name == "SetPath" }
+    fun `v2 drafts me route preserves v2 backend path`() {
+        val v2DraftsMeRoute = routeById("post-service-drafts-me")
+        val setPathFilter = v2DraftsMeRoute.filters.firstOrNull { it.name == "SetPath" }
+        val rewriteFilter = v2DraftsMeRoute.filters.firstOrNull { it.name == "RewritePath" }
 
-        assertNotNull(setPathFilter, "legacy drafts/me route should set backend path")
-        assertEquals("/v1/posts/drafts/me", setPathFilter.args.values.firstOrNull())
+        assertNull(setPathFilter, "v2 drafts/me route must not rewrite to a v1 backend path")
+        assertNull(rewriteFilter, "v2 drafts/me route must not rewrite to a v1 backend path")
     }
 
     @Test
@@ -384,6 +461,101 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isUnauthorized
+    }
+
+    @Test
+    fun `report subpath endpoint is allowlisted and requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/report/some-resource")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 posts list requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/posts")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 posts detail requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/posts/11111111-1111-1111-1111-111111111111")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 blogs list is public`() {
+        webTestClient.get()
+            .uri("/v2/blogs")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `v2 blogs detail is public`() {
+        webTestClient.get()
+            .uri("/v2/blogs/11111111-1111-1111-1111-111111111111")
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+            }
+    }
+
+    @Test
+    fun `v2 lectures list requires authentication`() {
+        webTestClient.get()
+            .uri("/v2/lectures")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 scheduled me endpoints require authentication`() {
+        listOf(
+            "/v2/posts/scheduled/me",
+            "/v2/blogs/scheduled/me",
+            "/v2/lectures/scheduled/me"
+        ).forEach { path ->
+            webTestClient.get()
+                .uri(path)
+                .exchange()
+                .expectStatus()
+                .isUnauthorized
+        }
+    }
+
+    @Test
+    fun `v2 blogs drafts endpoint is forbidden for user role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/blogs/drafts")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `v2 lectures drafts endpoint is forbidden for user role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/lectures/drafts")
+            .exchange()
+            .expectStatus()
+            .isForbidden
     }
 
     @Test
@@ -450,7 +622,7 @@ class SecurityConfigTests(
     }
 
     @Test
-    fun `legacy post assignment to course query endpoint remains allowlisted and requires authentication`() {
+    fun `v2 post assignment to course query endpoint remains allowlisted and requires authentication`() {
         webTestClient.get()
             .uri("/v2/post/courses/assignments/11111111-1111-1111-1111-111111111111/course")
             .exchange()
@@ -554,6 +726,27 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `v2 online judge submission create endpoint is allowlisted and requires authentication`() {
+        webTestClient.post()
+            .uri("/v2/submissions")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"problemId":"demo","language":"java","source":"class Main{}"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `v2 online judge admin testcases endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .get()
+            .uri("/v2/admin/testcases")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
     fun `online judge submission route has expected method and path predicates`() {
         val submissionRoute = routeById("online-judge-service-v1-submissions-root-post")
         val pathPredicate = submissionRoute.predicates.firstOrNull { it.name == "Path" }
@@ -562,6 +755,18 @@ class SecurityConfigTests(
         assertNotNull(pathPredicate, "submission create route should have path predicate")
         assertNotNull(methodPredicate, "submission create route should have method predicate")
         assertTrue(pathPredicate.args.values.contains("/v1/submissions"))
+        assertTrue(methodPredicate.args.values.contains("POST"))
+    }
+
+    @Test
+    fun `v2 online judge submission route has expected method and path predicates`() {
+        val submissionRoute = routeById("online-judge-service-v2-native-submissions-root-post")
+        val pathPredicate = submissionRoute.predicates.firstOrNull { it.name == "Path" }
+        val methodPredicate = submissionRoute.predicates.firstOrNull { it.name == "Method" }
+
+        assertNotNull(pathPredicate, "v2 submission create route should have path predicate")
+        assertNotNull(methodPredicate, "v2 submission create route should have method predicate")
+        assertTrue(pathPredicate.args.values.contains("/v2/submissions"))
         assertTrue(methodPredicate.args.values.contains("POST"))
     }
 
@@ -675,6 +880,83 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `native v2 admin assignment copy endpoint requires authentication`() {
+        webTestClient.post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint is forbidden for non admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
+            .post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint is allowlisted for admin role`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .value {
+                assertNotEquals(401, it)
+                assertNotEquals(403, it)
+                assertNotEquals(404, it)
+                assertNotEquals(415, it)
+            }
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint rejects non allowlisted methods`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .get()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .patch()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .delete()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+    }
+
+    @Test
+    fun `native v2 admin assignment copy endpoint requires json content type`() {
+        webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN")))
+            .post()
+            .uri("/v2/admin/courses/java-basic/assignments/copy")
+            .bodyValue(assignmentCopyRequestBody)
+            .exchange()
+            .expectStatus()
+            .isEqualTo(415)
+    }
+
+    @Test
     fun `native v2 submission statuses endpoint is forbidden for non admin role`() {
         webTestClient.mutateWith(mockJwt().authorities(SimpleGrantedAuthority("ROLE_USER")))
             .get()
@@ -687,17 +969,63 @@ class SecurityConfigTests(
     @Test
     fun `native v2 report routes are registered with expected predicates`() {
         val adminCoursesRoute = routeById("report-service-v2-admin-courses-root")
+        val adminAssignmentCopyRoute = routeById("report-service-v2-admin-assignment-copy")
         val adminCoursesSubpathsRoute = routeById("report-service-v2-admin-courses-subpaths")
         val coursesRoute = routeById("report-service-v2-courses-root")
         val coursesSubpathsRoute = routeById("report-service-v2-courses-subpaths")
         val assignmentCourseRoute = routeById("report-service-v2-assignment-course")
 
         assertTrue(adminCoursesRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses") })
+        assertTrue(adminAssignmentCopyRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses/{targetCourseSlug}/assignments/copy") })
+        assertTrue(adminAssignmentCopyRoute.predicates.any { it.name == "Method" && it.args.values.contains("POST") })
         assertTrue(adminCoursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/admin/courses/**") })
         assertTrue(coursesRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses") })
         assertTrue(coursesSubpathsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/courses/**") })
         assertTrue(assignmentCourseRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/assignments/*/course") })
         assertTrue(assignmentCourseRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+    }
+
+    @Test
+    fun `v2 posts blogs and lectures routes are registered with expected predicates`() {
+        val postsScheduledMeRoute = routeById("post-service-v2-posts-scheduled-me")
+        val blogsRootGetRoute = routeById("post-service-v2-blogs-root-get")
+        val blogsRootPostRoute = routeById("post-service-v2-blogs-root-post")
+        val blogsMeRoute = routeById("post-service-v2-blogs-me")
+        val blogsScheduledMeRoute = routeById("post-service-v2-blogs-scheduled-me")
+        val blogsDraftsRoute = routeById("post-service-v2-blogs-drafts")
+        val blogsDraftsMeRoute = routeById("post-service-v2-blogs-drafts-me")
+        val blogsSubpathsGetRoute = routeById("post-service-v2-blogs-subpaths-get")
+        val lecturesRootGetRoute = routeById("post-service-v2-lectures-root-get")
+        val lecturesRootPostRoute = routeById("post-service-v2-lectures-root-post")
+        val lecturesMeRoute = routeById("post-service-v2-lectures-me")
+        val lecturesScheduledMeRoute = routeById("post-service-v2-lectures-scheduled-me")
+        val lecturesDraftsRoute = routeById("post-service-v2-lectures-drafts")
+        val lecturesDraftsMeRoute = routeById("post-service-v2-lectures-drafts-me")
+        val lecturesSubpathsGetRoute = routeById("post-service-v2-lectures-subpaths-get")
+
+        assertTrue(postsScheduledMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/posts/scheduled/me") })
+        assertTrue(postsScheduledMeRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(blogsRootGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs") })
+        assertTrue(blogsRootGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(blogsRootPostRoute.predicates.any { it.name == "Method" && it.args.values.contains("POST") })
+        assertTrue(blogsMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/me") })
+        assertTrue(blogsScheduledMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/scheduled/me") })
+        assertTrue(blogsScheduledMeRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(blogsDraftsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/drafts") })
+        assertTrue(blogsDraftsMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/drafts/me") })
+        assertTrue(blogsSubpathsGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/blogs/*") })
+        assertTrue(blogsSubpathsGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+
+        assertTrue(lecturesRootGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures") })
+        assertTrue(lecturesRootGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(lecturesRootPostRoute.predicates.any { it.name == "Method" && it.args.values.contains("POST") })
+        assertTrue(lecturesMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/me") })
+        assertTrue(lecturesScheduledMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/scheduled/me") })
+        assertTrue(lecturesScheduledMeRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
+        assertTrue(lecturesDraftsRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/drafts") })
+        assertTrue(lecturesDraftsMeRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/drafts/me") })
+        assertTrue(lecturesSubpathsGetRoute.predicates.any { it.name == "Path" && it.args.values.contains("/v2/lectures/*") })
+        assertTrue(lecturesSubpathsGetRoute.predicates.any { it.name == "Method" && it.args.values.contains("GET") })
     }
 
     @Test
@@ -709,10 +1037,15 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isNotFound
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(15001)
+            .jsonPath("$.error.value").isEqualTo("ENDPOINT_NOT_ALLOWLISTED")
     }
 
     @Test
-    fun `removed legacy deliveries route is no longer allowlisted`() {
+    fun `removed v2 deliveries route is no longer allowlisted`() {
         webTestClient.get()
             .uri("/v2/post/admin/courses/back-basic/assignments/11111111-1111-1111-1111-111111111111/deliveries")
             .exchange()
@@ -729,6 +1062,11 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(11003)
+            .jsonPath("$.error.value").isEqualTo("INTERNAL_TOKEN_INVALID")
     }
 
     @Test
@@ -741,11 +1079,121 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isAccepted
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(true)
+            .jsonPath("$.error").isEmpty()
+            .jsonPath("$.data.invalidatedKeys").isEqualTo(0)
+            .jsonPath("$.timestamp").exists()
+    }
+
+    @Test
+    fun `login request without required fields returns standard validation error`() {
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13001)
+            .jsonPath("$.error.value").isEqualTo("LOGIN_REQUEST_BODY_INVALID")
+            .jsonPath("$.error.alert").isEqualTo("아이디와 비밀번호를 확인해 주세요.")
+    }
+
+    @Test
+    fun `refresh request without token returns standard validation error`() {
+        webTestClient.post()
+            .uri("/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13002)
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_REQUIRED")
+            .jsonPath("$.error.alert").isEqualTo("로그인이 만료되었습니다.")
+    }
+
+    @Test
+    fun `refresh request with invalid token returns standard authentication error`() {
+        webTestClient.post()
+            .uri("/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"refreshToken":"invalid-token"}""")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(11002)
+            .jsonPath("$.error.value").isEqualTo("REFRESH_TOKEN_INVALID")
+            .jsonPath("$.error.alert").isEqualTo("로그인이 만료되었습니다.")
+    }
+
+    @Test
+    fun `login request with invalid content type returns standard content type error`() {
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.TEXT_PLAIN)
+            .bodyValue("username=demo")
+            .exchange()
+            .expectStatus()
+            .isEqualTo(415)
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13003)
+            .jsonPath("$.error.value").isEqualTo("JSON_CONTENT_TYPE_REQUIRED")
+    }
+
+    @Test
+    fun `login rate limit returns standard error envelope`() {
+        repeat(10) {
+            webTestClient.post()
+                .uri("/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""{"username":"demo","password":"demo"}""")
+                .exchange()
+        }
+
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"username":"demo","password":"demo"}""")
+            .exchange()
+            .expectStatus()
+            .isEqualTo(429)
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(10003)
+            .jsonPath("$.error.value").isEqualTo("LOGIN_RATE_LIMIT_EXCEEDED")
     }
 
     private fun routeById(routeId: String): RouteDefinition {
         val definitions = routeDefinitionLocator.routeDefinitions.collectList().block().orEmpty()
         return definitions.firstOrNull { it.id == routeId }
             ?: error("Missing route definition: $routeId")
+    }
+
+    private companion object {
+        private const val assignmentCopyRequestBody = """
+            {
+              "sourceAssignmentId": "11111111-1111-1111-1111-111111111111",
+              "targetWeekNo": 1,
+              "targetOrderInWeek": 2,
+              "targetStartAt": "2026-05-12T09:00:00+09:00",
+              "targetEndAt": "2026-05-19T08:59:59+09:00"
+            }
+        """
     }
 }

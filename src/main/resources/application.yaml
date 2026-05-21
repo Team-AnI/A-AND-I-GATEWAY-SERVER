@@ -1,3 +1,13 @@
+aandi:
+  logging:
+    env: ${APP_ENV:${spring.profiles.active:default}}
+    service:
+      name: gateway
+      domain: gateway
+      domain-code: 1
+      version: ${APP_VERSION:0.0.1-SNAPSHOT}
+      instance-id: ${HOSTNAME:local}
+
 spring:
   application:
     name: gateway
@@ -137,103 +147,188 @@ spring:
               predicates:
                 - Path=/v2/auth/login
                 - Method=POST
-              filters:
-                - SetPath=/v1/auth/login
             - id: auth-service-refresh
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/refresh
                 - Method=POST
-              filters:
-                - SetPath=/v1/auth/refresh
             - id: auth-service-logout
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/logout
                 - Method=POST
-              filters:
-                - SetPath=/v1/auth/logout
             - id: auth-service-activate
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/activate
                 - Method=POST
+            - id: auth-service-v2-activate
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/activate
+                - Method=POST
+            - id: auth-service-v2-ping
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/ping
+                - Method=GET
+            - id: auth-service-v2-ping-subpaths
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/ping/**
+                - Method=GET
             - id: auth-service-me
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/me
                 - Method=GET
-              filters:
-                - SetPath=/v1/me
+            - id: auth-service-me-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me
+                - Method=POST
+            - id: auth-service-me-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me
+                - Method=PATCH
+            - id: auth-service-me-password-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/me/password
+                - Method=POST
             - id: auth-service-admin-ping
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/ping
                 - Method=GET
-              filters:
-                - SetPath=/v1/admin/ping
             - id: auth-service-admin-users-get
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users
                 - Method=GET
-              filters:
-                - SetPath=/v1/admin/users
             - id: auth-service-admin-users-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users
                 - Method=POST
-              filters:
-                - SetPath=/v1/admin/users
             - id: auth-service-admin-users-sync-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users/sync
                 - Method=POST
-              filters:
-                - SetPath=/v1/admin/users/sync
             - id: auth-service-admin-invite-mail-post
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/invite-mail
                 - Method=POST
-              filters:
-                - SetPath=/v1/admin/invite-mail
             - id: auth-service-admin-users-role-patch
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users/role
                 - Method=PATCH
-              filters:
-                - SetPath=/v1/admin/users/role
+            - id: auth-service-admin-users-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users/**
+                - Method=PATCH
+            - id: auth-service-admin-users-reset-password
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/admin/users/*/reset-password
+                - Method=POST
             - id: auth-service-admin-users-delete-root
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users
                 - Method=DELETE
-              filters:
-                - SetPath=/v1/admin/users
             - id: auth-service-admin-users-delete
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/admin/users/**
                 - Method=DELETE
-              filters:
-                - RewritePath=/v2/auth/admin/users/(?<segment>.*), /v1/admin/users/$\{segment}
+            - id: auth-service-users-root
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/users
+            - id: auth-service-users-subpaths
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/auth/users/**
+            - id: auth-service-v2-me
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/me
+                - Method=GET
+            - id: auth-service-v2-me-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/me
+                - Method=PATCH
+            - id: auth-service-v2-me-upload-url
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/me/profile-image/upload-url
+                - Method=POST
+            - id: auth-service-v2-me-password
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/me/password
+                - Method=PATCH
+            - id: auth-service-v2-users-lookup
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/users/lookup
+                - Method=GET
+            - id: auth-service-v2-admin-ping
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/ping
+                - Method=GET
+            - id: auth-service-v2-admin-users-get
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/users
+                - Method=GET
+            - id: auth-service-v2-admin-users-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/users
+                - Method=POST
+            - id: auth-service-v2-admin-invite-mail-post
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/invite-mail
+                - Method=POST
+            - id: auth-service-v2-admin-users-reset-password
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/users/*/password/reset
+                - Method=POST
+            - id: auth-service-v2-admin-users-role-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/users/*/role
+                - Method=PATCH
+            - id: auth-service-v2-admin-users-patch
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/users/*
+                - Method=PATCH
+            - id: auth-service-v2-admin-users-delete
+              uri: ${AUTH_SERVICE_URI:http://localhost:9000}
+              predicates:
+                - Path=/v2/admin/users/*
+                - Method=DELETE
 
             - id: report-service-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report
-              filters:
-                - SetPath=/v1/report
             - id: report-service-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/**
-              filters:
-                - RewritePath=/v2/report/(?<segment>.*), /v1/report/$\{segment}
             - id: report-service-v1-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
@@ -316,6 +411,11 @@ spring:
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/admin/courses
+            - id: report-service-v2-admin-assignment-copy
+              uri: ${REPORT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/v2/admin/courses/{targetCourseSlug}/assignments/copy
+                - Method=POST
             - id: report-service-v2-admin-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
@@ -365,6 +465,71 @@ spring:
               uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
               predicates:
                 - Path=/v1/submissions/{submissionId}
+                - Method=GET
+
+            - id: online-judge-service-v2-submissions-root-post
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/submissions
+                - Method=POST
+            - id: online-judge-service-v2-native-submissions-root-post
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/submissions
+                - Method=POST
+            - id: online-judge-service-v2-problem-submissions-me-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/problems/{problemId}/submissions/me
+                - Method=GET
+            - id: online-judge-service-v2-native-problem-submissions-me-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/problems/{problemId}/submissions/me
+                - Method=GET
+            - id: online-judge-service-v2-admin-submissions-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/admin/submissions
+                - Method=GET
+            - id: online-judge-service-v2-native-admin-submissions-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/admin/submissions
+                - Method=GET
+            - id: online-judge-service-v2-admin-testcases-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/admin/testcases
+                - Method=GET
+            - id: online-judge-service-v2-native-admin-testcases-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/admin/testcases
+                - Method=GET
+            - id: online-judge-service-v2-submissions-stream-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/submissions/{submissionId}/stream
+                - Method=GET
+              metadata:
+                response-timeout: 3600000
+            - id: online-judge-service-v2-native-submissions-stream-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/submissions/{submissionId}/stream
+                - Method=GET
+              metadata:
+                response-timeout: 3600000
+            - id: online-judge-service-v2-submissions-by-id-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/online-judge/submissions/{submissionId}
+                - Method=GET
+            - id: online-judge-service-v2-native-submissions-by-id-get
+              uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
+              predicates:
+                - Path=/v2/submissions/{submissionId}
                 - Method=GET
 
             - id: post-service-openapi-root
@@ -421,57 +586,196 @@ spring:
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/images
-              filters:
-                - SetPath=/v1/posts/images
             - id: post-service-images-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/images/**
-              filters:
-                - RewritePath=/v2/post/images/(?<segment>.*), /v1/posts/images/$\{segment}
             - id: post-service-posts-root
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post
-              filters:
-                - SetPath=/v1/posts
+            - id: post-service-v2-posts-root-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts
+                - Method=GET
+            - id: post-service-v2-posts-root-post
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts
+                - Method=POST
+            - id: post-service-v2-posts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/me
+                - Method=GET
+            - id: post-service-v2-posts-scheduled-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/scheduled/me
+                - Method=GET
+            - id: post-service-v2-posts-drafts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/drafts/me
+                - Method=GET
+            - id: post-service-v2-posts-drafts
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/drafts
+                - Method=GET
+            - id: post-service-v2-posts-collaborators
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/*/collaborators
+                - Method=POST
+            - id: post-service-v2-posts-subpaths-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/*
+                - Method=GET
+            - id: post-service-v2-posts-subpaths-patch
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/*
+                - Method=PATCH
+            - id: post-service-v2-posts-subpaths-delete
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/*
+                - Method=DELETE
+            - id: post-service-v2-posts-images
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/posts/images
+                - Method=POST
+            - id: post-service-v2-blogs-root-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs
+                - Method=GET
+            - id: post-service-v2-blogs-root-post
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs
+                - Method=POST
+            - id: post-service-v2-blogs-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/me
+                - Method=GET
+            - id: post-service-v2-blogs-scheduled-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/scheduled/me
+                - Method=GET
+            - id: post-service-v2-blogs-drafts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/drafts/me
+                - Method=GET
+            - id: post-service-v2-blogs-drafts
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/drafts
+                - Method=GET
+            - id: post-service-v2-blogs-subpaths-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/*
+                - Method=GET
+            - id: post-service-v2-blogs-subpaths-patch
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/*
+                - Method=PATCH
+            - id: post-service-v2-blogs-subpaths-delete
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/blogs/*
+                - Method=DELETE
+            - id: post-service-v2-lectures-root-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures
+                - Method=GET
+            - id: post-service-v2-lectures-root-post
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures
+                - Method=POST
+            - id: post-service-v2-lectures-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/me
+                - Method=GET
+            - id: post-service-v2-lectures-scheduled-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/scheduled/me
+                - Method=GET
+            - id: post-service-v2-lectures-drafts-me
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/drafts/me
+                - Method=GET
+            - id: post-service-v2-lectures-drafts
+              order: -1
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/drafts
+                - Method=GET
+            - id: post-service-v2-lectures-subpaths-get
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/*
+                - Method=GET
+            - id: post-service-v2-lectures-subpaths-patch
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/*
+                - Method=PATCH
+            - id: post-service-v2-lectures-subpaths-delete
+              uri: ${POST_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/v2/lectures/*
+                - Method=DELETE
             - id: report-service-admin-courses-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/admin/courses
-              filters:
-                - SetPath=/v1/admin/courses
             - id: report-service-admin-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/admin/courses/**
-              filters:
-                - RewritePath=/v2/post/admin/courses/(?<segment>.*), /v1/admin/courses/$\{segment}
             - id: report-service-courses-root
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/courses
-              filters:
-                - SetPath=/v1/courses
             - id: report-service-courses-subpaths
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/courses/**
-              filters:
-                - RewritePath=/v2/post/courses/(?<segment>.*), /v1/courses/$\{segment}
             - id: post-service-drafts-me
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/drafts/me
                 - Method=GET
-              filters:
-                - SetPath=/v1/posts/drafts/me
             - id: post-service-posts-subpaths
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/**
-              filters:
-                - RewritePath=/v2/post/(?<segment>.*), /v1/posts/$\{segment}
           httpclient:
             connect-timeout: 3000
             response-timeout: 10s
@@ -491,14 +795,22 @@ springdoc:
   swagger-ui:
     path: /
     urls:
-      - name: report-service
-        url: /v2/report/v3/api-docs
-      - name: auth-service
-        url: /v2/auth/v3/api-docs
-      - name: post-service
-        url: /v2/post/v3/api-docs
-      - name: online-judge-service
-        url: /v2/online-judge/v3/api-docs
+      - name: report-service-v1
+        url: /v2/report/v3/api-docs/v1
+      - name: report-service-v2
+        url: /v2/report/v3/api-docs/v2
+      - name: auth-service-v1
+        url: /v2/auth/v3/api-docs/v1
+      - name: auth-service-v2
+        url: /v2/auth/v3/api-docs/v2
+      - name: post-service-v1
+        url: /v2/post/v3/api-docs/v1
+      - name: post-service-v2
+        url: /v2/post/v3/api-docs/v2
+      - name: online-judge-service-v1
+        url: /v2/online-judge/v3/api-docs/v1
+      - name: online-judge-service-v2
+        url: /v2/online-judge/v3/api-docs/v2
 
 management:
   server:

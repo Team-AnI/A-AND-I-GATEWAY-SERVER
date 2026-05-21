@@ -46,7 +46,8 @@ MANAGEMENT_SERVER_ADDRESS=127.0.0.1
 - `.env`는 git에 커밋하지 않는다.
 - `INTERNAL_EVENT_TOKEN`은 Secrets Manager/SSM에서 주입 권장
 - 배포 후 내부에서 health 확인:
-  - `docker compose exec gateway sh -c "wget -qO- http://127.0.0.1:9090/actuator/health"`
+  - `docker compose exec gateway sh -c "wget -qO- http://127.0.0.1:9090/actuator/health/readiness"`
+  - 전체 `/actuator/health`는 Redis 같은 dependency 상태를 포함하므로 Redis 인증 불일치 시 503일 수 있다.
 
 ## 5) api.aandiclub.com HTTPS 설정
 

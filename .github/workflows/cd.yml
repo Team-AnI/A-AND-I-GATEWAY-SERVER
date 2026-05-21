@@ -15,6 +15,7 @@ jobs:
     env:
       ECR_REPOSITORY: aandi-gateway-server
       CONTAINER_NAME: aandi-gateway-server
+      BOT_CONTAINER_NAME: aandi-gateway-discord-bot
       AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
@@ -30,8 +31,18 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: monitor-bot/go.mod
+
       - name: Run tests
         run: ./gradlew test
+
+      - name: Test monitor-bot
+        run: |
+          cd monitor-bot
+          go test ./...
 
       - name: Build JAR
         run: ./gradlew build
@@ -56,35 +67,98 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}
 
+      - name: Build and push monitor-bot Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./monitor-bot
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:monitor-bot-${{ github.ref_name }}
+
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.2.1
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          RELEASE_REF_NAME: ${{ github.ref_name }}
+          AUTH_ISSUER_URI_VAR: ${{ vars.AUTH_ISSUER_URI }}
+          AUTH_AUDIENCE_VAR: ${{ vars.AUTH_AUDIENCE }}
+          ALLOWED_HOSTS_VAR: ${{ vars.ALLOWED_HOSTS }}
+          ALLOW_PRIVATE_IP_HOST_VAR: ${{ vars.ALLOW_PRIVATE_IP_HOST }}
+          ENFORCE_HTTPS_VAR: ${{ vars.ENFORCE_HTTPS }}
+          CORS_ALLOWED_ORIGIN_PATTERNS_VAR: ${{ vars.CORS_ALLOWED_ORIGIN_PATTERNS }}
+          AUTH_ISSUER_URI_SECRET: ${{ secrets.AUTH_ISSUER_URI }}
+          AUTH_AUDIENCE_SECRET: ${{ secrets.AUTH_AUDIENCE }}
+          ALLOWED_HOSTS_SECRET: ${{ secrets.ALLOWED_HOSTS }}
+          ALLOW_PRIVATE_IP_HOST_SECRET: ${{ secrets.ALLOW_PRIVATE_IP_HOST }}
+          ENFORCE_HTTPS_SECRET: ${{ secrets.ENFORCE_HTTPS }}
+          CORS_ALLOWED_ORIGIN_PATTERNS_SECRET: ${{ secrets.CORS_ALLOWED_ORIGIN_PATTERNS }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_ALLOWED_GUILD_ID: ${{ secrets.DISCORD_ALLOWED_GUILD_ID }}
+          DISCORD_ALLOWED_ROLE_IDS: ${{ secrets.DISCORD_ALLOWED_ROLE_IDS }}
+          DISCORD_REGISTER_COMMANDS: ${{ vars.DISCORD_REGISTER_COMMANDS }}
+          OPS_ADMIN_REFRESH_TOKEN: ${{ secrets.OPS_ADMIN_REFRESH_TOKEN }}
+          LOG_GROUP_GATEWAY: ${{ vars.LOG_GROUP_GATEWAY }}
+          LOG_GROUP_REPORT: ${{ vars.LOG_GROUP_REPORT }}
+          LOG_GROUP_AUTH: ${{ vars.LOG_GROUP_AUTH }}
+          LOG_GROUP_ONLINE_JUDGE: ${{ vars.LOG_GROUP_ONLINE_JUDGE }}
+          LOG_GROUP_POST: ${{ vars.LOG_GROUP_POST }}
+          HEALTH_URL_REPORT: ${{ vars.HEALTH_URL_REPORT }}
+          HEALTH_URL_AUTH: ${{ vars.HEALTH_URL_AUTH }}
+          HEALTH_URL_ONLINE_JUDGE: ${{ vars.HEALTH_URL_ONLINE_JUDGE }}
+          HEALTH_URL_POST: ${{ vars.HEALTH_URL_POST }}
+          CLOUDWATCH_QUERY_TIMEOUT_SECONDS: ${{ vars.CLOUDWATCH_QUERY_TIMEOUT_SECONDS }}
+          CLOUDWATCH_QUERY_POLL_INTERVAL_MS: ${{ vars.CLOUDWATCH_QUERY_POLL_INTERVAL_MS }}
+          CLOUDWATCH_QUERY_LIMIT: ${{ vars.CLOUDWATCH_QUERY_LIMIT }}
+          DASHBOARD_ENABLED: ${{ vars.DASHBOARD_ENABLED }}
+          DISCORD_DASHBOARD_CHANNEL_ID: ${{ secrets.DISCORD_DASHBOARD_CHANNEL_ID }}
+          DASHBOARD_REFRESH_INTERVAL_SECONDS: ${{ vars.DASHBOARD_REFRESH_INTERVAL_SECONDS }}
+          DASHBOARD_SINCE: ${{ vars.DASHBOARD_SINCE }}
+          ALERT_ENABLED: ${{ vars.ALERT_ENABLED }}
+          DISCORD_ALERT_CHANNEL_ID: ${{ secrets.DISCORD_ALERT_CHANNEL_ID }}
+          ALERT_POLL_INTERVAL_SECONDS: ${{ vars.ALERT_POLL_INTERVAL_SECONDS }}
+          ALERT_COOLDOWN_SECONDS: ${{ vars.ALERT_COOLDOWN_SECONDS }}
+          ALERT_5XX_THRESHOLD_5M: ${{ vars.ALERT_5XX_THRESHOLD_5M }}
+          ALERT_ERROR_THRESHOLD_5M: ${{ vars.ALERT_ERROR_THRESHOLD_5M }}
+          ALERT_HEALTH_DOWN_CONSECUTIVE: ${{ vars.ALERT_HEALTH_DOWN_CONSECUTIVE }}
+          ALERT_NO_LOGS_MINUTES: ${{ vars.ALERT_NO_LOGS_MINUTES }}
+          ALERT_COPY_API_5XX_THRESHOLD_5M: ${{ vars.ALERT_COPY_API_5XX_THRESHOLD_5M }}
+          MAX_CLOUDWATCH_QUERIES_PER_TICK: ${{ vars.MAX_CLOUDWATCH_QUERIES_PER_TICK }}
+          CLOUDWATCH_LOG_RETENTION_DAYS: ${{ vars.CLOUDWATCH_LOG_RETENTION_DAYS }}
+          AUTH_SERVICE_URI: ${{ secrets.AUTH_SERVICE_URI }}
+          REPORT_SERVICE_URI: ${{ secrets.REPORT_SERVICE_URI }}
+          POST_SERVICE_URI: ${{ secrets.POST_SERVICE_URI }}
+          ONLINE_JUDGE_SERVICE_URI: ${{ secrets.ONLINE_JUDGE_SERVICE_URI }}
+          AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          INTERNAL_EVENT_TOKEN: ${{ secrets.INTERNAL_EVENT_TOKEN }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
+          envs: ECR_REGISTRY,RELEASE_REF_NAME,ECR_REPOSITORY,CONTAINER_NAME,BOT_CONTAINER_NAME,AWS_REGION,AUTH_ISSUER_URI_VAR,AUTH_AUDIENCE_VAR,ALLOWED_HOSTS_VAR,ALLOW_PRIVATE_IP_HOST_VAR,ENFORCE_HTTPS_VAR,CORS_ALLOWED_ORIGIN_PATTERNS_VAR,AUTH_ISSUER_URI_SECRET,AUTH_AUDIENCE_SECRET,ALLOWED_HOSTS_SECRET,ALLOW_PRIVATE_IP_HOST_SECRET,ENFORCE_HTTPS_SECRET,CORS_ALLOWED_ORIGIN_PATTERNS_SECRET,DISCORD_APPLICATION_ID,DISCORD_PUBLIC_KEY,DISCORD_BOT_TOKEN,DISCORD_ALLOWED_GUILD_ID,DISCORD_ALLOWED_ROLE_IDS,DISCORD_REGISTER_COMMANDS,OPS_ADMIN_REFRESH_TOKEN,LOG_GROUP_GATEWAY,LOG_GROUP_REPORT,LOG_GROUP_AUTH,LOG_GROUP_ONLINE_JUDGE,LOG_GROUP_POST,HEALTH_URL_REPORT,HEALTH_URL_AUTH,HEALTH_URL_ONLINE_JUDGE,HEALTH_URL_POST,CLOUDWATCH_QUERY_TIMEOUT_SECONDS,CLOUDWATCH_QUERY_POLL_INTERVAL_MS,CLOUDWATCH_QUERY_LIMIT,DASHBOARD_ENABLED,DISCORD_DASHBOARD_CHANNEL_ID,DASHBOARD_REFRESH_INTERVAL_SECONDS,DASHBOARD_SINCE,ALERT_ENABLED,DISCORD_ALERT_CHANNEL_ID,ALERT_POLL_INTERVAL_SECONDS,ALERT_COOLDOWN_SECONDS,ALERT_5XX_THRESHOLD_5M,ALERT_ERROR_THRESHOLD_5M,ALERT_HEALTH_DOWN_CONSECUTIVE,ALERT_NO_LOGS_MINUTES,ALERT_COPY_API_5XX_THRESHOLD_5M,MAX_CLOUDWATCH_QUERIES_PER_TICK,CLOUDWATCH_LOG_RETENTION_DAYS,AUTH_SERVICE_URI,REPORT_SERVICE_URI,POST_SERVICE_URI,ONLINE_JUDGE_SERVICE_URI,AUTH_JWT_SECRET,INTERNAL_EVENT_TOKEN,REDIS_PASSWORD,LETSENCRYPT_EMAIL
           script: |
-            ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
-            IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}"
-            DOMAIN="api.aandiclub.com"
-            AUTH_ISSUER_URI="${{ vars.AUTH_ISSUER_URI }}"
-            AUTH_AUDIENCE="${{ vars.AUTH_AUDIENCE }}"
-            ALLOWED_HOSTS="${{ vars.ALLOWED_HOSTS }}"
-            ALLOW_PRIVATE_IP_HOST="${{ vars.ALLOW_PRIVATE_IP_HOST }}"
-            ENFORCE_HTTPS="${{ vars.ENFORCE_HTTPS }}"
-            CORS_ALLOWED_ORIGIN_PATTERNS="${{ vars.CORS_ALLOWED_ORIGIN_PATTERNS }}"
-            AUTH_SERVICE_URI="${{ secrets.AUTH_SERVICE_URI }}"
-            REPORT_SERVICE_URI="${{ secrets.REPORT_SERVICE_URI }}"
-            POST_SERVICE_URI="${{ secrets.POST_SERVICE_URI }}"
-            ONLINE_JUDGE_SERVICE_URI="${{ secrets.ONLINE_JUDGE_SERVICE_URI }}"
-            AUTH_JWT_SECRET="${{ secrets.AUTH_JWT_SECRET }}"
+            set -Eeuo pipefail
 
-            if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="${{ secrets.AUTH_ISSUER_URI }}"; fi
-            if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="${{ secrets.AUTH_AUDIENCE }}"; fi
-            if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}"; fi
-            if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="${{ secrets.ALLOW_PRIVATE_IP_HOST }}"; fi
-            if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="${{ secrets.ENFORCE_HTTPS }}"; fi
-            if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="${{ secrets.CORS_ALLOWED_ORIGIN_PATTERNS }}"; fi
+            IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${RELEASE_REF_NAME}"
+            BOT_IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:monitor-bot-${RELEASE_REF_NAME}"
+            DOMAIN="api.aandiclub.com"
+            AUTH_ISSUER_URI="${AUTH_ISSUER_URI_VAR}"
+            AUTH_AUDIENCE="${AUTH_AUDIENCE_VAR}"
+            ALLOWED_HOSTS="${ALLOWED_HOSTS_VAR}"
+            ALLOW_PRIVATE_IP_HOST="${ALLOW_PRIVATE_IP_HOST_VAR}"
+            ENFORCE_HTTPS="${ENFORCE_HTTPS_VAR}"
+            CORS_ALLOWED_ORIGIN_PATTERNS="${CORS_ALLOWED_ORIGIN_PATTERNS_VAR}"
+
+            if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="${AUTH_ISSUER_URI_SECRET}"; fi
+            if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="${AUTH_AUDIENCE_SECRET}"; fi
+            if [ -z "$ALLOWED_HOSTS" ]; then ALLOWED_HOSTS="${ALLOWED_HOSTS_SECRET}"; fi
+            if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="${ALLOW_PRIVATE_IP_HOST_SECRET}"; fi
+            if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="${ENFORCE_HTTPS_SECRET}"; fi
+            if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="${CORS_ALLOWED_ORIGIN_PATTERNS_SECRET}"; fi
 
             if [ -z "$AUTH_ISSUER_URI" ]; then AUTH_ISSUER_URI="https://auth.aandiclub.com"; fi
             if [ -z "$AUTH_AUDIENCE" ]; then AUTH_AUDIENCE="aandiclub-api"; fi
@@ -92,27 +166,136 @@ jobs:
             if [ -z "$ALLOW_PRIVATE_IP_HOST" ]; then ALLOW_PRIVATE_IP_HOST="true"; fi
             if [ -z "$ENFORCE_HTTPS" ]; then ENFORCE_HTTPS="true"; fi
             if [ -z "$CORS_ALLOWED_ORIGIN_PATTERNS" ]; then CORS_ALLOWED_ORIGIN_PATTERNS="https://*"; fi
+            if [ -z "$DISCORD_REGISTER_COMMANDS" ]; then DISCORD_REGISTER_COMMANDS="false"; fi
+            if [ -z "$LOG_GROUP_GATEWAY" ]; then LOG_GROUP_GATEWAY="/a-and-i/gateway"; fi
+            if [ -z "$LOG_GROUP_REPORT" ]; then LOG_GROUP_REPORT="/a-and-i/prod/report"; fi
+            if [ -z "$LOG_GROUP_AUTH" ]; then LOG_GROUP_AUTH="/a-and-i/auth"; fi
+            if [ -z "$LOG_GROUP_ONLINE_JUDGE" ]; then LOG_GROUP_ONLINE_JUDGE="/a-and-i/online-judge"; fi
+            if [ -z "$LOG_GROUP_POST" ]; then LOG_GROUP_POST="/a-and-i/prod/tech-blog"; fi
+            if [ -z "$CLOUDWATCH_QUERY_TIMEOUT_SECONDS" ]; then CLOUDWATCH_QUERY_TIMEOUT_SECONDS="8"; fi
+            if [ -z "$CLOUDWATCH_QUERY_POLL_INTERVAL_MS" ]; then CLOUDWATCH_QUERY_POLL_INTERVAL_MS="500"; fi
+            if [ -z "$CLOUDWATCH_QUERY_LIMIT" ]; then CLOUDWATCH_QUERY_LIMIT="20"; fi
+            if [ -z "$DASHBOARD_ENABLED" ]; then DASHBOARD_ENABLED="false"; fi
+            if [ -z "$DASHBOARD_REFRESH_INTERVAL_SECONDS" ]; then DASHBOARD_REFRESH_INTERVAL_SECONDS="300"; fi
+            if [ -z "$DASHBOARD_SINCE" ]; then DASHBOARD_SINCE="30m"; fi
+            if [ -z "$ALERT_ENABLED" ]; then ALERT_ENABLED="false"; fi
+            if [ -z "$ALERT_POLL_INTERVAL_SECONDS" ]; then ALERT_POLL_INTERVAL_SECONDS="180"; fi
+            if [ -z "$ALERT_COOLDOWN_SECONDS" ]; then ALERT_COOLDOWN_SECONDS="900"; fi
+            if [ -z "$ALERT_5XX_THRESHOLD_5M" ]; then ALERT_5XX_THRESHOLD_5M="3"; fi
+            if [ -z "$ALERT_ERROR_THRESHOLD_5M" ]; then ALERT_ERROR_THRESHOLD_5M="5"; fi
+            if [ -z "$ALERT_HEALTH_DOWN_CONSECUTIVE" ]; then ALERT_HEALTH_DOWN_CONSECUTIVE="2"; fi
+            if [ -z "$ALERT_NO_LOGS_MINUTES" ]; then ALERT_NO_LOGS_MINUTES="30"; fi
+            if [ -z "$ALERT_COPY_API_5XX_THRESHOLD_5M" ]; then ALERT_COPY_API_5XX_THRESHOLD_5M="1"; fi
+            if [ -z "$MAX_CLOUDWATCH_QUERIES_PER_TICK" ]; then MAX_CLOUDWATCH_QUERIES_PER_TICK="6"; fi
+            if [ -z "$CLOUDWATCH_LOG_RETENTION_DAYS" ]; then CLOUDWATCH_LOG_RETENTION_DAYS="14"; fi
 
             [ -n "$AUTH_SERVICE_URI" ] || { echo "Missing secret: AUTH_SERVICE_URI"; exit 1; }
             [ -n "$REPORT_SERVICE_URI" ] || { echo "Missing secret: REPORT_SERVICE_URI"; exit 1; }
             [ -n "$POST_SERVICE_URI" ] || { echo "Missing secret: POST_SERVICE_URI"; exit 1; }
             [ -n "$ONLINE_JUDGE_SERVICE_URI" ] || { echo "Missing secret: ONLINE_JUDGE_SERVICE_URI"; exit 1; }
             [ -n "$AUTH_JWT_SECRET" ] || { echo "Missing secret: AUTH_JWT_SECRET"; exit 1; }
+            [ -n "$DISCORD_APPLICATION_ID" ] || { echo "Missing secret: DISCORD_APPLICATION_ID"; exit 1; }
+            [ -n "$DISCORD_PUBLIC_KEY" ] || { echo "Missing secret: DISCORD_PUBLIC_KEY"; exit 1; }
+            [ -n "$DISCORD_BOT_TOKEN" ] || { echo "Missing secret: DISCORD_BOT_TOKEN"; exit 1; }
+            [ -n "$DISCORD_ALLOWED_GUILD_ID" ] || { echo "Missing secret: DISCORD_ALLOWED_GUILD_ID"; exit 1; }
+            [ -n "$DISCORD_ALLOWED_ROLE_IDS" ] || { echo "Missing secret: DISCORD_ALLOWED_ROLE_IDS"; exit 1; }
+            [ -n "$OPS_ADMIN_REFRESH_TOKEN" ] || { echo "Missing secret: OPS_ADMIN_REFRESH_TOKEN"; exit 1; }
 
-            aws ecr get-login-password --region "${{ env.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+            aws ecr get-login-password --region "${AWS_REGION}" | sudo docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+            ensure_log_retention() {
+              local group_name="$1"
+
+              aws logs create-log-group \
+                --region "${AWS_REGION}" \
+                --log-group-name "${group_name}" 2>/dev/null || true
+
+              if ! aws logs put-retention-policy \
+                --region "${AWS_REGION}" \
+                --log-group-name "${group_name}" \
+                --retention-in-days "${CLOUDWATCH_LOG_RETENTION_DAYS}"; then
+                echo "WARN: failed to set CloudWatch retention for ${group_name}" >&2
+              fi
+            }
+
+            ensure_log_retention "/a-and-i/gateway"
+            ensure_log_retention "/a-and-i/prod/monitor-bot"
+            ensure_log_retention "/a-and-i/prod/report"
+            ensure_log_retention "/a-and-i/prod/report-mongodb"
+            ensure_log_retention "/a-and-i/auth"
+            ensure_log_retention "/a-and-i/online-judge"
+            ensure_log_retention "/a-and-i/prod/tech-blog"
+
+            wait_for_http() {
+              local container_name="$1"
+              local url="$2"
+              local attempts="${3:-30}"
+              local host_header="${4:-}"
+              local network
+
+              network="$(sudo docker inspect "${container_name}" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || true)"
+              if [ -z "${network}" ]; then
+                echo "ERROR: cannot find docker network for ${container_name}" >&2
+                sudo docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' >&2 || true
+                return 1
+              fi
+
+              for attempt in $(seq 1 "${attempts}"); do
+                if [ -n "${host_header}" ]; then
+                  if sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
+                    -fsS --max-time 3 -H "Host: ${host_header}" "${url}" >/dev/null; then
+                    echo "OK: ${url}"
+                    return 0
+                  fi
+                elif sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
+                  -fsS --max-time 3 "${url}" >/dev/null; then
+                  echo "OK: ${url}"
+                  return 0
+                fi
+                echo "Waiting for ${url} (${attempt}/${attempts})"
+                sleep 2
+              done
+
+              echo "ERROR: ${url} did not become healthy" >&2
+              sudo docker compose ps >&2 || true
+              sudo docker ps -a --filter "name=${container_name}" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' >&2 || true
+              sudo docker logs --tail=200 "${container_name}" >&2 || true
+              sudo docker inspect "${container_name}" \
+                --format 'OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}} Health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' >&2 || true
+              return 1
+            }
+
+            dump_internal_http() {
+              local container_name="$1"
+              local url="$2"
+              local host_header="${3:-}"
+              local network
+
+              network="$(sudo docker inspect "${container_name}" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || true)"
+              if [ -z "${network}" ]; then
+                echo "ERROR: cannot find docker network for ${container_name}" >&2
+                return 0
+              fi
+
+              echo "---- ${url} ----" >&2
+              if [ -n "${host_header}" ]; then
+                sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
+                  -isS --max-time 3 -H "Host: ${host_header}" "${url}" >&2 || true
+              else
+                sudo docker run --rm --network "${network}" curlimages/curl:8.10.1 \
+                  -isS --max-time 3 "${url}" >&2 || true
+              fi
+            }
+
             sudo mkdir -p /opt/aandi/gateway
             sudo mkdir -p /opt/aandi/gateway/nginx /opt/aandi/gateway/certbot/conf /opt/aandi/gateway/certbot/www
-            sudo docker rm -f \
-              ${{ env.CONTAINER_NAME }} \
-              aandi-gateway-redis \
-              aandi-gateway-nginx \
-              aandi-gateway-nginx-bootstrap || true
+            sudo docker rm -f aandi-gateway-nginx-bootstrap || true
             sudo tee /opt/aandi/gateway/nginx/bootstrap.conf >/dev/null <<EOF_BOOTSTRAP
             server {
               listen 80;
               server_name ${DOMAIN};
 
-              location /.well-known/acme-challenge/ {
+              location ^~ /.well-known/acme-challenge/ {
                 root /var/www/certbot;
               }
 
@@ -122,7 +305,12 @@ jobs:
             }
             EOF_BOOTSTRAP
 
-            if [ ! -f "/opt/aandi/gateway/certbot/conf/live/${DOMAIN}/fullchain.pem" ]; then
+            if sudo docker ps --format '{{.Names}}' | grep -qx 'aandi-gateway-nginx'; then
+              echo "Existing nginx is running. Skip bootstrap nginx to avoid port 80 conflict."
+            elif [ -f "/opt/aandi/gateway/certbot/conf/live/${DOMAIN}/fullchain.pem" ]; then
+              echo "Certificate already exists. Skip bootstrap nginx."
+            else
+              echo "No nginx and no certificate found. Running first-time bootstrap nginx."
               sudo tee /opt/aandi/gateway/docker-compose.bootstrap.yml >/dev/null <<EOF_BOOTSTRAP_COMPOSE
             services:
               nginx:
@@ -136,25 +324,31 @@ jobs:
                   - /opt/aandi/gateway/certbot/www:/var/www/certbot:ro
             EOF_BOOTSTRAP_COMPOSE
               cd /opt/aandi/gateway
-              sudo docker compose -f docker-compose.bootstrap.yml up -d
-              sudo docker run --rm \
+              sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml up -d
+              if ! sudo docker run --rm \
                 -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
                 -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
                 certbot/certbot certonly --webroot \
                 -w /var/www/certbot \
                 -d "${DOMAIN}" \
-                --email "${{ secrets.LETSENCRYPT_EMAIL }}" \
+                --email "${LETSENCRYPT_EMAIL}" \
                 --agree-tos \
-                --no-eff-email
-              sudo docker compose -f docker-compose.bootstrap.yml down
+                --no-eff-email \
+                --non-interactive \
+                --keep-until-expiring; then
+                sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml down
+                exit 1
+              fi
+              sudo docker compose -p aandi-gateway-certbot-bootstrap -f docker-compose.bootstrap.yml down
             fi
+            sudo docker rm -f aandi-gateway-nginx-bootstrap || true
 
             sudo tee /opt/aandi/gateway/nginx/gateway.conf >/dev/null <<EOF_NGINX
             server {
               listen 80;
               server_name ${DOMAIN};
 
-              location /.well-known/acme-challenge/ {
+              location ^~ /.well-known/acme-challenge/ {
                 root /var/www/certbot;
               }
 
@@ -179,6 +373,15 @@ jobs:
                 deny all;
                 proxy_pass http://gateway:8080;
                 proxy_set_header Host \$host;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+              }
+
+              location = /discord/interactions {
+                proxy_pass http://monitor-bot:8088/interactions;
+                proxy_http_version 1.1;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
                 proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto \$scheme;
               }
@@ -225,11 +428,24 @@ jobs:
                   - /opt/aandi/gateway/certbot/www:/var/www/certbot:ro
                 depends_on:
                   - gateway
+                  - monitor-bot
+                logging:
+                  driver: json-file
+                  options:
+                    max-size: "20m"
+                    max-file: "3"
 
               gateway:
                 image: ${IMAGE_URI}
-                container_name: ${{ env.CONTAINER_NAME }}
+                container_name: ${CONTAINER_NAME}
                 restart: unless-stopped
+                logging:
+                  driver: awslogs
+                  options:
+                    awslogs-region: "${AWS_REGION}"
+                    awslogs-group: "/a-and-i/gateway"
+                    awslogs-stream: "gateway"
+                    awslogs-create-group: "true"
                 environment:
                   GATEWAY_AUTH_ENABLED: "true"
                   AUTH_ISSUER_URI: "${AUTH_ISSUER_URI}"
@@ -253,20 +469,91 @@ jobs:
                   ENFORCE_JSON_CONTENT_TYPE: "true"
                   MAX_REQUEST_BODY_SIZE: "2MB"
                   MAX_REQUEST_HEADER_SIZE: "16KB"
-                  INTERNAL_EVENT_TOKEN: "${{ secrets.INTERNAL_EVENT_TOKEN }}"
+                  INTERNAL_EVENT_TOKEN: "${INTERNAL_EVENT_TOKEN}"
                   REDIS_HOST: redis
                   REDIS_PORT: "6379"
-                  REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"
+                  REDIS_PASSWORD: "${REDIS_PASSWORD}"
+                  SPRING_DATA_REDIS_HOST: redis
+                  SPRING_DATA_REDIS_PORT: "6379"
+                  SPRING_DATA_REDIS_PASSWORD: "${REDIS_PASSWORD}"
+                  MANAGEMENT_SERVER_PORT: "9090"
+                  MANAGEMENT_SERVER_ADDRESS: "0.0.0.0"
                 depends_on:
                   redis:
                     condition: service_healthy
+
+              monitor-bot:
+                image: ${BOT_IMAGE_URI}
+                container_name: ${BOT_CONTAINER_NAME}
+                restart: unless-stopped
+                mem_limit: 96m
+                memswap_limit: 192m
+                cpus: "0.20"
+                environment:
+                  AWS_REGION: "${AWS_REGION}"
+                  BOT_HTTP_PORT: "8088"
+                  DISCORD_APPLICATION_ID: "${DISCORD_APPLICATION_ID}"
+                  DISCORD_PUBLIC_KEY: "${DISCORD_PUBLIC_KEY}"
+                  DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
+                  DISCORD_ALLOWED_GUILD_ID: "${DISCORD_ALLOWED_GUILD_ID}"
+                  DISCORD_ALLOWED_ROLE_IDS: "${DISCORD_ALLOWED_ROLE_IDS}"
+                  DISCORD_REGISTER_COMMANDS: "${DISCORD_REGISTER_COMMANDS}"
+                  OPS_ADMIN_REFRESH_TOKEN: "${OPS_ADMIN_REFRESH_TOKEN}"
+                  AUTH_SERVICE_URI: "${AUTH_SERVICE_URI}"
+                  REPORT_SERVICE_URI: "${REPORT_SERVICE_URI}"
+                  STRICT_STARTUP_CHECKS: "false"
+                  LOG_GROUP_GATEWAY: "${LOG_GROUP_GATEWAY}"
+                  LOG_GROUP_REPORT: "${LOG_GROUP_REPORT}"
+                  LOG_GROUP_AUTH: "${LOG_GROUP_AUTH}"
+                  LOG_GROUP_ONLINE_JUDGE: "${LOG_GROUP_ONLINE_JUDGE}"
+                  LOG_GROUP_POST: "${LOG_GROUP_POST}"
+                  HEALTH_URL_GATEWAY: "http://gateway:9090/actuator/health/readiness"
+                  HEALTH_URL_REPORT: "${HEALTH_URL_REPORT}"
+                  HEALTH_URL_AUTH: "${HEALTH_URL_AUTH}"
+                  HEALTH_URL_ONLINE_JUDGE: "${HEALTH_URL_ONLINE_JUDGE}"
+                  HEALTH_URL_POST: "${HEALTH_URL_POST}"
+                  CLOUDWATCH_QUERY_TIMEOUT_SECONDS: "${CLOUDWATCH_QUERY_TIMEOUT_SECONDS}"
+                  CLOUDWATCH_QUERY_POLL_INTERVAL_MS: "${CLOUDWATCH_QUERY_POLL_INTERVAL_MS}"
+                  CLOUDWATCH_QUERY_LIMIT: "${CLOUDWATCH_QUERY_LIMIT}"
+                  DASHBOARD_ENABLED: "${DASHBOARD_ENABLED}"
+                  DISCORD_DASHBOARD_CHANNEL_ID: "${DISCORD_DASHBOARD_CHANNEL_ID}"
+                  DASHBOARD_REFRESH_INTERVAL_SECONDS: "${DASHBOARD_REFRESH_INTERVAL_SECONDS}"
+                  DASHBOARD_SINCE: "${DASHBOARD_SINCE}"
+                  ALERT_ENABLED: "${ALERT_ENABLED}"
+                  DISCORD_ALERT_CHANNEL_ID: "${DISCORD_ALERT_CHANNEL_ID}"
+                  ALERT_POLL_INTERVAL_SECONDS: "${ALERT_POLL_INTERVAL_SECONDS}"
+                  ALERT_COOLDOWN_SECONDS: "${ALERT_COOLDOWN_SECONDS}"
+                  ALERT_5XX_THRESHOLD_5M: "${ALERT_5XX_THRESHOLD_5M}"
+                  ALERT_ERROR_THRESHOLD_5M: "${ALERT_ERROR_THRESHOLD_5M}"
+                  ALERT_HEALTH_DOWN_CONSECUTIVE: "${ALERT_HEALTH_DOWN_CONSECUTIVE}"
+                  ALERT_NO_LOGS_MINUTES: "${ALERT_NO_LOGS_MINUTES}"
+                  ALERT_COPY_API_5XX_THRESHOLD_5M: "${ALERT_COPY_API_5XX_THRESHOLD_5M}"
+                  MAX_CLOUDWATCH_QUERIES_PER_TICK: "${MAX_CLOUDWATCH_QUERIES_PER_TICK}"
+                volumes:
+                  - monitor-bot-state:/var/lib/monitor-bot
+                depends_on:
+                  gateway:
+                    condition: service_started
+                logging:
+                  driver: awslogs
+                  options:
+                    awslogs-region: "${AWS_REGION}"
+                    awslogs-group: "/a-and-i/prod/monitor-bot"
+                    awslogs-stream: "gateway-discord-bot"
+                    awslogs-create-group: "true"
+                healthcheck:
+                  test: ["CMD", "/monitor-bot", "healthcheck", "--url", "http://127.0.0.1:8088/healthz"]
+                  interval: 30s
+                  timeout: 3s
+                  retries: 3
+                  start_period: 20s
 
               redis:
                 image: redis:7-alpine
                 container_name: aandi-gateway-redis
                 restart: unless-stopped
                 environment:
-                  REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"
+                  REDIS_PASSWORD: "${REDIS_PASSWORD}"
                 command: >
                   sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
                   exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
@@ -278,12 +565,44 @@ jobs:
                   interval: 5s
                   timeout: 3s
                   retries: 5
+                logging:
+                  driver: json-file
+                  options:
+                    max-size: "20m"
+                    max-file: "3"
+
+            volumes:
+              monitor-bot-state:
             EOF
             cd /opt/aandi/gateway
-            sudo docker compose pull nginx gateway redis
-            sudo docker compose up -d --remove-orphans nginx gateway redis
+            sudo docker compose config -q
+            sudo docker compose pull gateway monitor-bot
+            sudo docker compose up -d --no-deps gateway
+            if ! wait_for_http "${CONTAINER_NAME}" "http://gateway:9090/actuator/health/readiness" 30 "${DOMAIN}"; then
+              echo "Gateway readiness check failed. Dumping actuator health endpoints for debugging." >&2
+              dump_internal_http "${CONTAINER_NAME}" "http://gateway:9090/actuator/health/liveness" "${DOMAIN}"
+              dump_internal_http "${CONTAINER_NAME}" "http://gateway:9090/actuator/health/readiness" "${DOMAIN}"
+              dump_internal_http "${CONTAINER_NAME}" "http://gateway:9090/actuator/health" "${DOMAIN}"
+              exit 1
+            fi
+            sudo docker compose up -d --no-deps monitor-bot
+            wait_for_http "${BOT_CONTAINER_NAME}" "http://monitor-bot:8088/healthz" 15
+            if sudo docker ps --format '{{.Names}}' | grep -qx 'aandi-gateway-nginx'; then
+              if ! sudo docker exec aandi-gateway-nginx nginx -t; then
+                echo "ERROR: nginx config test failed; keeping previous nginx process without reload" >&2
+                sudo docker logs --tail=100 aandi-gateway-nginx >&2 || true
+                exit 1
+              fi
+              sudo docker exec aandi-gateway-nginx nginx -s reload
+            else
+              sudo docker compose up -d --no-deps nginx
+              if ! sudo docker exec aandi-gateway-nginx nginx -t; then
+                echo "ERROR: nginx config test failed after nginx start" >&2
+                sudo docker logs --tail=100 aandi-gateway-nginx >&2 || true
+                exit 1
+              fi
+            fi
             sudo docker run --rm \
               -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
               -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
-              certbot/certbot renew --webroot -w /var/www/certbot --quiet || true
-            sudo docker image prune -af
+              certbot/certbot renew --webroot -w /var/www/certbot --quiet --non-interactive || true

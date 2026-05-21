@@ -1,5 +1,7 @@
 package com.aandi.gateway.cache
 
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponse
 import com.aandi.gateway.security.SecurityProperties
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -35,13 +37,19 @@ class InvalidationWebhookController(
     fun invalidate(
         @RequestHeader("X-Internal-Token", required = false) token: String?,
         @RequestBody request: InvalidationEventRequest
-    ): Mono<ResponseEntity<InvalidationEventResponse>> {
+    ): Mono<ResponseEntity<GatewayResponse<*>>> {
         if (token != securityProperties.internalEventToken) {
-            return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build())
+            return Mono.just(
+                ResponseEntity
+                    .status(GatewayErrorCode.INTERNAL_TOKEN_INVALID.httpStatus)
+                    .body(GatewayResponse.error(GatewayErrorCode.INTERNAL_TOKEN_INVALID))
+            )
         }
         return invalidateByEvent(request)
             .map { invalidatedKeys ->
-                ResponseEntity.accepted().body(InvalidationEventResponse(invalidatedKeys))
+                ResponseEntity
+                    .status(HttpStatus.ACCEPTED)
+                    .body(GatewayResponse.success(InvalidationEventResponse(invalidatedKeys)))
             }
     }
 

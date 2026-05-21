@@ -26,7 +26,6 @@
 - 공개 엔드포인트:
   - `/actuator/health`
   - `/actuator/health/**`
-  - `/actuator/info`
 - 그 외 엔드포인트: 인증 필수
 
 ### 사용자 정보 전달
@@ -75,14 +74,16 @@
 
 ```bash
 ./gradlew test
-curl http://localhost:9090/actuator/health
+curl http://localhost:9090/actuator/health/readiness
 ```
 
 `docker-compose` 실행 기준으로는 `9090`이 외부로 publish되지 않으므로 아래처럼 컨테이너 내부에서 확인한다.
 
 ```bash
-docker compose exec gateway sh -c "wget -qO- http://127.0.0.1:9090/actuator/health"
+docker compose exec gateway sh -c "wget -qO- http://127.0.0.1:9090/actuator/health/readiness"
 ```
+
+전체 `/actuator/health`는 Redis 같은 dependency health를 포함하므로 Redis password 불일치 시 503일 수 있다. 배포 성공 기준은 readiness를 사용한다.
 
 ## 4) Redis 캐시 전략 (API/DB 호출 최소화)
 

@@ -1,8 +1,9 @@
 package com.aandi.gateway.security
+import com.aandi.gateway.common.response.GatewayErrorCode
+import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.springframework.core.Ordered
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
@@ -18,7 +19,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Component
 class AuthRateLimitFilter(
-    private val properties: RateLimitProperties
+    private val properties: RateLimitProperties,
+    private val responseWriter: GatewayResponseWriter
 ) : WebFilter, Ordered {
 
     private val parser = PathPatternParser.defaultInstance
@@ -74,8 +76,12 @@ class AuthRateLimitFilter(
                 }
 
                 if (!allow(key, limit)) {
-                    exchange.response.statusCode = HttpStatus.TOO_MANY_REQUESTS
-                    return@flatMap exchange.response.setComplete()
+                    val errorCode = when (pathType) {
+                        PathType.LOGIN -> GatewayErrorCode.LOGIN_RATE_LIMIT_EXCEEDED
+                        PathType.REFRESH -> GatewayErrorCode.REFRESH_RATE_LIMIT_EXCEEDED
+                        PathType.LOGOUT -> GatewayErrorCode.LOGOUT_RATE_LIMIT_EXCEEDED
+                    }
+                    return@flatMap responseWriter.writeError(exchange, errorCode)
                 }
 
                 val decorated = exchange.mutate().request(cachedRequest(exchange, bytes)).build()
