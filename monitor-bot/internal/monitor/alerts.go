@@ -19,6 +19,7 @@ import (
 
 type Alert struct {
 	Fingerprint string
+	CooldownKey string
 	Service     string
 	AlertType   string
 	Severity    string
@@ -75,13 +76,15 @@ func (s *Service) PollAlerts(ctx context.Context) error {
 	active := make(map[string]Alert)
 	alerts := s.collectAlerts(ctx)
 	for _, alert := range alerts {
-		active[alert.Fingerprint] = alert
-		if s.shouldSendAlert(alert.Fingerprint, time.Now()) {
+		active[alertCooldownKey(alert)] = alert
+		if s.shouldSendAlert(alert, time.Now()) {
 			if err := s.sendAlert(ctx, alert); err != nil {
 				log.Printf("send alert failed: %v", err)
 				continue
 			}
 			_ = s.markAlertSent(alert, true)
+		} else {
+			_ = s.recordSuppressedAlertEvidence(alert)
 		}
 	}
 	s.sendResolvedAlerts(ctx, active)
@@ -140,7 +143,7 @@ func makeV2Alert(row map[string]string) Alert {
 		code = strconv.Itoa(log.Response.Error.Code)
 	}
 	fpKey := firstNonEmpty(traceID, strings.Join([]string{log.Timestamp, log.LogType, path, code}, ":"))
-	return Alert{
+	alert := Alert{
 		Fingerprint: fmt.Sprintf("prod:%s:v2:%s:%s", decision.Domain, log.LogType, fpKey),
 		Service:     decision.Domain,
 		AlertType:   "v2-log",
@@ -154,11 +157,13 @@ func makeV2Alert(row map[string]string) Alert {
 		V2Log:       &log,
 		V2Decision:  decision,
 	}
+	alert.CooldownKey = serviceAlertCooldownKey(alert)
+	return alert
 }
 
-func (s *Service) shouldSendAlert(fingerprint string, now time.Time) bool {
+func (s *Service) shouldSendAlert(alert Alert, now time.Time) bool {
 	snapshot := s.store.Snapshot()
-	existing := snapshot.Alerts[fingerprint]
+	existing := snapshot.Alerts[alertCooldownKey(alert)]
 	cooldown := s.alertCooldown(snapshot)
 	if cooldown <= 0 {
 		cooldown = 15 * time.Minute
@@ -168,29 +173,32 @@ func (s *Service) shouldSendAlert(fingerprint string, now time.Time) bool {
 
 func (s *Service) markAlertSent(alert Alert, active bool) error {
 	return s.store.Update(func(data *state.Data) {
-		stateAlert := data.Alerts[alert.Fingerprint]
+		key := alertCooldownKey(alert)
+		stateAlert := data.Alerts[key]
 		stateAlert.Active = active
 		stateAlert.LastSentAt = time.Now()
 		if !active {
 			stateAlert.ResolvedAt = time.Now()
 		} else {
-			data.ServiceAlerts.LastSent[alert.Fingerprint] = time.Now()
-			data.RecentServiceAlerts = append([]state.ServiceAlertEventState{{
-				Fingerprint: alert.Fingerprint,
-				IncidentKey: serviceAlertIncidentKey(alert),
-				Severity:    alert.Severity,
-				Service:     alert.Service,
-				AlertType:   alert.AlertType,
-				Summary:     serviceAlertSummary(alert),
-				TraceIDs:    serviceAlertTraceIDs(alert),
-				Reason:      alert.Reason,
-				Path:        alert.Path,
-				ErrorCode:   alert.ErrorCode,
-				CreatedAt:   time.Now(),
-			}}, data.RecentServiceAlerts...)
+			data.ServiceAlerts.LastSent[key] = time.Now()
+			data.RecentServiceAlerts = append([]state.ServiceAlertEventState{serviceAlertEventState(alert, time.Now())}, data.RecentServiceAlerts...)
 		}
-		data.Alerts[alert.Fingerprint] = stateAlert
+		data.Alerts[key] = stateAlert
 		data.LastAlertSentAt = time.Now()
+	})
+}
+
+func (s *Service) recordSuppressedAlertEvidence(alert Alert) error {
+	return s.store.Update(func(data *state.Data) {
+		key := alertCooldownKey(alert)
+		stateAlert := data.Alerts[key]
+		stateAlert.Active = true
+		data.Alerts[key] = stateAlert
+		event := serviceAlertEventState(alert, time.Now())
+		if hasRecentServiceAlertEvidence(data.RecentServiceAlerts, event) {
+			return
+		}
+		data.RecentServiceAlerts = append([]state.ServiceAlertEventState{event}, data.RecentServiceAlerts...)
 	})
 }
 
@@ -207,12 +215,16 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 		if _, ok := active[fingerprint]; ok {
 			continue
 		}
+		if isLegacyV2AlertFingerprint(fingerprint) {
+			_ = s.markAlertSent(Alert{Fingerprint: fingerprint, CooldownKey: fingerprint}, false)
+			continue
+		}
 		content := fmt.Sprintf("🟢 [PROD] alert resolved\n\nFingerprint: `%s`", fingerprint)
 		if _, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, channelID, content); err != nil {
 			log.Printf("send resolved alert failed: %v", err)
 			continue
 		}
-		_ = s.markAlertSent(Alert{Fingerprint: fingerprint}, false)
+		_ = s.markAlertSent(Alert{Fingerprint: fingerprint, CooldownKey: fingerprint}, false)
 	}
 }
 
@@ -519,7 +531,86 @@ func normalizeAlertTarget(value string) (string, error) {
 	}
 }
 
+func alertCooldownKey(alert Alert) string {
+	if key := strings.TrimSpace(alert.CooldownKey); key != "" {
+		return key
+	}
+	if alert.AlertType == "v2-log" || alert.V2Log != nil {
+		if key := serviceAlertCooldownKey(alert); key != "" {
+			return key
+		}
+	}
+	return strings.TrimSpace(alert.Fingerprint)
+}
+
+func serviceAlertCooldownKey(alert Alert) string {
+	parts := []string{
+		"service-alert",
+		strings.TrimSpace(alert.Service),
+		strings.TrimSpace(alertLogType(alert)),
+		strings.TrimSpace(alert.Severity),
+		strings.TrimSpace(alert.ErrorCode),
+		strings.TrimSpace(alertReasonText(alert)),
+		strings.TrimSpace(alertErrorCategory(alert)),
+	}
+	for i, part := range parts {
+		parts[i] = strings.ToLower(part)
+	}
+	return strings.Trim(strings.Join(parts, "\x00"), "\x00")
+}
+
+func alertLogType(alert Alert) string {
+	if alert.V2Log != nil && strings.TrimSpace(alert.V2Log.LogType) != "" {
+		return alert.V2Log.LogType
+	}
+	return alert.AlertType
+}
+
+func alertErrorCategory(alert Alert) string {
+	if alert.V2Decision.ErrorCode.Valid {
+		return alert.V2Decision.ErrorCode.ServiceName + "/" + alert.V2Decision.ErrorCode.CategoryName
+	}
+	return ""
+}
+
+func serviceAlertEventState(alert Alert, createdAt time.Time) state.ServiceAlertEventState {
+	return state.ServiceAlertEventState{
+		Fingerprint: alert.Fingerprint,
+		IncidentKey: serviceAlertIncidentKey(alert),
+		Severity:    alert.Severity,
+		Service:     alert.Service,
+		AlertType:   alert.AlertType,
+		Summary:     serviceAlertSummary(alert),
+		TraceIDs:    serviceAlertTraceIDs(alert),
+		Reason:      alert.Reason,
+		Path:        alert.Path,
+		ErrorCode:   alert.ErrorCode,
+		CreatedAt:   createdAt,
+	}
+}
+
+func hasRecentServiceAlertEvidence(events []state.ServiceAlertEventState, event state.ServiceAlertEventState) bool {
+	if strings.TrimSpace(event.Fingerprint) == "" {
+		return false
+	}
+	for _, existing := range events {
+		if existing.Fingerprint == event.Fingerprint {
+			return true
+		}
+	}
+	return false
+}
+
+func isLegacyV2AlertFingerprint(key string) bool {
+	return strings.HasPrefix(key, "prod:") && strings.Contains(key, ":v2:")
+}
+
 func serviceAlertIncidentKey(alert Alert) string {
+	if alert.AlertType == "v2-log" || alert.V2Log != nil {
+		if key := serviceAlertCooldownKey(alert); key != "" {
+			return key
+		}
+	}
 	parts := []string{
 		strings.TrimSpace(alert.Service),
 		strings.TrimSpace(alert.Severity),

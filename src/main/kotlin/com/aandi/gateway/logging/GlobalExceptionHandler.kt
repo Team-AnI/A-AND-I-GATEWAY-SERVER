@@ -56,6 +56,8 @@ class GlobalExceptionHandler(
 
         return when (ex) {
             is ResponseStatusException -> when (ex.statusCode.value()) {
+                HttpStatus.UNAUTHORIZED.value() -> GatewayErrorCode.AUTHENTICATION_FAILED
+                HttpStatus.FORBIDDEN.value() -> GatewayErrorCode.ACCESS_DENIED
                 HttpStatus.NOT_FOUND.value() -> GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED
                 else -> GatewayErrorCode.INTERNAL_SERVER_ERROR
             }

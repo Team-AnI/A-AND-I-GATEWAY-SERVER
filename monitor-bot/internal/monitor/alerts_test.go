@@ -39,14 +39,97 @@ func TestAlertFingerprintDedupeAndCooldown(t *testing.T) {
 
 func TestV2AlertKeepsTraceFingerprintWhileIncidentKeyExcludesTrace(t *testing.T) {
 	row1 := map[string]string{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/reports", "response.error.code": "18801", "trace.traceId": "trace-1"}
-	row2 := map[string]string{"@timestamp": "2026-05-14T10:00:01+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/reports", "response.error.code": "18801", "trace.traceId": "trace-2"}
+	row2 := map[string]string{"@timestamp": "2026-05-14T10:00:01+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/lectures", "response.error.code": "18801", "trace.traceId": "trace-2"}
 	alert1 := makeV2Alert(row1)
 	alert2 := makeV2Alert(row2)
 	if alert1.Fingerprint == "" || alert2.Fingerprint == "" || alert1.Fingerprint == alert2.Fingerprint {
 		t.Fatalf("trace-scoped alert fingerprint behavior should remain unchanged: %q %q", alert1.Fingerprint, alert2.Fingerprint)
 	}
+	if alertCooldownKey(alert1) != alertCooldownKey(alert2) {
+		t.Fatalf("send cooldown key should group same incident with different trace/path: %q %q", alertCooldownKey(alert1), alertCooldownKey(alert2))
+	}
 	if serviceAlertIncidentKey(alert1) != serviceAlertIncidentKey(alert2) {
 		t.Fatalf("incident key should group same incident with different trace IDs: %q %q", serviceAlertIncidentKey(alert1), serviceAlertIncidentKey(alert2))
+	}
+}
+
+func TestV2AlertCooldownKeyKeepsDistinctIncidentsSeparate(t *testing.T) {
+	base := map[string]string{"service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "http.route": "/v2/test", "response.error.code": "18801", "trace.traceId": "trace-1"}
+	gateway18801 := makeV2Alert(base)
+	auth18801 := makeV2Alert(withAlertRow(base, "service.domain", "auth", "service.name", "auth-service", "trace.traceId", "trace-2"))
+	gateway17801 := makeV2Alert(withAlertRow(base, "response.error.code", "17801", "trace.traceId", "trace-3"))
+	gateway60701 := makeV2Alert(withAlertRow(base, "response.error.code", "60701", "trace.traceId", "trace-4"))
+	gatewayEvent18801 := makeV2Alert(withAlertRow(base, "logType", "EVENT_ERROR", "trace.traceId", "trace-5"))
+
+	cases := []Alert{auth18801, gateway17801, gateway60701, gatewayEvent18801}
+	for _, other := range cases {
+		if alertCooldownKey(gateway18801) == alertCooldownKey(other) {
+			t.Fatalf("cooldown key should keep distinct incident separate: base=%#v other=%#v key=%q", gateway18801, other, alertCooldownKey(other))
+		}
+	}
+}
+
+func TestRepeatedGatewayCriticalAlertsDedupesByCooldownKey(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{rows: []map[string]string{
+		{"@timestamp": "2026-05-14T10:00:00+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "401", "http.route": "/v2/lectures", "response.error.code": "18801", "trace.traceId": "trace-a"},
+		{"@timestamp": "2026-05-14T10:00:01+09:00", "service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "401", "http.route": "/v2/blogs", "response.error.code": "18801", "trace.traceId": "trace-b"},
+	}})
+	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[:1]
+	service.cfg.DiscordAllowedRoleIDs = []string{"1234567890"}
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if fakeDiscord.roleSends != 1 {
+		t.Fatalf("same gateway 18801 incident should role-mention once, got %d", fakeDiscord.roleSends)
+	}
+	if got := len(store.Snapshot().ServiceAlerts.LastSent); got != 1 {
+		t.Fatalf("same incident should have one cooldown key, got %d", got)
+	}
+	recent := store.Snapshot().RecentServiceAlerts
+	if len(recent) != 2 {
+		t.Fatalf("unique duplicate evidence should be recorded once per fingerprint, got %#v", recent)
+	}
+	lines := recentServiceAlertLines(recent, 5, "30m", 30*time.Minute, time.Now())
+	joined := strings.Join(lines, "\n")
+	if !strings.Contains(joined, "×2") || !strings.Contains(joined, "trace-a") || !strings.Contains(joined, "trace-b") {
+		t.Fatalf("recent dashboard should group duplicate evidence with traces: %s", joined)
+	}
+}
+
+func TestLegacyV2FingerprintStateDoesNotSendResolvedNoise(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Update(func(data *state.Data) {
+		data.Alerts["prod:gateway:v2:API_ERROR:trace-old"] = state.AlertState{Active: true, LastSentAt: time.Now().Add(-time.Hour)}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := newTestService(store, &fakeLogs{})
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if fakeDiscord.sends != 0 || fakeDiscord.roleSends != 0 {
+		t.Fatalf("legacy V2 trace fingerprint should be resolved silently, sends=%d roleSends=%d", fakeDiscord.sends, fakeDiscord.roleSends)
+	}
+	if store.Snapshot().Alerts["prod:gateway:v2:API_ERROR:trace-old"].Active {
+		t.Fatal("legacy V2 trace fingerprint should be marked inactive")
 	}
 }
 
@@ -592,6 +675,17 @@ func serviceForErrorCode(code int) (domain string, name string) {
 	default:
 		return "gateway", "gateway"
 	}
+}
+
+func withAlertRow(row map[string]string, pairs ...string) map[string]string {
+	cloned := make(map[string]string, len(row)+len(pairs)/2)
+	for key, value := range row {
+		cloned[key] = value
+	}
+	for i := 0; i+1 < len(pairs); i += 2 {
+		cloned[pairs[i]] = pairs[i+1]
+	}
+	return cloned
 }
 
 func alertButtons(t *testing.T, components []discord.MessageComponent) []discord.MessageComponent {
