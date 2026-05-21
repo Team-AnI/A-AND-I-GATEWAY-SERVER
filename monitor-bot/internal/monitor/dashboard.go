@@ -47,7 +47,9 @@ type ReportAdminAPI interface {
 
 type DiscordMessenger interface {
 	SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (discord.Message, error)
+	SendChannelMessageWithComponents(ctx context.Context, client *http.Client, botToken, channelID, content string, components []discord.MessageComponent) (discord.Message, error)
 	SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error)
+	SendChannelMessageWithRoleMentionAndComponents(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string, components []discord.MessageComponent) (discord.Message, error)
 	EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error
 }
 
@@ -57,8 +59,16 @@ func (discordAPI) SendChannelMessage(ctx context.Context, client *http.Client, b
 	return discord.SendChannelMessage(ctx, client, botToken, channelID, content)
 }
 
+func (discordAPI) SendChannelMessageWithComponents(ctx context.Context, client *http.Client, botToken, channelID, content string, components []discord.MessageComponent) (discord.Message, error) {
+	return discord.SendChannelMessageWithComponents(ctx, client, botToken, channelID, content, components)
+}
+
 func (discordAPI) SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string) (discord.Message, error) {
 	return discord.SendChannelMessageWithRoleMention(ctx, client, botToken, channelID, content, roleID)
+}
+
+func (discordAPI) SendChannelMessageWithRoleMentionAndComponents(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string, components []discord.MessageComponent) (discord.Message, error) {
+	return discord.SendChannelMessageWithRoleMentionAndComponents(ctx, client, botToken, channelID, content, roleID, components)
 }
 
 func (discordAPI) EditChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, messageID, content string) error {

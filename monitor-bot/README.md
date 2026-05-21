@@ -104,6 +104,15 @@ state는 `/var/lib/monitor-bot/state.json`에 저장합니다.
 
 과제 dashboard의 최근 이벤트도 eventType/course/summary/reason 기준으로 묶습니다. WEB Admin snapshot diagnosis 이벤트는 traceId가 없을 수 있으므로 assignmentId, issueKey, evidenceHash, `/ops assignment ... view:events` 중심으로 drilldown합니다. Report EVENT audit 이벤트는 실제 로그 필드에 있을 때만 traceId/requestId를 표시합니다.
 
+## Alert Drilldown Buttons
+
+서비스 alert 알림은 concrete trace/service 값이 있을 때 Discord 버튼을 함께 보냅니다.
+
+- `Trace 상세`: `/ops logs mode:trace query:<traceId>`와 같은 조회를 ephemeral follow-up으로 실행합니다.
+- `<service> 오류 30m`: `/ops logs service:<service> mode:errors since:30m limit:10`와 같은 조회를 ephemeral follow-up으로 실행합니다.
+- 버튼이 보이지 않거나 실패할 때를 대비해 slash command fallback은 알림 본문에 유지합니다.
+- 이 패치는 slash command schema를 바꾸지 않으므로 별도 command 변경이 없다면 `DISCORD_REGISTER_COMMANDS=true`가 필요하지 않습니다.
+
 ## Assignment Ops
 
 Assignment issue warning은 WEB Admin GET API snapshot과 diagnosis를 사용합니다.

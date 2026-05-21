@@ -21,14 +21,23 @@ type allowedMentions struct {
 }
 
 type channelMessagePayload struct {
-	Content         string           `json:"content,omitempty"`
-	AllowedMentions *allowedMentions `json:"allowed_mentions,omitempty"`
+	Content         string             `json:"content,omitempty"`
+	AllowedMentions *allowedMentions   `json:"allowed_mentions,omitempty"`
+	Components      []messageComponent `json:"components,omitempty"`
 }
 
 func SendChannelMessage(ctx context.Context, client *http.Client, botToken, channelID, content string) (Message, error) {
 	return sendChannelMessage(ctx, client, botToken, channelID, channelMessagePayload{
 		Content:         formatting.TruncateDiscordMessage(content),
 		AllowedMentions: suppressMentions(),
+	})
+}
+
+func SendChannelMessageWithComponents(ctx context.Context, client *http.Client, botToken, channelID, content string, components []MessageComponent) (Message, error) {
+	return sendChannelMessage(ctx, client, botToken, channelID, channelMessagePayload{
+		Content:         formatting.TruncateDiscordMessage(content),
+		AllowedMentions: suppressMentions(),
+		Components:      components,
 	})
 }
 
@@ -40,6 +49,18 @@ func SendChannelMessageWithRoleMention(ctx context.Context, client *http.Client,
 	return sendChannelMessage(ctx, client, botToken, channelID, channelMessagePayload{
 		Content:         formatting.TruncateDiscordMessage("<@&" + roleID + ">\n" + content),
 		AllowedMentions: roleMention(roleID),
+	})
+}
+
+func SendChannelMessageWithRoleMentionAndComponents(ctx context.Context, client *http.Client, botToken, channelID, content, roleID string, components []MessageComponent) (Message, error) {
+	roleID = strings.TrimSpace(roleID)
+	if !validDiscordRoleID(roleID) {
+		return Message{}, fmt.Errorf("valid discord role id is required")
+	}
+	return sendChannelMessage(ctx, client, botToken, channelID, channelMessagePayload{
+		Content:         formatting.TruncateDiscordMessage("<@&" + roleID + ">\n" + content),
+		AllowedMentions: roleMention(roleID),
+		Components:      components,
 	})
 }
 

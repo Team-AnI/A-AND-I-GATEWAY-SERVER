@@ -10,6 +10,7 @@ import (
 
 	cw "github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/cloudwatch"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/config"
+	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/discord"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/opslog"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
@@ -217,18 +218,79 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 
 func (s *Service) sendAlert(ctx context.Context, alert Alert) error {
 	content := formatAlert(alert, "")
+	components := alertDrilldownComponents(alert)
 	route := s.alertRoute(alert)
 	if route.ChannelID == "" {
 		return fmt.Errorf("%s alert channel is not configured", route.Kind)
 	}
 	if route.Mention {
 		if route.RoleID != "" {
+			if len(components) > 0 {
+				_, err := s.discord.SendChannelMessageWithRoleMentionAndComponents(ctx, s.client, s.cfg.DiscordBotToken, route.ChannelID, content, route.RoleID, components)
+				return err
+			}
 			_, err := s.discord.SendChannelMessageWithRoleMention(ctx, s.client, s.cfg.DiscordBotToken, route.ChannelID, content, route.RoleID)
 			return err
 		}
 	}
+	if len(components) > 0 {
+		_, err := s.discord.SendChannelMessageWithComponents(ctx, s.client, s.cfg.DiscordBotToken, route.ChannelID, content, components)
+		return err
+	}
 	_, err := s.discord.SendChannelMessage(ctx, s.client, s.cfg.DiscordBotToken, route.ChannelID, content)
 	return err
+}
+
+func alertDrilldownComponents(alert Alert) []discord.MessageComponent {
+	var buttons []discord.MessageComponent
+	if traceID := alertTraceID(alert); traceID != "" {
+		if customID, ok := discord.OpsTraceButtonCustomID(traceID); ok {
+			buttons = append(buttons, discord.PrimaryButton("Trace 상세", customID))
+		}
+	}
+	if service := alertButtonService(alert); service != "" {
+		if customID, ok := discord.OpsServiceErrorsButtonCustomID(service); ok {
+			buttons = append(buttons, discord.SecondaryButton(alertButtonServiceLabel(service)+" 오류 30m", customID))
+		}
+	}
+	if len(buttons) == 0 {
+		return nil
+	}
+	return []discord.MessageComponent{discord.ActionRow(buttons...)}
+}
+
+func alertTraceID(alert Alert) string {
+	if alert.V2Log != nil && alert.V2Log.Trace != nil {
+		traceID := strings.TrimSpace(alert.V2Log.Trace.TraceID)
+		if security.ValidateTraceID(traceID) {
+			return traceID
+		}
+	}
+	for _, traceID := range alert.Traces {
+		traceID = strings.TrimSpace(traceID)
+		if security.ValidateTraceID(traceID) {
+			return traceID
+		}
+	}
+	return ""
+}
+
+func alertButtonService(alert Alert) string {
+	if strings.EqualFold(strings.TrimSpace(alert.Service), "cloudwatch") {
+		return ""
+	}
+	service, ok := security.NormalizeService(alert.Service)
+	if !ok || !isServiceOpsNameConnected(service) {
+		return ""
+	}
+	return service
+}
+
+func alertButtonServiceLabel(service string) string {
+	if service == "post" {
+		return "blog"
+	}
+	return service
 }
 
 func (s *Service) alertRoute(alert Alert) alertRoute {
@@ -526,15 +588,25 @@ func formatAlert(alert Alert, mention string) string {
 			fmt.Fprintf(&b, "- %s\n", trace)
 		}
 	}
-	b.WriteString("\n상세 확인:\n")
+	var fallbacks []string
 	if alert.Service == "cloudwatch" {
-		b.WriteString("/ops dashboard action:status\n")
-	} else {
-		fmt.Fprintf(&b, "/ops logs service:%s mode:errors since:15m limit:10\n", alert.Service)
-		fmt.Fprintf(&b, "/ops logs service:%s mode:slow since:15m limit:10\n", alert.Service)
+		fallbacks = append(fallbacks, "/ops dashboard action:status")
+	} else if service := alertButtonService(alert); service != "" {
+		fallbacks = append(fallbacks, "/ops logs service:"+alertButtonServiceLabel(service)+" mode:errors since:30m limit:10")
 	}
-	if len(alert.Traces) > 0 {
-		fmt.Fprintf(&b, "/ops logs mode:trace query:%s", alert.Traces[0])
+	traceID := alertTraceID(alert)
+	if traceID != "" {
+		fallbacks = append([]string{"/ops logs mode:trace query:" + traceID}, fallbacks...)
+	}
+	if len(fallbacks) > 0 {
+		b.WriteString("\nNext\n")
+		if traceID != "" || alertButtonService(alert) != "" {
+			b.WriteString("버튼으로 상세 로그를 확인하세요.\n\n")
+		} else {
+			b.WriteString("fallback 명령으로 상태를 확인하세요.\n\n")
+		}
+		b.WriteString("fallback:\n")
+		b.WriteString(strings.Join(fallbacks, "\n"))
 	}
 	return formatting.TruncateDiscordMessage(b.String())
 }

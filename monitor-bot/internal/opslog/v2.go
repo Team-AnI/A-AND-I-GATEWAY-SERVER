@@ -416,12 +416,36 @@ func FormatV2Alert(log V2OpsLog, decision AlertDecision, mention string) string 
 	if log.Response != nil && log.Response.Error != nil && strings.TrimSpace(log.Response.Error.Alert) != "" {
 		fmt.Fprintf(&b, "Alert     %s\n", security.SanitizeText(log.Response.Error.Alert))
 	}
-	b.WriteString("\nNext\n")
-	if log.Trace != nil && strings.TrimSpace(log.Trace.TraceID) != "" {
-		fmt.Fprintf(&b, "/ops logs mode:trace query:%s\n", security.SanitizeText(log.Trace.TraceID))
+	var fallbacks []string
+	hasTraceFallback := false
+	if log.Trace != nil {
+		traceID := strings.TrimSpace(log.Trace.TraceID)
+		if security.ValidateTraceID(traceID) {
+			fallbacks = append(fallbacks, "/ops logs mode:trace query:"+security.SanitizeText(traceID))
+			hasTraceFallback = true
+		}
 	}
-	fmt.Fprintf(&b, "/ops logs service:%s mode:errors since:30m limit:10", security.SanitizeText(domain))
+	if service, ok := security.NormalizeService(domain); ok {
+		fallbacks = append(fallbacks, "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors since:30m limit:10")
+	}
+	if len(fallbacks) > 0 {
+		b.WriteString("\nNext\n")
+		if hasTraceFallback {
+			b.WriteString("버튼으로 상세 로그를 확인하세요.\n\n")
+		} else {
+			b.WriteString("버튼으로 최근 서비스 로그를 확인하세요.\n\n")
+		}
+		b.WriteString("fallback:\n")
+		b.WriteString(strings.Join(fallbacks, "\n"))
+	}
 	return security.SanitizeText(b.String())
+}
+
+func opsDisplayServiceName(service string) string {
+	if service == "post" {
+		return "blog"
+	}
+	return service
 }
 
 func domainFromCode(code int) string {

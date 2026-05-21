@@ -34,16 +34,18 @@ func (f fakeAlarms) AlarmNames(context.Context) ([]string, error) {
 }
 
 type fakeDiscord struct {
-	sends        int
-	roleSends    int
-	edits        int
-	sentContents []string
-	roleContents []string
-	editContents []string
-	sentChannels []string
-	roleChannels []string
-	roleIDs      []string
-	editChannels []string
+	sends          int
+	roleSends      int
+	edits          int
+	sentContents   []string
+	roleContents   []string
+	editContents   []string
+	sentChannels   []string
+	roleChannels   []string
+	roleIDs        []string
+	editChannels   []string
+	sentComponents [][]discord.MessageComponent
+	roleComponents [][]discord.MessageComponent
 }
 
 func (f *fakeDiscord) SendChannelMessage(_ context.Context, _ *http.Client, _ string, channelID string, content string) (discord.Message, error) {
@@ -53,11 +55,28 @@ func (f *fakeDiscord) SendChannelMessage(_ context.Context, _ *http.Client, _ st
 	return discord.Message{ID: "created-message"}, nil
 }
 
+func (f *fakeDiscord) SendChannelMessageWithComponents(_ context.Context, _ *http.Client, _ string, channelID string, content string, components []discord.MessageComponent) (discord.Message, error) {
+	f.sends++
+	f.sentChannels = append(f.sentChannels, channelID)
+	f.sentContents = append(f.sentContents, content)
+	f.sentComponents = append(f.sentComponents, components)
+	return discord.Message{ID: "created-message"}, nil
+}
+
 func (f *fakeDiscord) SendChannelMessageWithRoleMention(_ context.Context, _ *http.Client, _ string, channelID string, content string, roleID string) (discord.Message, error) {
 	f.roleSends++
 	f.roleChannels = append(f.roleChannels, channelID)
 	f.roleContents = append(f.roleContents, "<@&"+roleID+">\n"+content)
 	f.roleIDs = append(f.roleIDs, roleID)
+	return discord.Message{ID: "created-message"}, nil
+}
+
+func (f *fakeDiscord) SendChannelMessageWithRoleMentionAndComponents(_ context.Context, _ *http.Client, _ string, channelID string, content string, roleID string, components []discord.MessageComponent) (discord.Message, error) {
+	f.roleSends++
+	f.roleChannels = append(f.roleChannels, channelID)
+	f.roleContents = append(f.roleContents, "<@&"+roleID+">\n"+content)
+	f.roleIDs = append(f.roleIDs, roleID)
+	f.roleComponents = append(f.roleComponents, components)
 	return discord.Message{ID: "created-message"}, nil
 }
 
