@@ -178,6 +178,7 @@ func (s *Service) collectAssignmentOps(ctx context.Context, now time.Time) assig
 	}
 
 	previous := s.store.Snapshot()
+	detailBudget := 30
 	submissionBudget := 30
 	for _, course := range activeCourses {
 		assignments, err := s.report.ListAssignments(ctx, course.Slug)
@@ -187,6 +188,14 @@ func (s *Service) collectAssignmentOps(ctx context.Context, now time.Time) assig
 			continue
 		}
 		for _, assignment := range assignments {
+			if assignment.PublishedAtOmitted && strings.TrimSpace(assignment.ID) != "" && detailBudget > 0 {
+				if detail, err := s.report.GetAssignment(ctx, course.Slug, assignment.ID); err == nil {
+					if hasAssignmentDetail(detail) {
+						assignment = mergeAssignmentDetail(assignment, detail)
+					}
+				}
+				detailBudget--
+			}
 			snapshot := assignmentSnapshot(course, assignment, now)
 			if submissionBudget > 0 {
 				if summary, err := s.report.SubmissionStatuses(ctx, course.Slug, assignment.ID); err == nil {
@@ -343,28 +352,30 @@ func applyAssignmentIssueState(existing state.AssignmentIssueState, event state.
 	evidenceChanged := !first && strings.TrimSpace(event.EvidenceHash) != "" && existing.EvidenceHash != "" && event.EvidenceHash != existing.EvidenceHash
 
 	updated := state.AssignmentIssueState{
-		IssueKey:        event.IssueKey,
-		EventType:       event.EventType,
-		Severity:        event.Severity,
-		CourseSlug:      event.CourseSlug,
-		AssignmentID:    event.AssignmentID,
-		Title:           event.Title,
-		Status:          event.Status,
-		PublishedAt:     event.PublishedAt,
-		StartAt:         event.StartAt,
-		EndAt:           event.EndAt,
-		ProblemID:       event.ProblemID,
-		FirstDetectedAt: existing.FirstDetectedAt,
-		LastDetectedAt:  now,
-		LastNotifiedAt:  existing.LastNotifiedAt,
-		State:           "open",
-		NotifyCount:     existing.NotifyCount,
-		EvidenceHash:    event.EvidenceHash,
-		ReasonCode:      event.ReasonCode,
-		ReasonText:      event.ReasonText,
-		AckBy:           existing.AckBy,
-		AckReason:       existing.AckReason,
-		AckUntil:        existing.AckUntil,
+		IssueKey:           event.IssueKey,
+		EventType:          event.EventType,
+		Severity:           event.Severity,
+		CourseSlug:         event.CourseSlug,
+		AssignmentID:       event.AssignmentID,
+		Title:              event.Title,
+		Status:             event.Status,
+		PublishedAt:        event.PublishedAt,
+		PublishedAtOmitted: event.PublishedAtOmitted,
+		StartAt:            event.StartAt,
+		EndAt:              event.EndAt,
+		ProblemID:          event.ProblemID,
+		ProblemIDFallback:  event.ProblemIDFallback,
+		FirstDetectedAt:    existing.FirstDetectedAt,
+		LastDetectedAt:     now,
+		LastNotifiedAt:     existing.LastNotifiedAt,
+		State:              "open",
+		NotifyCount:        existing.NotifyCount,
+		EvidenceHash:       event.EvidenceHash,
+		ReasonCode:         event.ReasonCode,
+		ReasonText:         event.ReasonText,
+		AckBy:              existing.AckBy,
+		AckReason:          existing.AckReason,
+		AckUntil:           existing.AckUntil,
 	}
 	if updated.FirstDetectedAt.IsZero() || wasResolved {
 		updated.FirstDetectedAt = now
@@ -450,18 +461,65 @@ func ClassifyCourse(course reportadmin.Course, now time.Time) string {
 
 func assignmentSnapshot(course reportadmin.Course, assignment reportadmin.Assignment, now time.Time) state.AssignmentSnapshot {
 	return state.AssignmentSnapshot{
-		CourseSlug:   course.Slug,
-		CourseClass:  CourseActive,
-		AssignmentID: assignment.ID,
-		Title:        assignment.Title,
-		Status:       assignment.Status,
-		PublishedAt:  assignment.PublishedAt,
-		StartAt:      assignment.StartAt,
-		EndAt:        assignment.EndAt,
-		ProblemID:    assignment.ProblemID,
-		UpdatedAt:    assignment.UpdatedAt,
-		LastSeenAt:   now,
+		CourseSlug:         course.Slug,
+		CourseClass:        CourseActive,
+		AssignmentID:       assignment.ID,
+		Title:              assignment.Title,
+		Status:             assignment.Status,
+		PublishedAt:        assignment.PublishedAt,
+		PublishedAtOmitted: assignment.PublishedAtOmitted,
+		StartAt:            assignment.StartAt,
+		EndAt:              assignment.EndAt,
+		ProblemID:          assignment.ProblemID,
+		ProblemIDFallback:  assignment.ProblemIDFallback,
+		UpdatedAt:          assignment.UpdatedAt,
+		LastSeenAt:         now,
 	}
+}
+
+func mergeAssignmentDetail(summary, detail reportadmin.Assignment) reportadmin.Assignment {
+	merged := summary
+	if strings.TrimSpace(detail.ID) != "" {
+		merged.ID = detail.ID
+	}
+	if strings.TrimSpace(detail.Title) != "" {
+		merged.Title = detail.Title
+	}
+	if strings.TrimSpace(detail.Status) != "" {
+		merged.Status = detail.Status
+	}
+	if strings.TrimSpace(detail.PublishedAt) != "" {
+		merged.PublishedAt = detail.PublishedAt
+	}
+	merged.PublishedAtOmitted = false
+	if strings.TrimSpace(detail.StartAt) != "" {
+		merged.StartAt = detail.StartAt
+	}
+	if strings.TrimSpace(detail.EndAt) != "" {
+		merged.EndAt = detail.EndAt
+	}
+	if strings.TrimSpace(detail.ProblemID) != "" {
+		merged.ProblemID = detail.ProblemID
+		merged.ProblemIDFallback = detail.ProblemIDFallback
+	}
+	if strings.TrimSpace(detail.UpdatedAt) != "" {
+		merged.UpdatedAt = detail.UpdatedAt
+	}
+	if detail.Raw != nil {
+		merged.Raw = detail.Raw
+	}
+	return merged
+}
+
+func hasAssignmentDetail(assignment reportadmin.Assignment) bool {
+	return strings.TrimSpace(assignment.ID) != "" ||
+		strings.TrimSpace(assignment.Title) != "" ||
+		strings.TrimSpace(assignment.Status) != "" ||
+		strings.TrimSpace(assignment.PublishedAt) != "" ||
+		strings.TrimSpace(assignment.StartAt) != "" ||
+		strings.TrimSpace(assignment.EndAt) != "" ||
+		strings.TrimSpace(assignment.ProblemID) != "" ||
+		strings.TrimSpace(assignment.UpdatedAt) != ""
 }
 
 func diffAssignmentSnapshot(prev, cur state.AssignmentSnapshot, existed bool, now time.Time) []state.AssignmentEventState {
@@ -490,20 +548,22 @@ func diffAssignmentSnapshot(prev, cur state.AssignmentSnapshot, existed bool, no
 func makeAssignmentEvent(eventType, severity string, snapshot state.AssignmentSnapshot, summary, changedField, newValue string, now time.Time) state.AssignmentEventState {
 	fingerprint := strings.Join([]string{eventType, snapshot.CourseSlug, snapshot.AssignmentID, changedField, newValue}, ":")
 	return state.AssignmentEventState{
-		Fingerprint:  fingerprint,
-		EventType:    eventType,
-		Severity:     severity,
-		CourseSlug:   snapshot.CourseSlug,
-		AssignmentID: snapshot.AssignmentID,
-		Title:        snapshot.Title,
-		Status:       snapshot.Status,
-		PublishedAt:  snapshot.PublishedAt,
-		StartAt:      snapshot.StartAt,
-		EndAt:        snapshot.EndAt,
-		ProblemID:    snapshot.ProblemID,
-		Summary:      summary,
-		ShouldNotify: true,
-		CreatedAt:    now,
+		Fingerprint:        fingerprint,
+		EventType:          eventType,
+		Severity:           severity,
+		CourseSlug:         snapshot.CourseSlug,
+		AssignmentID:       snapshot.AssignmentID,
+		Title:              snapshot.Title,
+		Status:             snapshot.Status,
+		PublishedAt:        snapshot.PublishedAt,
+		PublishedAtOmitted: snapshot.PublishedAtOmitted,
+		StartAt:            snapshot.StartAt,
+		EndAt:              snapshot.EndAt,
+		ProblemID:          snapshot.ProblemID,
+		ProblemIDFallback:  snapshot.ProblemIDFallback,
+		Summary:            summary,
+		ShouldNotify:       true,
+		CreatedAt:          now,
 	}
 }
 
@@ -513,7 +573,9 @@ func assignmentMajorFieldsChanged(prev, cur state.AssignmentSnapshot) bool {
 		prev.StartAt != cur.StartAt ||
 		prev.EndAt != cur.EndAt ||
 		prev.PublishedAt != cur.PublishedAt ||
-		prev.ProblemID != cur.ProblemID
+		prev.PublishedAtOmitted != cur.PublishedAtOmitted ||
+		prev.ProblemID != cur.ProblemID ||
+		prev.ProblemIDFallback != cur.ProblemIDFallback
 }
 
 func invalidAssignmentTime(snapshot state.AssignmentSnapshot) bool {
@@ -581,7 +643,7 @@ func diagnoseAssignment(snapshot state.AssignmentSnapshot, now time.Time, staleG
 		})
 		return diagnoses
 	}
-	if strings.TrimSpace(snapshot.PublishedAt) == "" && isDraft(snapshot.Status) {
+	if strings.TrimSpace(snapshot.PublishedAt) == "" && isDraft(snapshot.Status) && !snapshot.PublishedAtOmitted {
 		if startAt, ok := parseAssignmentTime(snapshot.StartAt); ok && now.After(startAt) {
 			diagnoses = append(diagnoses, AssignmentDiagnosis{
 				EventType:    "ASSIGNMENT_DRAFT_PAST_START",
@@ -601,37 +663,53 @@ func makeAssignmentIssueEvent(snapshot state.AssignmentSnapshot, diagnosis Assig
 	issueKey := assignmentIssueKey(diagnosis.EventType, snapshot.CourseSlug, snapshot.AssignmentID)
 	evidenceHash := assignmentEvidenceHash(snapshot, diagnosis)
 	return state.AssignmentEventState{
-		Fingerprint:  issueKey + ":" + evidenceHash,
-		IssueKey:     issueKey,
-		EventType:    diagnosis.EventType,
-		Severity:     diagnosis.Severity,
-		CourseSlug:   snapshot.CourseSlug,
-		AssignmentID: snapshot.AssignmentID,
-		Title:        snapshot.Title,
-		Status:       snapshot.Status,
-		PublishedAt:  snapshot.PublishedAt,
-		StartAt:      snapshot.StartAt,
-		EndAt:        snapshot.EndAt,
-		ProblemID:    snapshot.ProblemID,
-		Summary:      assignmentDiagnosisSummary(diagnosis.EventType),
-		ReasonCode:   diagnosis.ReasonCode,
-		ReasonText:   diagnosis.ReasonText,
-		Evidence:     diagnosis.Evidence,
-		EvidenceHash: evidenceHash,
-		ShouldNotify: diagnosis.ShouldNotify,
-		ShouldCount:  diagnosis.ShouldCount,
-		CreatedAt:    now,
+		Fingerprint:        issueKey + ":" + evidenceHash,
+		IssueKey:           issueKey,
+		EventType:          diagnosis.EventType,
+		Severity:           diagnosis.Severity,
+		CourseSlug:         snapshot.CourseSlug,
+		AssignmentID:       snapshot.AssignmentID,
+		Title:              snapshot.Title,
+		Status:             snapshot.Status,
+		PublishedAt:        snapshot.PublishedAt,
+		PublishedAtOmitted: snapshot.PublishedAtOmitted,
+		StartAt:            snapshot.StartAt,
+		EndAt:              snapshot.EndAt,
+		ProblemID:          snapshot.ProblemID,
+		ProblemIDFallback:  snapshot.ProblemIDFallback,
+		Summary:            assignmentDiagnosisSummary(diagnosis.EventType),
+		ReasonCode:         diagnosis.ReasonCode,
+		ReasonText:         diagnosis.ReasonText,
+		Evidence:           diagnosis.Evidence,
+		EvidenceHash:       evidenceHash,
+		ShouldNotify:       diagnosis.ShouldNotify,
+		ShouldCount:        diagnosis.ShouldCount,
+		CreatedAt:          now,
 	}
 }
 
 func assignmentEvidence(snapshot state.AssignmentSnapshot) []string {
-	return []string{
+	evidence := []string{
 		"status=" + unknownIfBlank(snapshot.Status),
-		"publishedAt=" + unknownIfBlank(snapshot.PublishedAt),
+		"publishedAt=" + assignmentPublishedAtEvidence(snapshot),
 		"startAt=" + unknownIfBlank(snapshot.StartAt),
 		"endAt=" + unknownIfBlank(snapshot.EndAt),
 		"problemId=" + unknownIfBlank(snapshot.ProblemID),
 	}
+	if strings.TrimSpace(snapshot.ProblemIDFallback) != "" {
+		evidence = append(evidence, "problemIdFallback: "+snapshot.ProblemIDFallback)
+	}
+	return evidence
+}
+
+func assignmentPublishedAtEvidence(snapshot state.AssignmentSnapshot) string {
+	if strings.TrimSpace(snapshot.PublishedAt) != "" {
+		return snapshot.PublishedAt
+	}
+	if snapshot.PublishedAtOmitted {
+		return "summary omitted"
+	}
+	return "unknown"
 }
 
 func assignmentEvidenceHash(snapshot state.AssignmentSnapshot, diagnosis AssignmentDiagnosis) string {
@@ -642,9 +720,11 @@ func assignmentEvidenceHash(snapshot state.AssignmentSnapshot, diagnosis Assignm
 		snapshot.Title,
 		snapshot.Status,
 		snapshot.PublishedAt,
+		fmt.Sprint(snapshot.PublishedAtOmitted),
 		snapshot.StartAt,
 		snapshot.EndAt,
 		snapshot.ProblemID,
+		snapshot.ProblemIDFallback,
 	}, "\x00")
 	sum := sha256.Sum256([]byte(source))
 	return hex.EncodeToString(sum[:8])
@@ -1029,10 +1109,13 @@ func formatAssignmentEvent(event state.AssignmentEventState) string {
 	fmt.Fprintf(&b, "assignmentId: %s\n", security.SanitizeText(event.AssignmentID))
 	fmt.Fprintf(&b, "title: %s\n", security.SanitizeText(unknownIfBlank(event.Title)))
 	fmt.Fprintf(&b, "status: %s\n", security.SanitizeText(unknownIfBlank(event.Status)))
-	fmt.Fprintf(&b, "publishedAt: %s\n", security.SanitizeText(unknownIfBlank(event.PublishedAt)))
+	fmt.Fprintf(&b, "publishedAt: %s\n", security.SanitizeText(assignmentEventPublishedAt(event)))
 	fmt.Fprintf(&b, "startAt: %s\n", security.SanitizeText(unknownIfBlank(event.StartAt)))
 	fmt.Fprintf(&b, "endAt: %s\n", security.SanitizeText(unknownIfBlank(event.EndAt)))
 	fmt.Fprintf(&b, "problemId: %s\n", security.SanitizeText(unknownIfBlank(event.ProblemID)))
+	if strings.TrimSpace(event.ProblemIDFallback) != "" {
+		fmt.Fprintf(&b, "problemIdFallback: %s\n", security.SanitizeText(event.ProblemIDFallback))
+	}
 	fmt.Fprintf(&b, "summary: %s\n", security.SanitizeText(event.Summary))
 	b.WriteString("source: WEB_ADMIN_API\n")
 	if strings.TrimSpace(event.ReasonCode) != "" {
@@ -1058,6 +1141,16 @@ func formatAssignmentEvent(event state.AssignmentEventState) string {
 	}
 	writeAssignmentNextCommands(&b, event)
 	return formatting.TruncateDiscordMessage(b.String())
+}
+
+func assignmentEventPublishedAt(event state.AssignmentEventState) string {
+	if strings.TrimSpace(event.PublishedAt) != "" {
+		return event.PublishedAt
+	}
+	if event.PublishedAtOmitted {
+		return "summary omitted"
+	}
+	return "unknown"
 }
 
 func shouldSendAssignmentEvent(event state.AssignmentEventState) bool {
@@ -1209,6 +1302,16 @@ func snapshotKey(courseSlug, assignmentID string) string {
 	return courseSlug + ":" + assignmentID
 }
 
+func assignmentPublishedAtSummary(assignment reportadmin.Assignment) string {
+	if strings.TrimSpace(assignment.PublishedAt) != "" {
+		return assignment.PublishedAt
+	}
+	if assignment.PublishedAtOmitted {
+		return "summary omitted"
+	}
+	return "unknown"
+}
+
 func (s *Service) DescribeAssignmentDiagnosis(courseSlug string, assignment reportadmin.Assignment) string {
 	now := time.Now()
 	snapshot := assignmentSnapshot(reportadmin.Course{Slug: courseSlug}, assignment, now)
@@ -1221,10 +1324,13 @@ func (s *Service) DescribeAssignmentDiagnosis(courseSlug string, assignment repo
 	fmt.Fprintf(&b, "assignmentId: %s\n", security.SanitizeText(unknownIfBlank(assignment.ID)))
 	fmt.Fprintf(&b, "title: %s\n", security.SanitizeText(unknownIfBlank(assignment.Title)))
 	fmt.Fprintf(&b, "assignmentStatus: %s\n", security.SanitizeText(unknownIfBlank(assignment.Status)))
-	fmt.Fprintf(&b, "publishedAt: %s\n", security.SanitizeText(unknownIfBlank(assignment.PublishedAt)))
+	fmt.Fprintf(&b, "publishedAt: %s\n", security.SanitizeText(assignmentPublishedAtSummary(assignment)))
 	fmt.Fprintf(&b, "startAt: %s\n", security.SanitizeText(unknownIfBlank(assignment.StartAt)))
 	fmt.Fprintf(&b, "endAt: %s\n", security.SanitizeText(unknownIfBlank(assignment.EndAt)))
 	fmt.Fprintf(&b, "problemId: %s\n", security.SanitizeText(unknownIfBlank(assignment.ProblemID)))
+	if strings.TrimSpace(assignment.ProblemIDFallback) != "" {
+		fmt.Fprintf(&b, "problemIdFallback: %s\n", security.SanitizeText(assignment.ProblemIDFallback))
+	}
 	b.WriteString("\ndiagnosis:\n")
 	if len(diagnoses) == 0 {
 		b.WriteString("- current issue: NONE\n")
