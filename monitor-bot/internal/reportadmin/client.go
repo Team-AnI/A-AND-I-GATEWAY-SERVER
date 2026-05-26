@@ -69,15 +69,17 @@ type Course struct {
 }
 
 type Assignment struct {
-	ID          string
-	Title       string
-	Status      string
-	PublishedAt string
-	StartAt     string
-	EndAt       string
-	ProblemID   string
-	UpdatedAt   string
-	Raw         map[string]any
+	ID                 string
+	Title              string
+	Status             string
+	PublishedAt        string
+	PublishedAtOmitted bool
+	StartAt            string
+	EndAt              string
+	ProblemID          string
+	ProblemIDFallback  string
+	UpdatedAt          string
+	Raw                map[string]any
 }
 
 type SubmissionSummary struct {
@@ -179,7 +181,11 @@ func (c *Client) ListAssignments(ctx context.Context, courseSlug string) ([]Assi
 		if !ok {
 			continue
 		}
-		assignments = append(assignments, assignmentFrom(object))
+		assignment := assignmentFrom(object)
+		if assignment.PublishedAt == "" {
+			assignment.PublishedAtOmitted = true
+		}
+		assignments = append(assignments, assignment)
 	}
 	return assignments, nil
 }
@@ -440,12 +446,12 @@ func StatusOf(err error) string {
 func assignmentFrom(object map[string]any) Assignment {
 	assignment := Assignment{
 		ID:          firstString(object, "assignmentId", "id", "assignmentID", "uuid"),
-		Title:       firstString(object, "title", "name", "assignmentTitle"),
+		Title:       firstString(object, "title", "name", "assignmentTitle", "metadata.title", "metadata.name"),
 		Status:      firstString(object, "status", "publishStatus", "publicationStatus", "state"),
-		PublishedAt: firstString(object, "publishedAt", "publishAt", "openedAt", "openAt"),
+		PublishedAt: firstString(object, "publishedAt", "publication.publishedAt", "metadata.publishedAt", "publishAt", "openedAt", "openAt"),
 		StartAt:     firstString(object, "startAt", "startedAt", "targetStartAt"),
 		EndAt:       firstString(object, "endAt", "endedAt", "targetEndAt"),
-		ProblemID:   firstString(object, "problemId", "problemID", "problem.id"),
+		ProblemID:   firstString(object, "problemId", "problemID", "problem.id", "ojProblemId", "onlineJudgeProblemId", "judgeProblemId"),
 		UpdatedAt:   firstString(object, "updatedAt", "modifiedAt"),
 		Raw:         object,
 	}
@@ -454,6 +460,10 @@ func assignmentFrom(object map[string]any) Assignment {
 			assignment.ProblemID = firstString(nested, "id", "problemId", "problemID")
 		}
 	}
+	if assignment.ProblemID == "" && isUUID(assignment.ID) {
+		assignment.ProblemID = assignment.ID
+		assignment.ProblemIDFallback = "assignmentId"
+	}
 	if assignment.Status == "" {
 		assignment.Status = inferAssignmentStatus(object, assignment)
 	}
@@ -461,6 +471,26 @@ func assignmentFrom(object map[string]any) Assignment {
 		assignment.Status = "unknown"
 	}
 	return assignment
+}
+
+func isUUID(value string) bool {
+	value = strings.TrimSpace(value)
+	if len(value) != 36 {
+		return false
+	}
+	for i, r := range value {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' {
+				return false
+			}
+		default:
+			if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func inferAssignmentStatus(object map[string]any, assignment Assignment) string {

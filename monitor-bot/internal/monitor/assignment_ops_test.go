@@ -15,6 +15,7 @@ import (
 type fakeReportAdmin struct {
 	courses     []reportadmin.Course
 	assignments map[string][]reportadmin.Assignment
+	details     map[string]reportadmin.Assignment
 	submissions map[string]reportadmin.SubmissionSummary
 	err         error
 }
@@ -31,6 +32,13 @@ func (f *fakeReportAdmin) ListAssignments(_ context.Context, courseSlug string) 
 		return nil, f.err
 	}
 	return f.assignments[courseSlug], nil
+}
+
+func (f *fakeReportAdmin) GetAssignment(_ context.Context, courseSlug, assignmentID string) (reportadmin.Assignment, error) {
+	if f.err != nil {
+		return reportadmin.Assignment{}, f.err
+	}
+	return f.details[courseSlug+":"+assignmentID], nil
 }
 
 func (f *fakeReportAdmin) SubmissionStatuses(_ context.Context, courseSlug, assignmentID string) (reportadmin.SubmissionSummary, error) {
@@ -275,6 +283,83 @@ func TestAssignmentDiagnosisMissingProblemOnPublished(t *testing.T) {
 	}, now, 7*24*time.Hour)
 	if !hasDiagnosis(diagnoses, "ASSIGNMENT_MISSING_PROBLEM") {
 		t.Fatalf("published/open missing problem should be diagnosed: %#v", diagnoses)
+	}
+}
+
+func TestAssignmentDiagnosisUsesProblemIDFallbackAsPresent(t *testing.T) {
+	assignmentID := "8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111"
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	diagnoses := diagnoseAssignment(state.AssignmentSnapshot{
+		CourseSlug:        "kotlin",
+		AssignmentID:      assignmentID,
+		Status:            "published",
+		StartAt:           "2026-05-20T09:00:00Z",
+		EndAt:             "2026-05-21T09:00:00Z",
+		ProblemID:         assignmentID,
+		ProblemIDFallback: "assignmentId",
+	}, now, 7*24*time.Hour)
+	if hasDiagnosis(diagnoses, "ASSIGNMENT_MISSING_PROBLEM") {
+		t.Fatalf("fallback problemId should not be diagnosed missing: %#v", diagnoses)
+	}
+	evidence := assignmentEvidence(state.AssignmentSnapshot{ProblemID: assignmentID, ProblemIDFallback: "assignmentId"})
+	if !containsString(evidence, "problemIdFallback: assignmentId") {
+		t.Fatalf("fallback evidence missing: %#v", evidence)
+	}
+}
+
+func TestAssignmentOpsHydratesPublishedAtFromDetail(t *testing.T) {
+	store := state.NewStore(t.TempDir() + "/state.json")
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	service := newAssignmentOpsTestService(store, &fakeReportAdmin{
+		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
+		assignments: map[string][]reportadmin.Assignment{
+			"kotlin": {{
+				ID:                 "a1",
+				Status:             "draft",
+				PublishedAtOmitted: true,
+				StartAt:            "2026-05-20T09:00:00Z",
+				EndAt:              "2026-05-21T09:00:00Z",
+			}},
+		},
+		details: map[string]reportadmin.Assignment{
+			"kotlin:a1": {
+				ID:          "a1",
+				Status:      "draft",
+				PublishedAt: "2026-05-21T09:00:00Z",
+				StartAt:     "2026-05-20T09:00:00Z",
+				EndAt:       "2026-05-21T09:00:00Z",
+			},
+		},
+		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}},
+	})
+	result := service.collectAssignmentOps(context.Background(), time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC))
+	snapshot := result.Snapshots["kotlin:a1"]
+	if snapshot.PublishedAt != "2026-05-21T09:00:00Z" || snapshot.PublishedAtOmitted {
+		t.Fatalf("publishedAt was not hydrated from detail: %#v", snapshot)
+	}
+	if hasAssignmentEvent(result.Events, "ASSIGNMENT_DRAFT_PAST_START") {
+		t.Fatalf("hydrated future publishedAt should not emit draft-past-start: %#v", result.Events)
+	}
+}
+
+func TestAssignmentDiagnosisLowersMissingSummaryPublishedAt(t *testing.T) {
+	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	diagnoses := diagnoseAssignment(state.AssignmentSnapshot{
+		CourseSlug:         "kotlin",
+		AssignmentID:       "a1",
+		Status:             "draft",
+		PublishedAtOmitted: true,
+		StartAt:            "2026-05-20T09:00:00Z",
+		EndAt:              "2026-05-21T09:00:00Z",
+	}, now, 7*24*time.Hour)
+	if hasDiagnosis(diagnoses, "ASSIGNMENT_DRAFT_PAST_START") {
+		t.Fatalf("summary-omitted publishedAt should not warn as draft-past-start: %#v", diagnoses)
+	}
+	evidence := assignmentEvidence(state.AssignmentSnapshot{PublishedAtOmitted: true})
+	if !containsString(evidence, "publishedAt=summary omitted") {
+		t.Fatalf("summary omitted evidence missing: %#v", evidence)
 	}
 }
 
@@ -535,6 +620,15 @@ func hasAssignmentEvent(events []state.AssignmentEventState, eventType string) b
 func hasDiagnosis(diagnoses []AssignmentDiagnosis, eventType string) bool {
 	for _, diagnosis := range diagnoses {
 		if diagnosis.EventType == eventType {
+			return true
+		}
+	}
+	return false
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
 			return true
 		}
 	}

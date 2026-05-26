@@ -258,6 +258,71 @@ func TestAdminAPITimeout(t *testing.T) {
 	}
 }
 
+func TestAssignmentFromParsesWEBMetadataTitleAndProblemFallback(t *testing.T) {
+	assignmentID := "8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111"
+	assignment := assignmentFrom(map[string]any{
+		"assignmentId": assignmentID,
+		"status":       "published",
+		"startAt":      "2026-05-13T09:00:00+09:00",
+		"endAt":        "2026-05-14T09:00:00+09:00",
+		"metadata": map[string]any{
+			"title": "WEB 과제",
+		},
+	})
+	if assignment.Title != "WEB 과제" {
+		t.Fatalf("metadata title not parsed: %#v", assignment)
+	}
+	if assignment.ProblemID != assignmentID || assignment.ProblemIDFallback != "assignmentId" {
+		t.Fatalf("assignmentId problem fallback not applied: %#v", assignment)
+	}
+	check := CheckAssignment(assignment)
+	if check.Status != StatusOK {
+		t.Fatalf("fallback problemId should not warn: status=%s findings=%v", check.Status, check.Findings)
+	}
+}
+
+func TestAssignmentFromKeepsExplicitProblemIDBeforeFallback(t *testing.T) {
+	assignment := assignmentFrom(map[string]any{
+		"assignmentId": "8f7f8a47-3f5e-4f59-9f2d-a9a9e7b6f111",
+		"problemId":    "explicit-problem",
+		"metadata":     map[string]any{"name": "metadata name"},
+	})
+	if assignment.Title != "metadata name" {
+		t.Fatalf("metadata name not parsed: %#v", assignment)
+	}
+	if assignment.ProblemID != "explicit-problem" || assignment.ProblemIDFallback != "" {
+		t.Fatalf("explicit problemId should win: %#v", assignment)
+	}
+}
+
+func TestAssignmentFromParsesAdditionalProblemAndPublishedShapes(t *testing.T) {
+	cases := []struct {
+		name string
+		body map[string]any
+		want string
+	}{
+		{name: "ojProblemId", body: map[string]any{"ojProblemId": "oj-1"}, want: "oj-1"},
+		{name: "onlineJudgeProblemId", body: map[string]any{"onlineJudgeProblemId": "oj-2"}, want: "oj-2"},
+		{name: "judgeProblemId", body: map[string]any{"judgeProblemId": "oj-3"}, want: "oj-3"},
+		{name: "legacy nested problemId", body: map[string]any{"problem": map[string]any{"problemId": "nested-1"}}, want: "nested-1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assignment := assignmentFrom(tc.body)
+			if assignment.ProblemID != tc.want {
+				t.Fatalf("problem id = %q, want %q from %#v", assignment.ProblemID, tc.want, assignment)
+			}
+		})
+	}
+
+	if got := assignmentFrom(map[string]any{"publication": map[string]any{"publishedAt": "2026-05-13T09:00:00Z"}}).PublishedAt; got != "2026-05-13T09:00:00Z" {
+		t.Fatalf("publication.publishedAt = %q", got)
+	}
+	if got := assignmentFrom(map[string]any{"metadata": map[string]any{"publishedAt": "2026-05-14T09:00:00Z"}}).PublishedAt; got != "2026-05-14T09:00:00Z" {
+		t.Fatalf("metadata.publishedAt = %q", got)
+	}
+}
+
 func TestAssignmentCheckValidator(t *testing.T) {
 	ok := CheckAssignment(Assignment{ID: "a1", Status: "published", ProblemID: "p1", StartAt: "2026-05-13T09:00:00+09:00", EndAt: "2026-05-14T09:00:00+09:00"})
 	if ok.Status != StatusOK {
