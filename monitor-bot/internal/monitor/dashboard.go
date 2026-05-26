@@ -42,6 +42,7 @@ type Service struct {
 type ReportAdminAPI interface {
 	ListCourses(ctx context.Context) ([]reportadmin.Course, error)
 	ListAssignments(ctx context.Context, courseSlug string) ([]reportadmin.Assignment, error)
+	GetAssignment(ctx context.Context, courseSlug, assignmentID string) (reportadmin.Assignment, error)
 	SubmissionStatuses(ctx context.Context, courseSlug, assignmentID string) (reportadmin.SubmissionSummary, error)
 }
 
