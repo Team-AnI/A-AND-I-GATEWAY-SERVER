@@ -1,0 +1,82 @@
+<mxfile host="app.diagrams.net" modified="2026-06-04T00:00:00.000Z" agent="Codex" version="24.7.17">
+  <diagram id="gateway-architecture" name="A&I Gateway 운영 아키텍처">
+    <mxGraphModel dx="1680" dy="944" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1680" pageHeight="944" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="A&amp;amp;I Gateway 운영 아키텍처" style="text;html=1;strokeColor=none;fillColor=none;fontSize=38;fontStyle=1;fontColor=#0b1533;" vertex="1" parent="1">
+          <mxGeometry x="470" y="25" width="740" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="aws" value="AWS / EC2 Runtime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#8ab4f8;dashed=1;fontColor=#0b1533;fontStyle=1;arcSize=5;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="416" y="134" width="1022" height="566" as="geometry"/>
+        </mxCell>
+        <mxCell id="client" value="API 클라이언트&#xa;외부 서비스 / 앱" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="66" y="226" width="196" height="154" as="geometry"/>
+        </mxCell>
+        <mxCell id="discord" value="운영자 디스코드&#xa;모니터링 / 운영" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="66" y="530" width="196" height="148" as="geometry"/>
+        </mxCell>
+        <mxCell id="nginx" value="Nginx&#xa;TLS / Proxy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93b0e9;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="470" y="228" width="210" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="gateway" value="Spring Gateway&#xa;정책 / 라우팅" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f3ea3;strokeColor=#1d4ed8;fontColor=#ffffff;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="768" y="228" width="260" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="services" value="Downstream APIs&#xa;Auth / Report / Blog / OJ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93b0e9;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="228" width="270" height="116" as="geometry"/>
+        </mxCell>
+        <mxCell id="redis" value="Redis&#xa;토큰 캐시 / Rate Limit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#effdf5;strokeColor=#16a34a;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="704" y="400" width="236" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="bot" value="Go Monitor Bot&#xa;HTTP Interactions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#effdf5;strokeColor=#0f9f6e;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="589" y="550" width="316" height="108" as="geometry"/>
+        </mxCell>
+        <mxCell id="logs" value="CloudWatch Logs&#xa;로그 수집 / 분석" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93b0e9;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1088" y="565" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="actions" value="GitHub Actions&#xa;Test / Build" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cbd5e1;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="174" y="772" width="263" height="86" as="geometry"/>
+        </mxCell>
+        <mxCell id="ecr" value="ECR / Docker&#xa;컨테이너 이미지 저장" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cbd5e1;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="568" y="772" width="260" height="86" as="geometry"/>
+        </mxCell>
+        <mxCell id="deploy" value="Go Monitor Bot 배포&#xa;EC2 / Docker 컨테이너" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cbd5e1;fontColor=#111827;fontStyle=1;arcSize=8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="956" y="772" width="320" height="86" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-client" value="HTTPS API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563eb;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="client" target="nginx">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-proxy" value="프록시" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563eb;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="nginx" target="gateway">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-route" value="라우팅" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563eb;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="gateway" target="services">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-cache" value="캐시" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0f766e;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="gateway" target="redis">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-discord" value="/discord/interactions" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0f766e;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="discord" target="bot">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-insights" value="Logs Insights" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0f766e;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="bot" target="logs">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-admin" value="읽기 전용 Admin API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="bot" target="services">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-logs" value="구조화 로그" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="gateway" target="logs">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-build" value="이미지 빌드" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563eb;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="actions" target="ecr">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-deploy-image" value="이미지 배포" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563eb;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="ecr" target="deploy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-deploy-runtime" value="배포" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0f766e;fontColor=#334155;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="ecr" target="bot">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
