@@ -49,18 +49,18 @@ MANAGEMENT_SERVER_ADDRESS=127.0.0.1
   - `docker compose exec gateway sh -c "wget -qO- http://127.0.0.1:9090/actuator/health/readiness"`
   - 전체 `/actuator/health`는 Redis 같은 dependency 상태를 포함하므로 Redis 인증 불일치 시 503일 수 있다.
 
-## 5) api.aandiclub.com HTTPS 설정
+## 5) api.example.com HTTPS 설정
 
 - DNS:
-  - `api.aandiclub.com` A 레코드를 운영 EC2 Public IP(권장: EIP)로 연결
+  - `api.example.com` A 레코드를 운영 EC2 Public IP(권장: EIP)로 연결
 - GitHub Actions Secret:
   - `LETSENCRYPT_EMAIL`: Let's Encrypt 알림용 운영 이메일
 - 보안그룹:
   - 인바운드 `80/tcp`, `443/tcp` 허용
   - `8080`, `6379`는 외부 미허용 유지
 - 인증서 경로:
-  - `deploy/certbot/conf/live/api.aandiclub.com/fullchain.pem`
-  - `deploy/certbot/conf/live/api.aandiclub.com/privkey.pem`
+  - `deploy/certbot/conf/live/api.example.com/fullchain.pem`
+  - `deploy/certbot/conf/live/api.example.com/privkey.pem`
 - 인증서 발급(EC2에서 프로젝트 루트 기준):
 
 ```bash
@@ -71,7 +71,7 @@ docker run --rm \
   -v "$(pwd)/deploy/certbot/conf:/etc/letsencrypt" \
   certbot/certbot certonly --webroot \
   -w /var/www/certbot \
-  -d api.aandiclub.com \
+  -d api.example.com \
   --email <운영자-이메일> \
   --agree-tos \
   --no-eff-email
@@ -89,10 +89,10 @@ docker compose restart nginx
 - 우선 서비스 연결은 내부 DNS/프라이빗 IP로 진행:
   - 예: `NEW_SERVICE_URI=http://new-service.internal:8080`
 - 외부 도메인은 준비되면 서브도메인으로 분리:
-  - 예: `api.aandiclub.com`(gateway), `new-api.aandiclub.com`(신규 서비스)
+  - 예: `api.example.com`(gateway), `new-api.example.com`(신규 서비스)
 - 단일 인스턴스에서 운영 시:
   - Nginx에 `server_name`/`location` 단위로 라우팅 추가
-  - 서비스별 인증서(또는 `*.aandiclub.com` 와일드카드) 적용
+  - 서비스별 인증서(또는 `*.example.com` 와일드카드) 적용
 - 도메인 연결 전 임시 검증:
   - 내부망/점프호스트에서만 접근 가능한 경로로 smoke test
   - `/etc/hosts` 임시 매핑으로 사전 점검 후 DNS 전환

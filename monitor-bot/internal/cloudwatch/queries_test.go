@@ -3,6 +3,7 @@ package cloudwatch
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildQueriesValidateUserInput(t *testing.T) {
@@ -151,6 +152,43 @@ func TestLogGroupsForReport(t *testing.T) {
 	}
 	if len(got) != 1 || got[0] != "/a-and-i/prod/report" {
 		t.Fatalf("unexpected report log group: %#v", got)
+	}
+}
+
+func TestLogGroupsForOptionalServiceUsesConfiguredOrderAndLimit(t *testing.T) {
+	groups := map[string]string{
+		"gateway": "/a-and-i/gateway",
+		"auth":    "/a-and-i/auth",
+		"report":  "/a-and-i/prod/report",
+		"post":    "/a-and-i/prod/tech-blog",
+	}
+	got, err := LogGroupsForOptionalService(groups, "all", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"/a-and-i/gateway", "/a-and-i/auth"}
+	if len(got) != len(want) {
+		t.Fatalf("unexpected log group count: got=%#v want=%#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("group[%d] = %q, want %q; all=%#v", i, got[i], want[i], got)
+		}
+	}
+
+	if _, err := LogGroupsForOptionalService(map[string]string{}, "", 5); err == nil {
+		t.Fatal("empty all-service log group config should fail")
+	}
+}
+
+func TestLogGroupsForOptionalServiceDelegatesExplicitService(t *testing.T) {
+	groups := map[string]string{"post": "/a-and-i/prod/tech-blog"}
+	got, err := LogGroupsForOptionalService(groups, "blog", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0] != "/a-and-i/prod/tech-blog" {
+		t.Fatalf("explicit service should use normalized service log group: %#v", got)
 	}
 }
 
@@ -334,6 +372,32 @@ func TestBuildAggregationQueriesAllowAllWithoutRawInput(t *testing.T) {
 	}
 	if strings.Contains(topQuery, "request.body") || strings.Contains(topQuery, "response.data") {
 		t.Fatalf("top query leaked forbidden fields: %s", topQuery)
+	}
+}
+
+func TestBuildLastLogQueryUsesValidatedServiceFilter(t *testing.T) {
+	query, err := BuildLastLogQuery("blog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`service.domain = "blog"`, `service.domainCode = 6`, "limit 1"} {
+		if !strings.Contains(query, want) {
+			t.Fatalf("last log query missing %q: %s", want, query)
+		}
+	}
+	if _, err := BuildLastLogQuery("redis"); err == nil {
+		t.Fatal("unsupported last log service accepted")
+	}
+}
+
+func TestTimeRangeUsesRequestedLookback(t *testing.T) {
+	start, end := TimeRange(15 * time.Minute)
+	if start >= end {
+		t.Fatalf("start must be before end: start=%d end=%d", start, end)
+	}
+	diff := end - start
+	if diff < int64(14*time.Minute/time.Second) || diff > int64(16*time.Minute/time.Second) {
+		t.Fatalf("unexpected time range seconds: %d", diff)
 	}
 }
 

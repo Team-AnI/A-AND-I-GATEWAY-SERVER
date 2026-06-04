@@ -1,5 +1,20 @@
 # Discord Monitor Bot Operator Guide
 
+> 메인 README로 돌아가기: [README](../README.md)
+
+## Portfolio Summary
+
+monitor-bot은 Gateway JVM과 분리된 Go HTTP Interactions sidecar입니다. 운영자는 Discord에서 CloudWatch Logs, service dashboard, assignment state, Report EVENT audit log를 조회하지만, bot은 assignment write command와 Report Admin POST/PATCH/DELETE 호출을 제공하지 않습니다.
+
+핵심 증빙:
+
+- sidecar runtime: `monitor-bot/Dockerfile`, `.github/workflows/cd.yml`
+- slash command family: `monitor-bot/internal/discord/commands.go`
+- interaction signature/authorization: `monitor-bot/internal/discord/interactions.go`
+- CloudWatch query: `monitor-bot/internal/cloudwatch/queries.go`
+- critical/general alert routing: `monitor-bot/internal/monitor/alerts.go`
+- assignment audit source of truth: `monitor-bot/internal/monitor/assignment_audit.go`
+
 ## 1. Bot Role
 
 monitor-bot은 Gateway JVM과 분리된 Go HTTP Interactions sidecar입니다. Discord Gateway WebSocket을 열지 않고 `/discord/interactions` HTTP endpoint만 받습니다.

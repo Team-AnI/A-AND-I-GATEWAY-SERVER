@@ -53,7 +53,7 @@ Useful V2 fields:
 ## Smoke Test
 
 ```bash
-curl -i -X POST "https://api.aandiclub.com/v2/admin/courses/<targetCourseSlug>/assignments/copy" \
+curl -i -X POST "https://api.example.com/v2/admin/courses/<targetCourseSlug>/assignments/copy" \
   -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{

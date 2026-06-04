@@ -105,6 +105,30 @@ func TestValidateAssignmentID(t *testing.T) {
 	}
 }
 
+func TestValidateLogSearchQuery(t *testing.T) {
+	for _, query := range []string{"trace_123", "assignment-123", "course/v2:report.path"} {
+		if !ValidateLogSearchQuery(query) {
+			t.Fatalf("valid log search query rejected: %q", query)
+		}
+	}
+	for _, query := range []string{`x" or request.body like /secret/`, "contains space", ""} {
+		if ValidateLogSearchQuery(query) {
+			t.Fatalf("unsafe log search query accepted: %q", query)
+		}
+	}
+}
+
+func TestParsePositiveInt(t *testing.T) {
+	if got := ParsePositiveInt("42", 7); got != 42 {
+		t.Fatalf("expected parsed positive int, got %d", got)
+	}
+	for _, value := range []string{"", "0", "-1", "abc"} {
+		if got := ParsePositiveInt(value, 7); got != 7 {
+			t.Fatalf("ParsePositiveInt(%q) = %d, want fallback 7", value, got)
+		}
+	}
+}
+
 func TestValidateCourseSlugAndAssignmentFilters(t *testing.T) {
 	if !ValidateCourseSlug("kotlin-basic_1") {
 		t.Fatal("valid course slug rejected")

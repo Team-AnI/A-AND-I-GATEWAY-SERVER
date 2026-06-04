@@ -1,116 +1,145 @@
-# A-AND-I-REPORT-GATEWAY-SERVER
+# A-AND-I-GATEWAY-SERVER
 
-## Discord Monitor Bot
+본 프로젝트는 A&I MSA 환경에서 외부 요청을 내부 서비스로 라우팅하고, 인증/인가/요청 정책/공통 응답 계약을 Gateway에서 일관되게 적용하기 위한 Spring Cloud Gateway 서버입니다. 운영 관찰가능성을 위해 Gateway JVM과 분리된 Go 기반 Discord Monitor Bot sidecar를 함께 배포하고, CloudWatch Logs와 read-only Admin API를 Discord 운영 명령으로 연결합니다.
 
-운영 Discord bot은 Go HTTP Interactions sidecar로 Gateway JVM 프로세스와 분리되어 있습니다. 자세한 운영 문서는 [monitor-bot/README.md](monitor-bot/README.md)와 [docs/discord-monitor-bot.md](docs/discord-monitor-bot.md)를 봅니다.
+## 핵심 역할
 
-- monitor-bot is read-only for assignment operations.
-- The bot never creates/updates/deletes/publishes assignments.
-- Assignment audit notifications come from Report V2 EVENT logs.
-- CRITICAL server alerts can route to a separate critical channel and mention the configured role.
+- **MSA Gateway**: Auth, Report, Blog, Online Judge 서비스 앞단에서 route allowlist, Host/HTTPS 정책, JSON Content-Type 정책, JWT role 정책을 적용합니다.
+- **운영 관찰가능성**: Gateway structured log의 `traceId`, `requestId`, `error.code`, `http.latencyMs`를 CloudWatch Logs에 남기고 Discord에서 조회합니다.
+- **Discord Monitor Bot**: Go HTTP Interactions sidecar로 운영 조회 명령, alert routing, assignment audit feed를 담당합니다.
+- **응답 표준화**: Gateway에서 직접 반환하는 실패 응답은 `success/data/error/timestamp` 공통 구조와 5자리 error code 정책을 따릅니다.
 
-## API Response Contract
+## 기술 스택
 
-이 게이트웨이에서 발생하는 **모든 응답과 에러는 반드시 아래 공통 응답 형식**을 따라야 합니다.
+| 영역 | 사용 기술 |
+| :--- | :--- |
+| Gateway | Kotlin, Java 21, Spring Boot 4, Spring Cloud Gateway WebFlux, Spring Security |
+| Cache / Policy | Redis reactive, JWT validation, route allowlist, rate limit |
+| Monitor Bot | Go 1.24, Discord HTTP Interactions, AWS SDK for CloudWatch Logs |
+| CI/CD | GitHub Actions, Gradle, Go test, Docker, ECR, EC2, nginx |
 
-### Success Response
+## 주요 기능
 
-```json
-{
-  "success": true,
-  "data": {
-    "...": "..."
-  },
-  "error": null,
-  "timestamp": "2026-03-25T21:23:36.958558466+09:00"
-}
-```
+### Gateway Routing
 
-### Failure Response
+Gateway는 외부 API 경로를 Auth, Report, Blog, Online Judge 서비스로 라우팅하면서 인증이 필요한 경로와 공개 경로를 분리합니다. `GatewayRequestPolicyFilter`는 허용된 method/path만 통과시키고, HTTPS/Host/Content-Type 정책 위반은 Gateway 공통 에러 응답으로 차단합니다.
 
-```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": 13001,
-    "message": "로그인 요청 본문 검증에 실패했습니다. `username` 또는 `password` 값이 없거나 비어 있습니다.",
-    "value": "LOGIN_REQUEST_BODY_INVALID",
-    "alert": "아이디와 비밀번호를 확인해 주세요."
-  },
-  "timestamp": "2026-03-25T21:23:36.958558466+09:00"
-}
-```
+> **🎬 동작 화면**
+> - GIF 위치: `docs/assets/gifs/gateway-routing-demo.gif`
+> - 대체 이미지: `docs/assets/images/gateway-routing-result.png`
+> - 촬영 범위: allowlisted route 통과, denylisted route의 `15001 ENDPOINT_NOT_ALLOWLISTED` 응답, trace header 확인
 
-### Error Field Definition
+> **핵심 구현 포인트**
+> - Spring Cloud Gateway route 정의: `src/main/resources/application.yaml`
+> - 요청 정책 필터: `src/main/kotlin/com/aandi/gateway/security/GatewayRequestPolicyFilter.kt`
+> - JWT role 기반 보안 정책: `src/main/kotlin/com/aandi/gateway/security/SecurityConfig.kt`
 
-- `code` (`Integer`): 에러 응답 코드
-- `message` (`String`): 어떤 필드 또는 어떤 값에서 문제가 발생했는지 나타내는 개발자용 메시지
-- `value` (`String`): `code`에 대응하는 에러 값
-- `alert` (`String`): 클라이언트가 토스트 또는 다이얼로그로 사용자에게 보여줄 메시지
+> 자세한 구조는 [Architecture](./docs/architecture.md)에서 확인할 수 있습니다.
 
-## Error Code Policy
+### Discord Monitor Bot
 
-게이트웨이에서 발생할 수 있는 모든 에러는 아래 에러 코드 체계를 따라야 합니다.
+Discord Monitor Bot은 Gateway JVM에 붙은 라이브러리가 아니라 별도 Go 컨테이너로 실행되는 HTTP Interactions sidecar입니다. 운영자는 Discord slash command로 서비스 상태, 로그, 과제 상태, audit 이벤트를 조회하지만, bot은 과제 생성/수정/삭제/공개 같은 write command를 제공하지 않습니다.
 
-### 5.1 에러 코드 형식
+> **🎬 동작 화면**
+> - GIF 위치: `docs/assets/gifs/discord-dashboard-demo.gif`
+> - 대체 이미지: `docs/assets/images/discord-command-mock.png`
+> - 촬영 범위: `/ops dashboard`, `/ops logs`, `/ops assignment`, `/ops help` 응답과 민감정보 마스킹
 
-| 항목 | 내용 |
-|---|---|
-| 형식 | 5자리 정수 |
-| 구조 | `[서비스 1자리][분류 1자리][상세 3자리]` |
-| 예시 | `21301` |
+> **핵심 구현 포인트**
+> - Discord command schema: `monitor-bot/internal/discord/commands.go`
+> - Interactions handler와 signature 검증: `monitor-bot/internal/discord/interactions.go`
+> - 운영자 가이드: [monitor-bot/README.md](./monitor-bot/README.md), [Discord Monitor Bot](./docs/discord-monitor-bot.md)
+> - 운영 계약: bot never creates/updates/deletes/publishes assignments, assignment audit source는 Report V2 EVENT logs, CRITICAL server alerts만 critical route와 role mention을 사용
 
-### 5.2 서비스 구분 코드
+> 자세한 흐름은 [Discord Monitor Bot](./docs/discord-monitor-bot.md)에서 확인할 수 있습니다.
 
-| 코드 | 서비스 |
-|---|---|
-| 1 | Gateway |
-| 2 | Auth |
-| 3 | User |
-| 4 | Report |
-| 5 | Judge |
-| 6 | Blog |
-| 9 | Common |
+### Critical / General Alert Routing
 
-### 5.3 분류 코드
+Monitor Bot은 structured V2 log의 severity와 error code를 기준으로 일반 운영 알림과 critical 장애 알림을 분리합니다. 일반 알림은 general route로 보내고, `CRITICAL` 또는 P0 계열 알림만 critical route와 configured role mention을 사용할 수 있습니다.
 
-| 코드 | 의미 |
-|---|---|
-| 0 | 일반 |
-| 1 | 인증 |
-| 2 | 인가 |
-| 3 | 검증 |
-| 4 | 비즈니스 |
-| 5 | 리소스 없음 |
-| 6 | 중복 / 충돌 |
-| 7 | 외부 시스템 |
-| 8 | 시스템 내부 오류 |
+> **🎬 동작 화면**
+> - GIF 위치: `docs/assets/gifs/critical-alert-demo.gif`
+> - 대체 이미지: `docs/assets/images/critical-alert-result.png`
+> - 촬영 범위: `/ops alert action:channel target:general`, `target:critical`, `action:role`, critical alert fallback command
 
-## Gateway Error Codes
+> **핵심 구현 포인트**
+> - alert 수집/라우팅: `monitor-bot/internal/monitor/alerts.go`
+> - V2 log severity 판단: `monitor-bot/internal/opslog/v2.go`
+> - `@everyone`, `@here` role mention 차단
 
-아래 표는 **현재 게이트웨이 서버가 직접 발행하는 에러코드**를 정리한 목록입니다.  
-문서화 시에는 반드시 **현재 코드에 실제로 구현된 에러만** 사용해야 하며, 아직 구현되지 않은 raw 응답을 표준 응답처럼 서술하면 안 됩니다.
+> 자세한 흐름은 [Ops Alert Flow](./docs/api-flows/ops-alert.md)에서 확인할 수 있습니다.
 
-| Code | 분류 | 에러 상황 | HTTP | Value | Message | Alert |
-|---:|---|---|---:|---|---|---|
-| 10001 | 일반 | HTTPS 정책 위반 | 403 | HTTPS_REQUIRED | 이 엔드포인트는 HTTPS 연결만 허용합니다. | 보안 연결이 필요해요. 잠시 후 다시 시도해 주세요. |
-| 10002 | 일반 | 허용되지 않은 Host | 403 | HOST_NOT_ALLOWED | 요청 Host가 게이트웨이 허용 호스트 정책에 포함되지 않았습니다. | 현재 주소에서는 요청을 처리할 수 없어요. 공식 도메인으로 다시 접속해 주세요. |
-| 10003 | 일반 | 로그인 rate limit 초과 | 429 | LOGIN_RATE_LIMIT_EXCEEDED | 로그인 요청 횟수 제한을 초과했습니다. | 로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요. |
-| 10004 | 일반 | refresh rate limit 초과 | 429 | REFRESH_RATE_LIMIT_EXCEEDED | 토큰 재발급 요청 횟수 제한을 초과했습니다. | 요청이 너무 많아요. 잠시 후 다시 시도해 주세요. |
-| 10005 | 일반 | logout rate limit 초과 | 429 | LOGOUT_RATE_LIMIT_EXCEEDED | 로그아웃 요청 횟수 제한을 초과했습니다. | 요청이 너무 많아요. 잠시 후 다시 시도해 주세요. |
-| 11001 | 인증 | 인증 필요 또는 액세스 토큰 검증 실패 | 401 | AUTHENTICATION_FAILED | 인증이 필요하거나 액세스 토큰 검증에 실패했습니다. | 로그인 후 이용해주세요. |
-| 11002 | 인증 | refresh token 사전 검증 실패 | 401 | REFRESH_TOKEN_INVALID | 리프레시 토큰이 유효하지 않거나 `REFRESH` 타입이 아닙니다. | 로그인이 만료되었습니다. |
-| 11003 | 인증 | 내부 invalidation webhook 토큰 불일치 | 403 | INTERNAL_TOKEN_INVALID | 내부 이벤트 토큰이 없거나 설정값과 일치하지 않습니다. | 내부 요청 인증에 실패했어요. |
-| 12001 | 인가 | 권한 부족 | 403 | ACCESS_DENIED | 인증된 사용자가 이 리소스에 접근할 권한이 없습니다. | 이 작업을 수행할 권한이 없어요. |
-| 13001 | 검증 | 로그인 요청에서 `username` 또는 `password` 누락/공백 | 400 | LOGIN_REQUEST_BODY_INVALID | 로그인 요청 본문 검증에 실패했습니다. `username` 또는 `password` 값이 없거나 비어 있습니다. | 아이디와 비밀번호를 확인해 주세요. |
-| 13002 | 검증 | refresh/logout 요청에서 `refreshToken` 누락/공백 | 400 | REFRESH_TOKEN_REQUIRED | 토큰 재발급 또는 로그아웃 요청에 `refreshToken` 값이 없거나 비어 있습니다. | 로그인이 만료되었습니다. |
-| 13003 | 검증 | JSON Content-Type 강제 위반 | 415 | JSON_CONTENT_TYPE_REQUIRED | 요청 `Content-Type`은 `application/json` 또는 호환되는 `+json` 형식이어야 합니다. | 요청 형식이 올바르지 않아요. 다시 시도해 주세요. |
-| 15001 | 리소스 없음 | 허용되지 않은 method/path | 404 | ENDPOINT_NOT_ALLOWLISTED | 요청 메서드와 경로가 게이트웨이 허용 목록에 없습니다. | 요청한 기능을 찾을 수 없어요. |
-| 18801 | 시스템 내부 오류 | 게이트웨이 내부 예외 | 500 | INTERNAL_SERVER_ERROR | 게이트웨이 내부 처리 중 예기치 못한 오류가 발생했습니다. | 일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요. |
+### Trace Drilldown
 
-### 코드 정의 원본
+Gateway는 요청마다 trace header를 재사용하거나 새로 생성해 downstream 요청과 응답 로그에 연결합니다. Monitor Bot은 alert에 유효한 traceId가 있으면 `Trace 상세` 버튼과 `/ops logs mode:trace query:<traceId>` fallback 명령을 함께 제공합니다.
 
-게이트웨이 에러코드의 실제 구현 원본은 아래 enum을 기준으로 관리합니다.
+> **🎬 동작 화면**
+> - GIF 위치: `docs/assets/gifs/trace-drilldown-demo.gif`
+> - 대체 이미지: `docs/assets/images/trace-drilldown-example.png`
+> - 촬영 범위: alert 메시지의 traceId, `Trace 상세` 버튼, trace query 결과
 
-- `src/main/kotlin/com/aandi/gateway/common/response/GatewayResponse.kt`
+> **핵심 구현 포인트**
+> - trace header 전파: `src/main/kotlin/com/aandi/gateway/logging/RequestResponseLoggingFilter.kt`
+> - CloudWatch trace query: `monitor-bot/internal/cloudwatch/queries.go`
+> - 버튼 fallback 처리: `monitor-bot/internal/discord/interactions.go`
+
+> 자세한 흐름은 [Trace Drilldown](./docs/api-flows/trace-drilldown.md)에서 확인할 수 있습니다.
+
+### Assignment Audit Feed
+
+Assignment audit feed는 현재 상태 조회와 변경 주체 증명을 분리합니다. 현재 상태와 진단은 WEB Admin GET API snapshot을 사용하고, 누가 언제 과제를 생성/수정/삭제/공개/비공개했는지는 Report V2 `EVENT` 로그를 source of truth로 사용합니다.
+
+> **🎬 동작 화면**
+> - GIF 위치: `docs/assets/gifs/assignment-audit-demo.gif`
+> - 대체 이미지: `docs/assets/images/assignment-audit-result.png`
+> - 촬영 범위: `/ops assignment view:events`, Report EVENT audit feed, trace/requestId 표시
+
+> **핵심 구현 포인트**
+> - read-only Admin GET client: `monitor-bot/internal/reportadmin/client.go`
+> - audit event parser: `monitor-bot/internal/monitor/assignment_audit.go`
+> - assignment issue lifecycle와 digest: `monitor-bot/internal/monitor/assignment_ops.go`
+
+> 자세한 흐름은 [Assignment Audit Flow](./docs/api-flows/assignment-audit.md)에서 확인할 수 있습니다.
+
+### Common Response / Error Code Policy
+
+Gateway에서 직접 반환하는 실패 응답은 `success=false`, `data=null`, `error`, `timestamp` 구조를 유지합니다. 에러 코드는 `[서비스 1자리][분류 1자리][상세 3자리]` 형식의 5자리 정수이며, Gateway 직접 발행 코드는 `GatewayErrorCode` enum에서 관리합니다.
+
+> **🎬 동작 화면**
+> - GIF 위치: `docs/assets/gifs/error-response-demo.gif`
+> - 대체 이미지: `docs/assets/images/error-code-policy.png`
+> - 촬영 범위: 인증 실패, 권한 부족, allowlist 차단, JSON Content-Type 위반 응답
+
+> **핵심 구현 포인트**
+> - 응답 모델과 error code enum: `src/main/kotlin/com/aandi/gateway/common/response/GatewayResponse.kt`
+> - 응답 writer: `src/main/kotlin/com/aandi/gateway/common/response/GatewayResponseWriter.kt`
+> - 계약 테스트: `src/test/kotlin/com/aandi/gateway/common/response/GatewayErrorCodeTests.kt`
+
+> 자세한 정책은 [Error Response Policy](./docs/error-response-policy.md)에서 확인할 수 있습니다.
+
+## 문서
+
+- [문서 목차](./docs/README.md)
+- [Architecture](./docs/architecture.md)
+- [Observability](./docs/observability.md)
+- [Discord Monitor Bot](./docs/discord-monitor-bot.md)
+- [Error Response Policy](./docs/error-response-policy.md)
+- [Test Results](./docs/test.md)
+- [Resume Evidence](./docs/resume-evidence.md)
+- [Demo Capture](./docs/demo-capture.md)
+
+## 검증 요약
+
+상세 실행 로그와 coverage 출력은 [Test Results](./docs/test.md)에 정리했습니다.
+
+- `./gradlew clean test`: 통과
+- `cd monitor-bot && go test ./...`: 통과
+- `cd monitor-bot && go test ./... -cover`: 통과
+
+## 이력서 연결 포인트
+
+- MSA Gateway에서 route, 인증/인가, 요청 정책, 공통 응답 계약을 한 곳에서 적용했습니다.
+- Gateway JVM과 분리된 Go sidecar로 Discord 운영 도구를 구성해 운영 조회 기능을 본 서버 프로세스와 분리했습니다.
+- CloudWatch Logs, traceId, critical/general alert routing, assignment audit feed를 연결해 장애와 운영 이벤트를 Discord에서 추적할 수 있게 했습니다.
+
+근거별 이력서 문장은 [Resume Evidence](./docs/resume-evidence.md)에서 확인할 수 있습니다.
