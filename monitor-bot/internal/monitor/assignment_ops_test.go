@@ -421,13 +421,16 @@ func TestAssignmentIssueNotificationsAreBatchedWithSuppressedCount(t *testing.T)
 	if err := store.Load(); err != nil {
 		t.Fatal(err)
 	}
-	now := time.Date(2026, 5, 20, 12, 0, 0, 0, time.UTC)
+	now := time.Now().UTC().Truncate(time.Second)
+	publishedAt := now.Add(-24 * time.Hour).Format(time.RFC3339)
+	startAt := now.Add(24 * time.Hour).Format(time.RFC3339)
+	endAt := now.Add(48 * time.Hour).Format(time.RFC3339)
 	report := &fakeReportAdmin{
 		courses: []reportadmin.Course{{Slug: "kotlin", Status: "OPEN"}},
 		assignments: map[string][]reportadmin.Assignment{
 			"kotlin": {
-				{ID: "a1", Title: "one", Status: "draft", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"},
-				{ID: "a2", Title: "two", Status: "published", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z", ProblemID: "p1"},
+				{ID: "a1", Title: "one", Status: "draft", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt},
+				{ID: "a2", Title: "two", Status: "published", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt, ProblemID: "p1"},
 			},
 		},
 		submissions: map[string]reportadmin.SubmissionSummary{"kotlin:a1": {}, "kotlin:a2": {}},
@@ -440,7 +443,7 @@ func TestAssignmentIssueNotificationsAreBatchedWithSuppressedCount(t *testing.T)
 	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	report.assignments["kotlin"][1] = reportadmin.Assignment{ID: "a2", Title: "two", Status: "draft", PublishedAt: "2026-05-19T09:00:00Z", StartAt: "2026-05-21T09:00:00Z", EndAt: "2026-05-22T09:00:00Z"}
+	report.assignments["kotlin"][1] = reportadmin.Assignment{ID: "a2", Title: "two", Status: "draft", PublishedAt: publishedAt, StartAt: startAt, EndAt: endAt}
 	if err := service.RefreshAssignmentOps(context.Background()); err != nil {
 		t.Fatal(err)
 	}
