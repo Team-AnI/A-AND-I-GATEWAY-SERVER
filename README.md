@@ -20,15 +20,15 @@ A&I 서비스가 여러 서버로 나뉘면서 클라이언트 진입점, 인증
 - Monitor Bot은 운영자가 Discord에서 dashboard, logs, alert, assignment, help 흐름을 조회할 수 있게 합니다.
 - assignment 변경 주체와 시점은 WEB Admin snapshot에서 추측하지 않고 Report V2 EVENT 로그를 source of truth로 사용합니다.
 
-## 3. 내 역할과 핵심 기여
+## 3. 주요 구현 범위와 기여 영역
 
-담당한 구현 범위는 Gateway 공통 정책과 운영 조회 흐름을 연결하는 부분입니다.
+이 README는 공유 레포의 구현 범위를 기준으로 Gateway 공통 정책과 운영 조회 흐름을 설명합니다.
 
-- Spring Cloud Gateway route와 보안 정책을 정리하고, 허용되지 않은 method/path를 downstream으로 보내지 않도록 차단했습니다.
-- Gateway 실패 응답을 공통 응답 모델과 `GatewayErrorCode` enum으로 관리했습니다.
-- 요청별 trace header를 구조화 로그에 연결해 CloudWatch Logs 조회 기준으로 사용할 수 있게 했습니다.
-- Discord Monitor Bot을 Gateway JVM과 분리된 Go sidecar로 구성하고, `/ops` command family 중심으로 운영 UX를 정리했습니다.
-- general/critical alert route, role mention 제한, trace drilldown 버튼, assignment audit feed를 read-only 정책 안에서 구현했습니다.
+- Spring Cloud Gateway route와 보안 정책으로 허용되지 않은 method/path를 downstream 전달 전에 차단합니다.
+- Gateway 실패 응답은 공통 응답 모델과 `GatewayErrorCode` enum으로 관리합니다.
+- 요청별 trace header를 구조화 로그에 연결해 CloudWatch Logs 조회 기준으로 사용합니다.
+- Discord Monitor Bot은 Gateway JVM과 분리된 Go sidecar로 동작하며, `/ops` command family 중심의 운영 UX를 제공합니다.
+- general/critical alert route, role mention 제한, trace drilldown 버튼, assignment audit feed는 read-only 운영 정책 안에서 동작합니다.
 
 ## 4. 한눈에 보는 구조
 
