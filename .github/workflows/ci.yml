@@ -37,6 +37,16 @@ jobs:
       - name: Build JAR
         run: ./gradlew build -x test
 
+      - name: Validate performance assets
+        run: |
+          bash -n performance/k6/run-local.sh
+          node --check performance/mock-upstream/server.js
+          find performance/k6 -name '*.js' -print0 | xargs -0 -n1 node --check
+          python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py
+          python3 -m unittest performance.compare.test_compare_results
+          docker compose -f performance/mock-upstream/docker-compose.performance.yml config
+          git diff --check
+
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v4

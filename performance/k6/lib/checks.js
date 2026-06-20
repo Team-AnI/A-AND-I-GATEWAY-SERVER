@@ -6,6 +6,10 @@ function headerValue(headers, name) {
   return key ? headers[key] : '';
 }
 
+export function responseHeaderValue(res, name) {
+  return headerValue(res.headers, name);
+}
+
 export function parseJson(res) {
   try {
     return res.json();
@@ -48,6 +52,24 @@ export function successEnvelopeChecks(res, expectedStatus = 200) {
     'data is present': () => body?.data !== null && body?.data !== undefined,
     'error is empty': () => body?.error === null || body?.error === undefined,
     'timestamp field is present': () => typeof body?.timestamp === 'string' && body.timestamp.length > 0,
+  });
+}
+
+export function mockSuccessChecks(res, expected) {
+  const body = parseJson(res);
+  return check(res, {
+    'status_is_200': (r) => r.status === 200,
+    'content_type_json': hasJsonContentType,
+    'mock_header_present': (r) => responseHeaderValue(r, 'x-mock-upstream') === 'true',
+    'envelope_valid': () => body?.success === true
+      && body?.error === null
+      && typeof body?.timestamp === 'string'
+      && body.timestamp.length > 0,
+    'mock_path_matches': () => body?.data?.path === expected.path,
+    'mock_payload_bytes_match': () => body?.data?.payloadBytes === expected.payloadBytes,
+    'mock_delay_matches': () => body?.data?.delayMs === expected.delayMs,
+    'mock_payload_length_matches': () => typeof body?.data?.payload === 'string'
+      && body.data.payload.length === expected.payloadBytes,
   });
 }
 

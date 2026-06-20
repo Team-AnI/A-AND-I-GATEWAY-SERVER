@@ -9,7 +9,7 @@ import {
   commonHeaders,
   commonMockParams,
 } from './config.js';
-import { successEnvelopeChecks } from './lib/checks.js';
+import { mockSuccessChecks } from './lib/checks.js';
 import { makeHandleSummary } from './lib/summary.js';
 
 const TEST_NAME = 'direct-upstream';
@@ -32,8 +32,12 @@ export default function (data) {
     },
   });
 
-  successEnvelopeChecks(res, 200);
-  sleep(0.1);
+  mockSuccessChecks(res, {
+    path: ENV.publicRoutePath,
+    payloadBytes: ENV.payloadBytes,
+    delayMs: ENV.mockDelayMs,
+  });
+  sleep(ENV.sleepSeconds);
 }
 
 export const handleSummary = makeHandleSummary(TEST_NAME, () => ({

@@ -6,115 +6,14 @@ services:
     working_dir: /app
     ports:
       - "${MOCK_UPSTREAM_PORT:-18080}:18080"
+    volumes:
+      - ./server.js:/app/server.js:ro
+      - ./responses:/app/responses:ro
     environment:
       MOCK_PORT: 18080
-    command:
-      - node
-      - -e
-      - |
-        const http = require('http');
-        const successTemplate = {
-          success: true,
-          data: {
-            service: 'mock-upstream',
-            message: 'ok',
-            payload: ''
-          },
-          error: null
-        };
-        const errorTemplate = {
-          success: false,
-          data: null,
-          error: {
-            code: 18801,
-            message: 'mock downstream error',
-            value: 'INTERNAL_SERVER_ERROR',
-            alert: 'mock downstream error'
-          }
-        };
-        const port = Number(process.env.MOCK_PORT || 18080);
-
-        function errorForStatus(status) {
-          const byStatus = {
-            400: [13001, 'LOGIN_REQUEST_BODY_INVALID', 'mock bad request'],
-            401: [11001, 'AUTHENTICATION_FAILED', 'mock unauthorized'],
-            403: [12001, 'ACCESS_DENIED', 'mock forbidden'],
-            404: [15001, 'ENDPOINT_NOT_ALLOWLISTED', 'mock not found'],
-            429: [10003, 'LOGIN_RATE_LIMIT_EXCEEDED', 'mock rate limit'],
-            500: [18801, 'INTERNAL_SERVER_ERROR', 'mock downstream error']
-          };
-          const fields = byStatus[status] || [18801, 'INTERNAL_SERVER_ERROR', 'mock downstream error'];
-          return {
-            code: fields[0],
-            value: fields[1],
-            message: fields[2],
-            alert: fields[2]
-          };
-        }
-
-        function pathStatus(pathname, params) {
-          const statusMatch = pathname.match(/^\/__mock\/status\/(\d{3})$/);
-          if (statusMatch) {
-            return Number(statusMatch[1]);
-          }
-          return Number(params.get('status') || 200);
-        }
-
-        function pathDelay(pathname, params) {
-          const delayMatch = pathname.match(/^\/__mock\/delay\/(\d+)$/);
-          if (delayMatch) {
-            return Number(delayMatch[1]);
-          }
-          return Number(params.get('delayMs') || 0);
-        }
-
-        function responseBody(req, status, payloadBytes, delayMs) {
-          const timestamp = new Date().toISOString();
-          if (status < 400) {
-            const body = JSON.parse(JSON.stringify(successTemplate));
-            body.data.method = req.method;
-            body.data.path = new URL(req.url, 'http://mock-upstream').pathname;
-            body.data.payloadBytes = payloadBytes;
-            body.data.delayMs = delayMs;
-            body.data.payload = 'x'.repeat(payloadBytes);
-            body.timestamp = timestamp;
-            return body;
-          }
-
-          const body = JSON.parse(JSON.stringify(errorTemplate));
-          body.error = errorForStatus(status);
-          body.timestamp = timestamp;
-          return body;
-        }
-
-        const server = http.createServer((req, res) => {
-          const parsed = new URL(req.url, 'http://mock-upstream');
-          if (parsed.pathname === '/health') {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'UP' }));
-            return;
-          }
-
-          const status = pathStatus(parsed.pathname, parsed.searchParams);
-          const delayMs = pathDelay(parsed.pathname, parsed.searchParams);
-          const payloadBytes = Number(parsed.searchParams.get('payloadBytes') || 0);
-          const body = JSON.stringify(responseBody(req, status, payloadBytes, delayMs));
-
-          setTimeout(() => {
-            res.writeHead(status, {
-              'Content-Type': 'application/json; charset=utf-8',
-              'Content-Length': Buffer.byteLength(body),
-              'X-Mock-Upstream': 'true'
-            });
-            res.end(body);
-          }, delayMs);
-        });
-
-        server.listen(port, '0.0.0.0', () => {
-          console.log('mock-upstream listening on ' + port);
-        });
+    command: ["node", "/app/server.js"]
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:18080/health >/dev/null"]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:18080/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -142,9 +41,10 @@ services:
       APP_ENV: performance
       AUTH_ISSUER_URI: ${AUTH_ISSUER_URI:-http://localhost:9000}
       AUTH_AUDIENCE: ${AUTH_AUDIENCE:-aandi-gateway}
+      AUTH_JWT_SECRET: ${PERFORMANCE_JWT_SECRET:-performance-local-only-jwt-secret-at-least-32-bytes}
       AUTH_JWT_CLOCK_SKEW_SECONDS: ${AUTH_JWT_CLOCK_SKEW_SECONDS:-30}
       AUTH_SERVICE_URI: http://mock-upstream:18080
-      REPORT_SERVICE_URI: http://mock-upstream:18080
+      REPORT_SERVICE_URI: ${PERFORMANCE_REPORT_SERVICE_URI:-http://mock-upstream:18080}
       POST_SERVICE_URI: http://mock-upstream:18080
       ONLINE_JUDGE_SERVICE_URI: http://mock-upstream:18080
       REDIS_HOST: redis-performance
@@ -170,7 +70,7 @@ services:
       redis-performance:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/actuator/health >/dev/null"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/actuator/health >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 30

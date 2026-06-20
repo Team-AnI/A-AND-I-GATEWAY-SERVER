@@ -15,6 +15,11 @@
 - VUs:
 - Duration:
 - Repeat count:
+- Pair order:
+- Pair index:
+- Warm-up completed:
+- k6 version:
+- Git dirty:
 
 ## Existing Load Test State
 
@@ -62,8 +67,10 @@
 | --- | --- | --- |
 | 401 unauthenticated request |  |  |
 | 403 insufficient role |  |  |
+| ADMIN route with ADMIN token |  |  |
 | 404 non-allowlisted route |  |  |
-| Downstream 5xx common contract |  |  |
+| Downstream 500 passthrough |  |  |
+| Gateway-owned 502 connection failure |  |  |
 | 401/403 not classified as internal error |  |  |
 | Content-Type and required fields |  |  |
 | Authorization header not exposed |  |  |
@@ -79,6 +86,13 @@
 | Retry-After or related headers |  |  |
 | 429 excluded from unintended failure metric |  |  |
 | Key cleanup |  | Current implementation uses in-memory auth rate limit keys. |
+
+## CI Validation
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| Static performance asset validation |  |  |
+| k6 runtime smoke |  | CI static validation is distinct from runtime smoke. |
 
 ## Commands Executed
 

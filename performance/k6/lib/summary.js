@@ -27,6 +27,18 @@ function compactMetric(data, metricName) {
   };
 }
 
+function thresholdFailures(data) {
+  const failures = [];
+  Object.entries(data.metrics || {}).forEach(([metricName, metric]) => {
+    Object.entries(metric.thresholds || {}).forEach(([thresholdName, threshold]) => {
+      if (threshold && threshold.ok === false) {
+        failures.push(`${metricName}:${thresholdName}`);
+      }
+    });
+  });
+  return failures;
+}
+
 function markdownValue(value, suffix = '') {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return 'n/a';
@@ -72,6 +84,10 @@ function toMarkdown(summary) {
 
 function buildSummary(data, testName, metadata) {
   const config = Object.assign({}, metadata.config || {});
+  const httpReqs = compactMetric(data, 'http_reqs');
+  const droppedIterations = compactMetric(data, 'dropped_iterations');
+  config.requestCount = httpReqs.count;
+  config.droppedIterations = droppedIterations.count || 0;
   return {
     schemaVersion: 1,
     testName,
@@ -80,12 +96,14 @@ function buildSummary(data, testName, metadata) {
     config,
     metrics: {
       http_req_duration: compactMetric(data, 'http_req_duration'),
-      http_reqs: compactMetric(data, 'http_reqs'),
+      http_reqs: httpReqs,
       http_req_failed: compactMetric(data, 'http_req_failed'),
       checks: compactMetric(data, 'checks'),
+      dropped_iterations: droppedIterations,
       rate_limit_allowed_responses: compactMetric(data, 'rate_limit_allowed_responses'),
       rate_limit_rejected_responses: compactMetric(data, 'rate_limit_rejected_responses'),
     },
+    thresholdFailures: thresholdFailures(data),
     rawMetricNames: Object.keys(data.metrics || {}).sort(),
   };
 }

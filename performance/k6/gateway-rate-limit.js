@@ -1,6 +1,7 @@
 import exec from 'k6/execution';
 import http from 'k6/http';
 import { Counter } from 'k6/metrics';
+import { sleep } from 'k6';
 import {
   ENV,
   assertLocalTargetAllowed,
@@ -14,18 +15,24 @@ import { makeHandleSummary } from './lib/summary.js';
 
 const TEST_NAME = 'gateway-rate-limit';
 const ITERATIONS = ENV.loginRateLimitPerMinute + 2;
+const EXPECTED_REJECTED = 2;
 const allowedResponses = new Counter('rate_limit_allowed_responses');
 const rejectedResponses = new Counter('rate_limit_rejected_responses');
 
 http.setResponseCallback(http.expectedStatuses({ min: 200, max: 399 }, 429));
 
-export const options = buildRateLimitOptions(ITERATIONS);
+export const options = buildRateLimitOptions(ITERATIONS, ENV.loginRateLimitPerMinute, EXPECTED_REJECTED);
 
 export function setup() {
   assertLocalTargetAllowed(ENV.baseUrl, 'BASE_URL');
+  const seconds = new Date().getSeconds();
+  if (seconds >= 50) {
+    sleep(61 - seconds);
+  }
   return {
     username: `k6-rate-limit-${ENV.runId}-${ENV.runIndex}`,
     url: buildUrl(ENV.baseUrl, ENV.rateLimitPath),
+    remoteIpPolicy: 'same k6 process and same Gateway target',
   };
 }
 
@@ -67,6 +74,7 @@ export const handleSummary = makeHandleSummary(TEST_NAME, () => ({
     baseUrl: ENV.baseUrl,
     expectedLoginRateLimitPerMinute: ENV.loginRateLimitPerMinute,
     expectedIterations: ITERATIONS,
+    expectedRejectedResponses: EXPECTED_REJECTED,
     rateLimitKeyPattern: 'login:<remote-ip>:<username>',
   }),
 }));

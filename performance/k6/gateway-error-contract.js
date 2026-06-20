@@ -8,7 +8,7 @@ import {
   commonHeaders,
   commonMockParams,
 } from './config.js';
-import { authHeaders, tokenFromEnv, tokenRole } from './lib/auth.js';
+import { adminTokenFromEnv, authHeaders, tokenRole, userTokenFromEnv } from './lib/auth.js';
 import {
   commonEnvelopeChecks,
   errorEnvelopeChecks,
@@ -17,7 +17,8 @@ import {
 import { makeHandleSummary } from './lib/summary.js';
 
 const TEST_NAME = 'gateway-error-contract';
-const TOKEN = tokenFromEnv();
+const USER_TOKEN = userTokenFromEnv();
+const ADMIN_TOKEN = adminTokenFromEnv();
 
 http.setResponseCallback(http.expectedStatuses({ min: 200, max: 599 }));
 
@@ -25,9 +26,14 @@ export const options = buildContractOptions();
 
 export function setup() {
   assertLocalTargetAllowed(ENV.baseUrl, 'BASE_URL');
+  if ((!USER_TOKEN || !ADMIN_TOKEN) && __ENV.SKIP_AUTH_SCENARIOS !== 'true') {
+    throw new Error('USER_ACCESS_TOKEN and ADMIN_ACCESS_TOKEN are required unless SKIP_AUTH_SCENARIOS=true');
+  }
   return {
-    tokenSupplied: Boolean(TOKEN),
-    tokenRole: tokenRole(TOKEN),
+    userTokenSupplied: Boolean(USER_TOKEN),
+    adminTokenSupplied: Boolean(ADMIN_TOKEN),
+    userTokenRole: tokenRole(USER_TOKEN),
+    adminTokenRole: tokenRole(ADMIN_TOKEN),
   };
 }
 
@@ -42,23 +48,36 @@ function checkUnauthorized() {
 
   errorEnvelopeChecks(res, 401, 'AUTHENTICATION_FAILED');
   commonEnvelopeChecks(res, { status: 401 });
-  if (!responseDoesNotExposeSecret(res, TOKEN)) {
+  if (!responseDoesNotExposeSecret(res, USER_TOKEN)) {
     throw new Error('401 response exposed an authorization value');
   }
 }
 
-function checkForbidden(data) {
-  if (!data.tokenSupplied) {
-    console.warn('SKIPPED: token not supplied for 403 contract check');
+function checkUserProtected(data) {
+  if (!data.userTokenSupplied) {
+    console.warn('SKIPPED: USER token not supplied for protected route check');
     return;
   }
-  if (data.tokenRole === 'ADMIN') {
-    console.warn('SKIPPED: supplied token has ADMIN role, cannot verify insufficient-permission 403');
+
+  const res = http.get(buildUrl(ENV.baseUrl, ENV.protectedRoutePath, commonMockParams(200)), {
+    headers: commonHeaders(authHeaders(USER_TOKEN)),
+    tags: {
+      contract: 'user-protected-200',
+      route: ENV.protectedRoutePath,
+    },
+  });
+
+  commonEnvelopeChecks(res, { status: 200 });
+}
+
+function checkForbidden(data) {
+  if (!data.userTokenSupplied) {
+    console.warn('SKIPPED: USER token not supplied for 403 contract check');
     return;
   }
 
   const res = http.get(buildUrl(ENV.baseUrl, ENV.forbiddenRoutePath), {
-    headers: commonHeaders(authHeaders(TOKEN)),
+    headers: commonHeaders(authHeaders(USER_TOKEN)),
     tags: {
       contract: '403',
       route: ENV.forbiddenRoutePath,
@@ -67,9 +86,26 @@ function checkForbidden(data) {
 
   errorEnvelopeChecks(res, 403, 'ACCESS_DENIED');
   commonEnvelopeChecks(res, { status: 403 });
-  if (!responseDoesNotExposeSecret(res, TOKEN)) {
+  if (!responseDoesNotExposeSecret(res, USER_TOKEN)) {
     throw new Error('403 response exposed an authorization value');
   }
+}
+
+function checkAdminAllowed(data) {
+  if (!data.adminTokenSupplied) {
+    console.warn('SKIPPED: ADMIN token not supplied for admin route check');
+    return;
+  }
+
+  const res = http.get(buildUrl(ENV.baseUrl, ENV.forbiddenRoutePath, commonMockParams(200)), {
+    headers: commonHeaders(authHeaders(ADMIN_TOKEN)),
+    tags: {
+      contract: 'admin-200',
+      route: ENV.forbiddenRoutePath,
+    },
+  });
+
+  commonEnvelopeChecks(res, { status: 200 });
 }
 
 function checkNotFound() {
@@ -85,11 +121,11 @@ function checkNotFound() {
   commonEnvelopeChecks(res, { status: 404 });
 }
 
-function checkDownstream5xx() {
+function downstream_500_passthrough() {
   const res = http.get(buildUrl(ENV.baseUrl, ENV.publicRoutePath, commonMockParams(500)), {
     headers: commonHeaders(),
     tags: {
-      contract: '5xx',
+      contract: 'downstream_500_passthrough',
       route: ENV.publicRoutePath,
     },
   });
@@ -97,21 +133,46 @@ function checkDownstream5xx() {
   commonEnvelopeChecks(res, { status: 500 });
 }
 
+function checkGatewayConnectionFailure(data) {
+  if (!data.userTokenSupplied) {
+    console.warn('SKIPPED: USER token not supplied for 502 contract check');
+    return;
+  }
+
+  const res = http.get(buildUrl(ENV.baseUrl, '/v2/report', commonMockParams(200)), {
+    headers: commonHeaders(authHeaders(USER_TOKEN)),
+    tags: {
+      contract: '502',
+      route: '/v2/report',
+    },
+  });
+
+  errorEnvelopeChecks(res, 502, 'DOWNSTREAM_SERVICE_UNAVAILABLE');
+}
+
 export default function (data) {
   checkUnauthorized();
+  checkUserProtected(data);
   checkForbidden(data);
+  checkAdminAllowed(data);
   checkNotFound();
-  checkDownstream5xx();
+  downstream_500_passthrough();
+  if (__ENV.EXPECT_REPORT_502 === 'true') {
+    checkGatewayConnectionFailure(data);
+  }
 }
 
 export const handleSummary = makeHandleSummary(TEST_NAME, () => ({
-  note: TOKEN ? '' : '403 check skipped because token was not supplied',
+  note: USER_TOKEN && ADMIN_TOKEN ? '' : 'auth checks require USER_ACCESS_TOKEN and ADMIN_ACCESS_TOKEN',
   config: Object.assign(baseConfig('gateway', 'error-contract'), {
     baseUrl: ENV.baseUrl,
     protectedRoutePath: ENV.protectedRoutePath,
     forbiddenRoutePath: ENV.forbiddenRoutePath,
     publicRoutePath: ENV.publicRoutePath,
-    tokenSupplied: Boolean(TOKEN),
-    suppliedTokenRole: tokenRole(TOKEN) || 'unknown',
+    userTokenSupplied: Boolean(USER_TOKEN),
+    adminTokenSupplied: Boolean(ADMIN_TOKEN),
+    suppliedUserTokenRole: tokenRole(USER_TOKEN) || 'unknown',
+    suppliedAdminTokenRole: tokenRole(ADMIN_TOKEN) || 'unknown',
+    expectReport502: __ENV.EXPECT_REPORT_502 === 'true',
   }),
 }));

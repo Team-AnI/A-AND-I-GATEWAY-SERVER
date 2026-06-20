@@ -10,17 +10,20 @@ import {
   commonHeaders,
   commonMockParams,
 } from './config.js';
-import { authHeaders, tokenFromEnv } from './lib/auth.js';
+import { authHeaders, userTokenFromEnv } from './lib/auth.js';
 import { successEnvelopeChecks } from './lib/checks.js';
 import { makeHandleSummary } from './lib/summary.js';
 
 const TEST_NAME = 'gateway-protected-route';
-const TOKEN = tokenFromEnv();
+const TOKEN = userTokenFromEnv();
 
 export const options = TOKEN ? buildLoadOptions() : buildSkipOptions();
 
 export function setup() {
   if (!TOKEN) {
+    if (__ENV.SKIP_AUTH_SCENARIOS !== 'true') {
+      throw new Error('USER_ACCESS_TOKEN is required unless SKIP_AUTH_SCENARIOS=true');
+    }
     return {
       skipped: true,
       reason: 'SKIPPED: token not supplied',
@@ -48,7 +51,7 @@ export default function (data) {
   });
 
   successEnvelopeChecks(res, 200);
-  sleep(0.1);
+  sleep(ENV.sleepSeconds);
 }
 
 export const handleSummary = makeHandleSummary(TEST_NAME, () => ({

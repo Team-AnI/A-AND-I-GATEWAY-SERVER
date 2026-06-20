@@ -4,6 +4,14 @@ export function tokenFromEnv() {
   return (__ENV.ACCESS_TOKEN || __ENV.TEST_JWT || '').trim();
 }
 
+export function userTokenFromEnv() {
+  return (__ENV.USER_ACCESS_TOKEN || __ENV.ACCESS_TOKEN || __ENV.TEST_JWT || '').trim();
+}
+
+export function adminTokenFromEnv() {
+  return (__ENV.ADMIN_ACCESS_TOKEN || '').trim();
+}
+
 export function authHeaderValue(token = tokenFromEnv()) {
   if (!token) {
     return '';
