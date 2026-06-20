@@ -41,7 +41,7 @@ export COMMIT_SHA="${COMMIT_SHA:-$(git -C "$ROOT_DIR" rev-parse HEAD)}"
 export GIT_DIRTY="${GIT_DIRTY:-$(if git -C "$ROOT_DIR" diff --quiet && git -C "$ROOT_DIR" diff --cached --quiet; then echo false; else echo true; fi)}"
 export SKIP_AUTH_SCENARIOS="${SKIP_AUTH_SCENARIOS:-false}"
 export EXPECT_REPORT_502="${EXPECT_REPORT_502:-true}"
-export PERFORMANCE_REPORT_SERVICE_URI="${PERFORMANCE_REPORT_SERVICE_URI:-http://127.0.0.1:65534}"
+export PERFORMANCE_REPORT_SERVICE_URI="${PERFORMANCE_REPORT_SERVICE_URI:-http://mock-upstream:18080}"
 export PERFORMANCE_JWT_SECRET
 
 require_command() {
@@ -144,6 +144,12 @@ pair_order_for_index() {
   fi
 }
 
+switch_report_downstream_to_connection_failure() {
+  export PERFORMANCE_REPORT_SERVICE_URI="http://127.0.0.1:65534"
+  compose up -d --no-deps --force-recreate gateway-performance
+  wait_for_url "$GATEWAY_MANAGEMENT_URL/actuator/health" 90
+}
+
 require_command docker
 require_command k6
 require_command python3
@@ -212,6 +218,10 @@ export PAIR_INDEX=1
 export MEASURED_POSITION=0
 run_k6 "performance/k6/gateway-protected-route.js"
 assert_file_exists "$RESULT_DIR_PATH/gateway-protected-route-$RUN_ID-rprotected.json"
+
+if [[ "$EXPECT_REPORT_502" == "true" ]]; then
+  switch_report_downstream_to_connection_failure
+fi
 
 export RUN_INDEX=contract
 run_k6 "performance/k6/gateway-error-contract.js"
