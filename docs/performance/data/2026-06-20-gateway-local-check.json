@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "project": "A-AND-I-GATEWAY-SERVER",
+  "resultType": "local-regression-check",
+  "measurementTargetSha": "63b74ea80fcdee45db16dea830016357bf398254",
+  "k6Version": "v1.7.1",
+  "acceptedPairCount": 3,
+  "discardedPairs": [],
+  "load": {
+    "vus": 5,
+    "durationSeconds": 60,
+    "repeats": 3,
+    "payloadBytes": 1024,
+    "mockDelayMs": 50,
+    "sleepSeconds": 0.1
+  },
+  "median": {
+    "directP50Ms": 54.089,
+    "directP95Ms": 56.95855,
+    "directP99Ms": 59.0378,
+    "gatewayP50Ms": 59.251999999999995,
+    "gatewayP95Ms": 65.35735,
+    "gatewayP99Ms": 67.10605,
+    "gatewayAdditionalP50Ms": 5.162999999999997,
+    "gatewayAdditionalP95Ms": 8.398799999999994,
+    "gatewayAdditionalP99Ms": 8.068249999999999,
+    "directRps": 32.13246219619985,
+    "gatewayRps": 30.99208203957359,
+    "httpFailedRate": 0,
+    "checkRate": 1
+  },
+  "range": {
+    "directP95Ms": {
+      "min": 56.1744,
+      "max": 58.106249999999996
+    },
+    "gatewayP95Ms": {
+      "min": 61.184799999999996,
+      "max": 70.24475
+    },
+    "gatewayAdditionalP95Ms": {
+      "min": 5.010399999999997,
+      "max": 12.1385
+    },
+    "directRps": {
+      "min": 31.935254996274804,
+      "max": 32.237001503710346
+    },
+    "gatewayRps": {
+      "min": 30.496743964302745,
+      "max": 31.377152895073355
+    }
+  },
+  "pairs": [
+    {
+      "pairIndex": 1,
+      "order": "Direct -> Gateway",
+      "direct": {
+        "p50Ms": 54.721999999999994,
+        "p95Ms": 58.106249999999996,
+        "p99Ms": 60.992599999999996,
+        "rps": 31.935254996274804,
+        "requestCount": 1920,
+        "httpFailedRate": 0,
+        "checkRate": 1
+      },
+      "gateway": {
+        "p50Ms": 61.702,
+        "p95Ms": 70.24475,
+        "p99Ms": 74.3411,
+        "rps": 30.496743964302745,
+        "requestCount": 1830,
+        "httpFailedRate": 0,
+        "checkRate": 1
+      },
+      "additional": {
+        "p50Ms": 6.980000000000004,
+        "p95Ms": 12.1385,
+        "p99Ms": 13.348500000000001
+      },
+      "httpFailedRate": 0,
+      "checkRate": 1
+    },
+    {
+      "pairIndex": 2,
+      "order": "Gateway -> Direct",
+      "direct": {
+        "p50Ms": 54.089,
+        "p95Ms": 56.95855,
+        "p99Ms": 59.0378,
+        "rps": 32.13246219619985,
+        "requestCount": 1930,
+        "httpFailedRate": 0,
+        "checkRate": 1
+      },
+      "gateway": {
+        "p50Ms": 59.251999999999995,
+        "p95Ms": 65.35735,
+        "p99Ms": 67.10605,
+        "rps": 30.99208203957359,
+        "requestCount": 1860,
+        "httpFailedRate": 0,
+        "checkRate": 1
+      },
+      "additional": {
+        "p50Ms": 5.162999999999997,
+        "p95Ms": 8.398799999999994,
+        "p99Ms": 8.068249999999999
+      },
+      "httpFailedRate": 0,
+      "checkRate": 1
+    },
+    {
+      "pairIndex": 3,
+      "order": "Direct -> Gateway",
+      "direct": {
+        "p50Ms": 53.878,
+        "p95Ms": 56.1744,
+        "p99Ms": 57.40892,
+        "rps": 32.237001503710346,
+        "requestCount": 1935,
+        "httpFailedRate": 0,
+        "checkRate": 1
+      },
+      "gateway": {
+        "p50Ms": 58.295,
+        "p95Ms": 61.184799999999996,
+        "p99Ms": 63.8816,
+        "rps": 31.377152895073355,
+        "requestCount": 1885,
+        "httpFailedRate": 0,
+        "checkRate": 1
+      },
+      "additional": {
+        "p50Ms": 4.417000000000002,
+        "p95Ms": 5.010399999999997,
+        "p99Ms": 6.472679999999997
+      },
+      "httpFailedRate": 0,
+      "checkRate": 1
+    }
+  ],
+  "contracts": {
+    "401": true,
+    "403": true,
+    "404": true,
+    "429": true,
+    "502": true
+  },
+  "rateLimit": {
+    "allowed": 10,
+    "rejected": 2,
+    "unexpected": 0
+  },
+  "limitations": [
+    "local mock downstream",
+    "not a throughput claim",
+    "not a performance improvement claim"
+  ]
+}

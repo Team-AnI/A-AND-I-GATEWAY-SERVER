@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320" role="img" aria-labelledby="title desc">
+<title id="title">Gateway Local Routing Overhead</title>
+<desc id="desc">Mock delay 50 ms, payload 1 KB, 5 VUs, median of 3 pairs</desc>
+<rect width="900" height="320" fill="#f7f8f4"/>
+<rect x="0" y="0" width="900" height="320" fill="none" stroke="#d8ded2"/>
+<text x="48" y="54" fill="#102027" font-size="28" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700" text-anchor="start">Gateway Local Routing Overhead</text>
+<text x="48" y="82" fill="#50615d" font-size="15" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="500" text-anchor="start">Mock delay 50 ms · payload 1 KB · 5 VUs · median of 3 pairs</text>
+<text x="68" y="148" fill="#102027" font-size="17" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="650" text-anchor="start">Direct P95</text>
+<line x1="230" y1="142" x2="683.177" y2="142" stroke="#2f7d6d" stroke-width="18" stroke-linecap="round"/>
+<text x="780" y="148" fill="#102027" font-size="17" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700" text-anchor="start">56.959 ms</text>
+<text x="68" y="204" fill="#102027" font-size="17" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="650" text-anchor="start">Gateway P95</text>
+<line x1="230" y1="198" x2="750.000" y2="198" stroke="#c95d41" stroke-width="18" stroke-linecap="round"/>
+<text x="780" y="204" fill="#102027" font-size="17" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700" text-anchor="start">65.357 ms</text>
+<line x1="683.177" y1="178" x2="750.000" y2="178" stroke="#9d6b2f" stroke-width="2" stroke-dasharray="4 5"/>
+<circle cx="683.177" cy="178" r="4" fill="#9d6b2f"/>
+<circle cx="750.000" cy="178" r="4" fill="#9d6b2f"/>
+<text x="768.0" y="183" fill="#7a4b16" font-size="16" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700" text-anchor="start">+8.399 ms</text>
+<text x="48" y="276" fill="#50615d" font-size="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="500" text-anchor="start">Local regression evidence; not production capacity</text>
+</svg>

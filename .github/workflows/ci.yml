@@ -50,8 +50,12 @@ jobs:
           bash -n performance/k6/run-local.sh
           node --check performance/mock-upstream/server.js
           find performance/k6 -name '*.js' -print0 | xargs -0 -n1 node --check
-          python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py
+          python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py performance/aggregate/summarize_gateway_runs.py performance/report/generate_gateway_k6_assets.py
+          python3 -m json.tool docs/performance/data/2026-06-20-gateway-local-check.json >/dev/null
           python3 -m unittest performance.compare.test_compare_results
+          python3 -m unittest discover -s performance/aggregate -p 'test_*.py' -v
+          python3 -m unittest discover -s performance/report -p 'test_*.py' -v
+          python3 performance/report/generate_gateway_k6_assets.py --check --check-readme README.md
           docker compose -f performance/mock-upstream/docker-compose.performance.yml config
           k6 inspect performance/k6/warmup.js
           k6 inspect performance/k6/direct-upstream.js

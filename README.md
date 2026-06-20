@@ -142,10 +142,26 @@ assignment audit feed는 Report V2 EVENT logs를 기준으로 `ASSIGNMENT_CREATE
 - Discord command schema와 interaction 처리 테스트
 - CloudWatch query builder 입력 검증 테스트
 - alert routing, role mention 제한, assignment audit feed 테스트
-- Gateway Local k6 Check: Mock Downstream 직접 호출과 Gateway 경유 호출을 동일 조건으로 3회 비교했습니다.
-- Gateway 추가 P95 중앙값은 6.941ms이며, 처리량이나 성능 개선율이 아닌 로컬 회귀 검증 보조 지표입니다.
-- 401·403·404·429·502 오류 계약을 함께 확인했습니다.
-- 상세 결과: [2026-06-20 Gateway Local Check](./docs/performance/runs/2026-06-20-GATEWAY-LOCAL-CHECK.md)
+
+<details>
+<summary><strong>Gateway 로컬 회귀 검증</strong></summary>
+
+| 항목 | 3회 중앙값 |
+| :--- | ---: |
+| Direct P95 | **56.959 ms** |
+| Gateway P95 | **65.357 ms** |
+| Gateway 추가 P95 | **8.399 ms** |
+| HTTP 실패율 | **0.00%** |
+| Check 성공률 | **100.00%** |
+
+![Gateway local overhead](./docs/assets/performance/gateway-k6-overhead.svg)
+
+- 조건: Mock 지연 50ms, Payload 1KB, 5 VUs, 1분, 3회 교차 실행
+- 계약 검증: 401 · 403 · 404 · 429 · 502
+- 로컬 Mock 기반 회귀 검증이며 처리량 또는 성능 개선율 주장이 아닙니다.
+- [상세 결과](./docs/performance/runs/2026-06-20-GATEWAY-LOCAL-CHECK.md)
+
+</details>
 
 CI 기준은 [ci.yml](./.github/workflows/ci.yml)에 정의되어 있습니다.
 
