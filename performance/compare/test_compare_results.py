@@ -17,6 +17,8 @@ def base_result(test_name):
             "executor": "constant-vus",
             "vus": 1,
             "duration": "3s",
+            "sleepSeconds": 0.1,
+            "p95ThresholdMs": None,
             "payloadBytes": 128,
             "mockDelayMs": 0,
             "mockStatus": 200,
@@ -73,6 +75,17 @@ class CompareResultsTests(unittest.TestCase):
         errors = self.assert_not_comparable()
         self.assertTrue(any(error.get("field") == "duration" for error in errors))
 
+    def test_sleep_seconds_mismatch(self):
+        self.gateway["config"]["sleepSeconds"] = 0.2
+        errors = self.assert_not_comparable()
+        self.assertTrue(any(error.get("field") == "sleepSeconds" for error in errors))
+
+    def test_p95_threshold_mismatch(self):
+        self.direct["config"]["p95ThresholdMs"] = 100
+        self.gateway["config"]["p95ThresholdMs"] = 200
+        errors = self.assert_not_comparable()
+        self.assertTrue(any(error.get("field") == "p95ThresholdMs" for error in errors))
+
     def test_wrong_test_name(self):
         self.gateway["testName"] = "direct-upstream"
         errors = self.assert_not_comparable()
@@ -99,6 +112,23 @@ class CompareResultsTests(unittest.TestCase):
         self.gateway["config"]["k6Version"] = "unknown"
         errors = self.assert_not_comparable()
         self.assertTrue(any(error.get("field") == "k6Version" for error in errors))
+
+    def test_both_dirty_results_are_rejected(self):
+        self.direct["config"]["gitDirty"] = True
+        self.gateway["config"]["gitDirty"] = True
+        errors = self.assert_not_comparable()
+        self.assertTrue(any(error.get("message") == "gitDirty must be false" for error in errors))
+
+    def test_one_dirty_result_is_rejected(self):
+        self.gateway["config"]["gitDirty"] = True
+        errors = self.assert_not_comparable()
+        self.assertTrue(any(error.get("message") == "gitDirty must be false" for error in errors))
+
+    def test_clean_results_are_allowed(self):
+        self.direct["config"]["gitDirty"] = False
+        self.gateway["config"]["gitDirty"] = False
+        errors = compare_results.validate(self.direct, self.gateway)
+        self.assertEqual([], errors)
 
     def test_check_failure(self):
         self.gateway["metrics"]["checks"]["rate"] = 0.5

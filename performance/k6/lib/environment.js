@@ -146,13 +146,17 @@ function parseHttpUrl(url, name) {
   }
 
   const bracketedHost = match[2];
-  return bracketedHost.startsWith('[') && bracketedHost.endsWith(']')
+  const host = bracketedHost.startsWith('[') && bracketedHost.endsWith(']')
     ? bracketedHost.slice(1, -1).toLowerCase()
     : bracketedHost.toLowerCase();
+  return {
+    protocol: match[1].toLowerCase(),
+    host,
+  };
 }
 
 export function assertLocalTargetAllowed(url, name) {
-  const host = parseHttpUrl(url, name);
+  const { protocol, host } = parseHttpUrl(url, name);
   const allowed = host === 'localhost'
     || host === '127.0.0.1'
     || host === '::1'
@@ -170,6 +174,9 @@ export function assertLocalTargetAllowed(url, name) {
     && ENV.targetEnvironment === 'staging'
     && ENV.remoteTargetAllowlist.includes(host);
   if (remoteAllowed) {
+    if (protocol !== 'https') {
+      throw new Error('Remote staging load tests require HTTPS.');
+    }
     return;
   }
 

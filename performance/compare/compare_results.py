@@ -14,10 +14,11 @@ MIN_CHECK_RATE = 0.99
 
 REQUIRED_MATCH_FIELDS = [
     "commitSha",
-    "gitDirty",
     "executor",
     "vus",
     "duration",
+    "sleepSeconds",
+    "p95ThresholdMs",
     "payloadBytes",
     "mockDelayMs",
     "mockStatus",
@@ -127,6 +128,16 @@ def compare_config(direct, gateway):
 
     if direct_config.get("commitSha") == "unknown" or gateway_config.get("commitSha") == "unknown":
         errors.append(validation_error("commitSha must not be unknown", "commitSha"))
+
+    if direct_config.get("gitDirty") is not False or gateway_config.get("gitDirty") is not False:
+        errors.append(
+            validation_error(
+                "gitDirty must be false",
+                "gitDirty",
+                direct_config.get("gitDirty"),
+                gateway_config.get("gitDirty"),
+            )
+        )
 
     if direct_config.get("k6Version") in (None, "", "unknown") or gateway_config.get("k6Version") in (None, "", "unknown"):
         errors.append(validation_error("k6Version must be recorded", "k6Version"))

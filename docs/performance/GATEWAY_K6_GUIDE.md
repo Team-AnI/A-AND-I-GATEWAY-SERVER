@@ -1,6 +1,6 @@
 # Gateway k6 Performance Guide
 
-This guide keeps the root `README.md` unchanged. It documents local-only k6 checks for Spring Cloud Gateway routing overhead, auth policy, error contract, and auth rate limit behavior.
+This guide does not rewrite the root `README.md`; the README keeps its existing structure and only links the verified local check from the existing test section. This document contains the local-only k6 details for Spring Cloud Gateway routing overhead, auth policy, error contract, and auth rate limit behavior.
 
 ## Repository Findings
 

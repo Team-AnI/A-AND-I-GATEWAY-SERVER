@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/performance/k6/env.example}"
 COMPOSE_FILE="$ROOT_DIR/performance/mock-upstream/docker-compose.performance.yml"
 PERFORMANCE_JWT_SECRET="${PERFORMANCE_JWT_SECRET:-performance-local-only-jwt-secret-at-least-32-bytes}"
+EXPECTED_K6_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/performance/k6/K6_VERSION")"
 
 if [[ -f "$ENV_FILE" ]]; then
   set -a
@@ -149,7 +150,14 @@ require_command python3
 require_command curl
 select_compose
 
-K6_VERSION="$(k6 version | head -n1 | awk '{print $2}')"
+K6_VERSION_OUTPUT="$(k6 version | head -n1)"
+K6_VERSION="$(awk '{print $2}' <<< "$K6_VERSION_OUTPUT")"
+if [[ "$K6_VERSION" != "$EXPECTED_K6_VERSION" || "$K6_VERSION_OUTPUT" == *"commit/devel"* ]]; then
+  echo "Expected k6 version: $EXPECTED_K6_VERSION" >&2
+  echo "Actual k6 version: $K6_VERSION_OUTPUT" >&2
+  echo "Install the official k6 $EXPECTED_K6_VERSION release or switch your PATH to that version before running local measurements." >&2
+  exit 1
+fi
 export K6_VERSION
 
 RESULT_DIR_PATH="$(resolve_result_dir)"

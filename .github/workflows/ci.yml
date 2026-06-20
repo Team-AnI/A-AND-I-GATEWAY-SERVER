@@ -37,6 +37,14 @@ jobs:
       - name: Build JAR
         run: ./gradlew build -x test
 
+      - name: Install k6
+        run: |
+          K6_VERSION="$(tr -d '[:space:]' < performance/k6/K6_VERSION)"
+          curl -fsSL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/k6-${K6_VERSION}-linux-amd64.tar.gz" -o /tmp/k6.tar.gz
+          tar -xzf /tmp/k6.tar.gz -C /tmp
+          sudo install "/tmp/k6-${K6_VERSION}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
+
       - name: Validate performance assets
         run: |
           bash -n performance/k6/run-local.sh
@@ -45,6 +53,12 @@ jobs:
           python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py
           python3 -m unittest performance.compare.test_compare_results
           docker compose -f performance/mock-upstream/docker-compose.performance.yml config
+          k6 inspect performance/k6/warmup.js
+          k6 inspect performance/k6/direct-upstream.js
+          k6 inspect performance/k6/gateway-public-route.js
+          k6 inspect performance/k6/gateway-protected-route.js
+          k6 inspect performance/k6/gateway-error-contract.js
+          k6 inspect performance/k6/gateway-rate-limit.js
           git diff --check
 
       - name: Upload test report
