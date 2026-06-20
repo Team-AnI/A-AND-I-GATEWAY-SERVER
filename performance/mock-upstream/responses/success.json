@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "data": {
+    "service": "mock-upstream",
+    "message": "ok",
+    "payload": ""
+  },
+  "error": null
+}
