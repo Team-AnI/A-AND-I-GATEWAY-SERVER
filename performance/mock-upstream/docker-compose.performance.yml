@@ -1,0 +1,76 @@
+name: aandi-gateway-performance
+
+services:
+  mock-upstream:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - "${MOCK_UPSTREAM_PORT:-18080}:18080"
+    volumes:
+      - ./server.js:/app/server.js:ro
+      - ./responses:/app/responses:ro
+    environment:
+      MOCK_PORT: 18080
+    command: ["node", "/app/server.js"]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:18080/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis-performance:
+    image: redis:7-alpine
+    ports:
+      - "${PERFORMANCE_REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  gateway-performance:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: aandi-gateway-performance:local
+    entrypoint: ["java", "-jar", "app.jar", "--spring.profiles.active=performance"]
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+      - "${GATEWAY_MANAGEMENT_PORT:-9090}:9090"
+    environment:
+      APP_ENV: performance
+      AUTH_ISSUER_URI: ${AUTH_ISSUER_URI:-http://localhost:9000}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:-aandi-gateway}
+      AUTH_JWT_SECRET: ${PERFORMANCE_JWT_SECRET:-performance-local-only-jwt-secret-at-least-32-bytes}
+      AUTH_JWT_CLOCK_SKEW_SECONDS: ${AUTH_JWT_CLOCK_SKEW_SECONDS:-30}
+      AUTH_SERVICE_URI: http://mock-upstream:18080
+      REPORT_SERVICE_URI: ${PERFORMANCE_REPORT_SERVICE_URI:-http://mock-upstream:18080}
+      POST_SERVICE_URI: http://mock-upstream:18080
+      ONLINE_JUDGE_SERVICE_URI: http://mock-upstream:18080
+      REDIS_HOST: redis-performance
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      INTERNAL_EVENT_TOKEN: ${INTERNAL_EVENT_TOKEN:-performance-local-internal-token}
+      ENFORCE_HTTPS: ${ENFORCE_HTTPS:-false}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      ALLOW_PRIVATE_IP_HOST: ${ALLOW_PRIVATE_IP_HOST:-true}
+      ENFORCE_METHOD_PATH_ALLOWLIST: ${ENFORCE_METHOD_PATH_ALLOWLIST:-true}
+      ENFORCE_JSON_CONTENT_TYPE: ${ENFORCE_JSON_CONTENT_TYPE:-true}
+      PREVALIDATE_REFRESH_TOKEN_TYPE: ${PREVALIDATE_REFRESH_TOKEN_TYPE:-true}
+      AUTH_RATE_LIMIT_ENABLED: ${AUTH_RATE_LIMIT_ENABLED:-true}
+      AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: ${AUTH_LOGIN_RATE_LIMIT_PER_MINUTE:-10}
+      AUTH_REFRESH_RATE_LIMIT_PER_MINUTE: ${AUTH_REFRESH_RATE_LIMIT_PER_MINUTE:-30}
+      AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE: ${AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE:-30}
+      TOKEN_CACHE_TTL: ${TOKEN_CACHE_TTL:-24h}
+      MANAGEMENT_SERVER_PORT: 9090
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+    depends_on:
+      mock-upstream:
+        condition: service_healthy
+      redis-performance:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/actuator/health >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

@@ -1,0 +1,10 @@
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": 18801,
+    "message": "mock downstream error",
+    "value": "INTERNAL_SERVER_ERROR",
+    "alert": "mock downstream error"
+  }
+}
