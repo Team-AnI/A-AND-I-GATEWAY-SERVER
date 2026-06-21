@@ -339,18 +339,47 @@ func TestParseOpsLimit(t *testing.T) {
 }
 
 func TestFilterAssignmentsByWindow(t *testing.T) {
+	now := time.Date(2026, 6, 17, 12, 0, 0, 0, time.UTC)
 	assignments := []reportadmin.Assignment{
-		{ID: "today", StartAt: time.Now().Format(time.RFC3339)},
-		{ID: "future", StartAt: time.Now().Add(48 * time.Hour).Format(time.RFC3339)},
+		{ID: "today", StartAt: now.Format(time.RFC3339)},
+		{ID: "same-week", StartAt: now.Add(48 * time.Hour).Format(time.RFC3339)},
+		{ID: "outside-window", StartAt: now.Add(8 * 24 * time.Hour).Format(time.RFC3339)},
 	}
-	today := filterAssignmentsByWindow(assignments, "today")
-	if len(today) != 1 || today[0].ID != "today" {
-		t.Fatalf("today window mismatch: %#v", today)
+	if got := assignmentIDs(filterAssignmentsByWindowAt(assignments, "today", now)); strings.Join(got, ",") != "today" {
+		t.Fatalf("today window ids = %#v", got)
 	}
-	week := filterAssignmentsByWindow(assignments, "this-week")
-	if len(week) != 2 {
-		t.Fatalf("this-week window mismatch: %#v", week)
+	if got := assignmentIDs(filterAssignmentsByWindowAt(assignments, "this-week", now)); strings.Join(got, ",") != "today,same-week" {
+		t.Fatalf("this-week window ids = %#v", got)
 	}
+}
+
+func TestFilterAssignmentsByWindowBoundaries(t *testing.T) {
+	kst := time.FixedZone("KST", 9*60*60)
+	now := time.Date(2026, 6, 17, 21, 0, 0, 0, kst)
+	startOfDay := time.Date(2026, 6, 17, 0, 0, 0, 0, kst)
+	endOfWindow := now.Add(7 * 24 * time.Hour)
+
+	assignments := []reportadmin.Assignment{
+		{ID: "before-today", StartAt: startOfDay.Add(-time.Second).Format(time.RFC3339)},
+		{ID: "today-start", StartAt: startOfDay.Format(time.RFC3339)},
+		{ID: "before-week-end", StartAt: endOfWindow.Add(-time.Second).Format(time.RFC3339)},
+		{ID: "week-end", StartAt: endOfWindow.Format(time.RFC3339)},
+	}
+
+	if got := assignmentIDs(filterAssignmentsByWindowAt(assignments, "today", now)); strings.Join(got, ",") != "today-start" {
+		t.Fatalf("today boundary ids = %#v", got)
+	}
+	if got := assignmentIDs(filterAssignmentsByWindowAt(assignments, "this-week", now)); strings.Join(got, ",") != "today-start,before-week-end" {
+		t.Fatalf("this-week boundary ids = %#v", got)
+	}
+}
+
+func assignmentIDs(assignments []reportadmin.Assignment) []string {
+	ids := make([]string, 0, len(assignments))
+	for _, assignment := range assignments {
+		ids = append(ids, assignment.ID)
+	}
+	return ids
 }
 
 func TestClassifyManualCourseNoticeStates(t *testing.T) {
