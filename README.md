@@ -143,25 +143,34 @@ assignment audit feed는 Report V2 EVENT logs를 기준으로 `ASSIGNMENT_CREATE
 - CloudWatch query builder 입력 검증 테스트
 - alert routing, role mention 제한, assignment audit feed 테스트
 
-<details>
-<summary><strong>Gateway 로컬 회귀 검증</strong></summary>
+### 로컬 k6 회귀 검증
 
-| 항목 | 3회 중앙값 |
+| 측정 조건 | 값 |
+| :--- | :--- |
+| 비교 대상 | Mock Downstream 직접 호출 / Gateway 경유 호출 |
+| 부하 조건 | 5 VUs · 1분 · 3회 교차 실행 |
+| Mock 응답 | 지연 50ms · Payload 1KB |
+| k6 | v1.7.1 |
+
+| 결과 | 3회 중앙값 |
 | :--- | ---: |
-| Direct P95 | **56.959 ms** |
-| Gateway P95 | **65.357 ms** |
-| Gateway 추가 P95 | **8.399 ms** |
-| HTTP 실패율 | **0.00%** |
-| Check 성공률 | **100.00%** |
+| Direct P95 | 56.959 ms |
+| Gateway P95 | 65.357 ms |
+| Gateway 추가 P95 | 8.399 ms |
+| HTTP 실패율 | 0.00% |
+| Check 성공률 | 100.00% |
 
-![Gateway local overhead](./docs/assets/performance/gateway-k6-overhead.svg)
+| 오류 계약 | 결과 |
+| :--- | :--- |
+| 인증되지 않은 요청 | 401 확인 |
+| 권한이 부족한 요청 | 403 확인 |
+| 허용되지 않은 경로 | 404 확인 |
+| 로그인 Rate Limit | 10건 허용, 이후 2건 차단 |
+| Downstream 연결 실패 | 502 확인 |
 
-- 조건: Mock 지연 50ms, Payload 1KB, 5 VUs, 1분, 3회 교차 실행
-- 계약 검증: 401 · 403 · 404 · 429 · 502
-- 로컬 Mock 기반 회귀 검증이며 처리량 또는 성능 개선율 주장이 아닙니다.
-- [상세 결과](./docs/performance/runs/2026-06-20-GATEWAY-LOCAL-CHECK.md)
+> 로컬 Mock Downstream 환경에서 수행한 회귀 검증이며, 운영 처리량이나 성능 개선율을 의미하지 않는다.
 
-</details>
+[상세 실행 결과](./docs/performance/runs/2026-06-20-GATEWAY-LOCAL-CHECK.md)
 
 CI 기준은 [ci.yml](./.github/workflows/ci.yml)에 정의되어 있습니다.
 
