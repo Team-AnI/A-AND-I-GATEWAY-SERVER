@@ -1140,11 +1140,14 @@ func classifyManualCourse(course reportadmin.Course, now time.Time) string {
 }
 
 func filterAssignmentsByWindow(assignments []reportadmin.Assignment, window string) []reportadmin.Assignment {
+	return filterAssignmentsByWindowAt(assignments, window, time.Now())
+}
+
+func filterAssignmentsByWindowAt(assignments []reportadmin.Assignment, window string, now time.Time) []reportadmin.Assignment {
 	normalized := strings.TrimSpace(window)
 	if normalized == "" {
 		return assignments
 	}
-	now := time.Now()
 	var start, end time.Time
 	switch normalized {
 	case "today":

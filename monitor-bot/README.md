@@ -192,5 +192,4 @@ cd ..
 
 ## More Docs
 
-- Full operator guide: [../docs/discord-monitor-bot.md](../docs/discord-monitor-bot.md)
 - Root project contract: [../README.md](../README.md)

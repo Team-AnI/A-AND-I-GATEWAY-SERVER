@@ -575,9 +575,8 @@ func TestHelpExamplesUseExplicitPlaceholders(t *testing.T) {
 func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", "..", ".."))
 	files := map[string]string{
-		"root":    filepath.Join(root, "README.md"),
-		"bot":     filepath.Join(root, "monitor-bot", "README.md"),
-		"opsdocs": filepath.Join(root, "docs", "discord-monitor-bot.md"),
+		"root": filepath.Join(root, "README.md"),
+		"bot":  filepath.Join(root, "monitor-bot", "README.md"),
 	}
 	contents := make(map[string]string, len(files))
 	for name, path := range files {
@@ -587,23 +586,20 @@ func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
 		}
 		contents[name] = string(body)
 	}
-	for _, want := range []string{"Discord Monitor Bot", "monitor-bot/README.md", "docs/discord-monitor-bot.md", "bot never creates/updates/deletes/publishes assignments", "Report V2 EVENT logs", "CRITICAL server alerts"} {
+	for _, want := range []string{"Discord Monitor Bot", "monitor-bot/README.md", "read-only", "CloudWatch"} {
 		if !strings.Contains(contents["root"], want) {
 			t.Fatalf("root README missing %q", want)
 		}
 	}
-	for _, want := range []string{"## UX Contract", "/ops dashboard", "/ops logs", "/ops alert", "/ops assignment", "/ops help", "no ASSIGNMENT_OPS_CHANNEL_ID", "No tag"} {
+	for _, want := range []string{"## UX Contract", "/ops dashboard", "/ops logs", "/ops alert", "/ops assignment", "/ops help", "no ASSIGNMENT_OPS_CHANNEL_ID", "No tag/deploy", "Report V2 `EVENT`", "open issue"} {
 		if !strings.Contains(contents["bot"], want) {
 			t.Fatalf("monitor-bot README missing %q", want)
 		}
 	}
-	for _, want := range []string{"Legacy Command Migration", "/ops service", "/ops dashboard service:<service>", "same assignment issue does not resend every cooldown", "DISCORD_REGISTER_COMMANDS=true", "No tag deployment"} {
-		if !strings.Contains(contents["opsdocs"], want) {
-			t.Fatalf("discord monitor docs missing %q", want)
-		}
-	}
 	for name, content := range contents {
+		deletedOpsDoc := "docs/" + "discord-monitor-bot" + ".md"
 		for _, forbidden := range []string{
+			deletedOpsDoc,
 			"query: since",
 			"query: \n",
 			"course: id:",
@@ -635,13 +631,6 @@ func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
 		if !strings.Contains(contents["bot"], want) {
 			t.Fatalf("monitor-bot README missing explicit placeholder %q", want)
 		}
-		if !strings.Contains(contents["opsdocs"], want) {
-			t.Fatalf("discord monitor docs missing explicit placeholder %q", want)
-		}
-	}
-	defaultHelpSection := contents["opsdocs"]
-	if strings.Contains(defaultHelpSection, "Primary commands:\n\n- `/ops service") {
-		t.Fatal("discord monitor docs must not present legacy commands as primary UX")
 	}
 }
 
