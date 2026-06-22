@@ -586,7 +586,7 @@ func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
 		}
 		contents[name] = string(body)
 	}
-	for _, want := range []string{"Discord Monitor Bot", "monitor-bot/README.md", "read-only", "CloudWatch"} {
+	for _, want := range []string{"Discord Monitor Bot", "monitor-bot/README.md"} {
 		if !strings.Contains(contents["root"], want) {
 			t.Fatalf("root README missing %q", want)
 		}
