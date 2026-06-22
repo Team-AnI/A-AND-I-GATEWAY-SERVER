@@ -1,82 +1,103 @@
 # A&I Gateway Server
 
-> A&I의 Auth, Report, Blog, Online Judge 앞에서 요청 정책을 통일하고, 문제가 생겼을 때 같은 trace로 끝까지 따라갈 수 있게 만드는 엣지 서버입니다.
+> Auth, Report, Blog, Online Judge로 나뉜 A&I 백엔드의 공통 진입점입니다.
 
-A&I는 기능별로 여러 백엔드가 나뉘어 있습니다. 클라이언트가 각 서버의 주소와 인증 규칙, 오류 형식을 따로 알지 않도록 외부 요청은 Gateway 한 곳으로 모았습니다.
+클라이언트는 서비스마다 다른 주소와 인증 규칙을 알 필요 없이 Gateway 한 곳으로 요청합니다. Gateway는 요청을 downstream 서버로 전달하기 전에 공통 정책과 권한을 확인하고, 응답이 끝난 뒤에는 같은 요청을 끝까지 추적할 수 있는 로그를 남깁니다.
 
-이 저장소는 단순히 요청을 전달하는 데서 끝나지 않습니다. 요청이 downstream에 도달하기 전에 경로·메서드·Host·HTTPS·JWT 권한을 검사하고, 응답 이후에는 공통 오류 형식과 구조화 로그를 남깁니다. 함께 포함된 Discord Monitor Bot은 CloudWatch 로그를 읽어 운영자가 장애를 빠르게 좁혀 볼 수 있도록 돕는 read-only 도구입니다.
+저장소에는 운영자가 CloudWatch 로그와 서비스 상태를 Discord에서 확인할 수 있도록 만든 Monitor Bot도 함께 포함되어 있습니다.
 
 ![Gateway Architecture](./docs/assets/diagrams/gateway-architecture.png)
 
-## 이 저장소가 A&I에서 맡는 일
+## 이 저장소가 맡는 역할
 
-### 하나의 API 진입점
+| 구간 | 처리 내용 |
+| :--- | :--- |
+| 요청 진입 | 하나의 도메인에서 외부 요청을 받습니다. |
+| 요청 검증 | HTTPS, Host, 메서드, 경로, Content-Type을 확인합니다. |
+| 인증과 권한 | JWT를 검증하고 `USER`, `ORGANIZER`, `ADMIN` 권한을 구분합니다. |
+| 서비스 연결 | 요청을 Auth, Report, Blog, Online Judge로 전달합니다. |
+| 응답 처리 | 오류 형식과 추적 정보를 공통 규칙으로 정리합니다. |
+| 운영 확인 | CloudWatch Logs와 Discord를 통해 장애와 지연 요청을 조회합니다. |
 
-Auth, Report, Blog, Online Judge로 향하는 요청을 하나의 도메인에서 받아 각 서비스로 라우팅합니다. 클라이언트는 서비스별 주소보다 A&I의 공통 API 계약에 집중할 수 있습니다.
+## 요청이 처리되는 과정
 
-### 공통 요청 정책
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Gateway as A&I Gateway
+    participant Policy as Request Policy
+    participant Security as JWT / Role Check
+    participant Service as Auth / Report / Blog / Online Judge
+    participant Logs as CloudWatch Logs
 
-라우팅 전에 다음 정책을 먼저 적용합니다.
+    Client->>Gateway: API 요청
+    Gateway->>Policy: HTTPS · Host · Method · Path · Content-Type 검사
+    Policy-->>Gateway: 정책 검사 결과
 
-- 메서드·경로 allowlist와 explicit deny
-- HTTPS와 허용 Host 검사
-- `POST`, `PUT`, `PATCH` 요청의 JSON Content-Type 검사
-- JWT 검증과 `USER`, `ORGANIZER`, `ADMIN` 역할별 접근 제어
-- 로그인·토큰 갱신·로그아웃 요청 제한
+    alt 요청 정책 위반
+        Gateway-->>Client: 공통 오류 응답
+    else 정책 통과
+        Gateway->>Security: JWT와 역할 확인
+        Security-->>Gateway: 인증·권한 검사 결과
 
-정책에 맞지 않는 요청은 downstream으로 보내지 않고 Gateway의 공통 오류 응답으로 종료합니다.
+        alt 인증 또는 권한 실패
+            Gateway-->>Client: 401 또는 403 응답
+        else 인증 성공
+            Gateway->>Service: traceId · requestId와 함께 요청 전달
+            Service-->>Gateway: 서비스 응답
+            Gateway->>Logs: 경로 · 상태 코드 · 지연시간 · 오류 코드 기록
+            Gateway-->>Client: 공통 응답 반환
+        end
+    end
+```
 
-### 장애 추적의 시작점
+요청이 downstream에 도달하기 전에 정책과 권한을 확인합니다. 허용되지 않은 요청은 서비스까지 전달하지 않고 Gateway에서 종료합니다.
 
-Gateway에서 `traceId`와 `requestId`를 생성하거나 전달하고, 요청 경로·상태 코드·오류 코드·지연시간을 JSON 로그로 남깁니다. 같은 trace를 기준으로 Gateway와 각 서비스의 로그를 이어서 볼 수 있습니다.
+`traceId`와 `requestId`는 downstream 요청과 구조화 로그에 함께 사용됩니다. 운영자는 같은 ID로 Gateway와 서비스 로그를 이어서 확인할 수 있습니다.
 
-### 운영 조회 도구
+## 운영자가 장애를 확인하는 과정
 
-Go로 작성한 Discord Monitor Bot은 Gateway 프로세스와 분리된 sidecar입니다. `/ops dashboard`, `/ops logs`, `/ops alert`, `/ops assignment`, `/ops help` 다섯 가지 명령 묶음으로 서비스 상태와 로그를 조회합니다.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Gateway as Gateway
+    participant Service as Downstream Service
+    participant Logs as CloudWatch Logs
+    participant Bot as Discord Monitor Bot
+    actor Operator as 운영자
+
+    Gateway->>Logs: 요청·응답 구조화 로그 전송
+    Service->>Logs: 서비스 로그 전송
+    Bot->>Logs: 상태·오류·지연 요청 주기 조회
+    Logs-->>Bot: 조회 결과
+    Bot-->>Operator: Discord 대시보드 또는 장애 알림
+
+    Operator->>Bot: /ops logs 또는 trace 조회
+    Bot->>Logs: traceId와 조건으로 로그 검색
+    Logs-->>Bot: 관련 Gateway·서비스 로그
+    Bot-->>Operator: 원인 추적에 필요한 결과 요약
+```
+
+Discord Monitor Bot은 Gateway JVM과 분리된 Go sidecar입니다. 서버 데이터를 변경하지 않고 상태와 로그만 조회합니다.
 
 ![Discord Command Map](./docs/assets/diagrams/discord-command-map.png)
 
-과제 생성·수정·삭제 같은 쓰기 명령은 제공하지 않습니다. 운영 채널에서 사용할 수 있지만 서비스 데이터를 변경할 수 없는 도구로 범위를 제한했습니다.
+| 명령 | 용도 |
+| :--- | :--- |
+| `/ops dashboard` | 서비스 상태와 현재 알림 현황 확인 |
+| `/ops logs` | 오류, 느린 요청, 보안 이벤트, trace 조회 |
+| `/ops alert` | 일반 알림과 CRITICAL 알림 채널 설정 |
+| `/ops assignment` | 과제 상태와 제출 현황 조회 |
+| `/ops help` | 상황별 명령어 확인 |
 
-## 요청 한 건은 이렇게 흐릅니다
-
-1. Client가 Gateway로 요청합니다.
-2. Gateway가 Host, HTTPS, 메서드·경로, Content-Type 정책을 검사합니다.
-3. Spring Security가 JWT와 역할을 검증합니다.
-4. 요청을 Auth, Report, Blog, Online Judge 중 알맞은 서비스로 전달합니다.
-5. 응답을 공통 계약에 맞춰 반환하고 구조화 로그를 남깁니다.
-6. 로그는 CloudWatch에 수집되며, 운영자는 Discord에서 오류·slow request·security event·trace를 조회합니다.
-
-![Logging and Alert Pipeline](./docs/assets/diagrams/log-to-alert-pipeline.png)
-
-## 구현에서 중요하게 본 세 가지
-
-### 허용된 요청만 downstream으로 보냅니다
-
-라우트가 존재한다는 이유만으로 모든 요청을 통과시키지 않습니다. Gateway의 요청 정책 필터가 메서드와 경로 조합을 allowlist로 검사하고, 보안 설정이 역할별 접근 범위를 한 번 더 확인합니다.
-
-- [GatewayRequestPolicyFilter.kt](./src/main/kotlin/com/aandi/gateway/security/GatewayRequestPolicyFilter.kt)
-- [SecurityConfig.kt](./src/main/kotlin/com/aandi/gateway/security/SecurityConfig.kt)
-
-### 로그 문자열보다 추적 가능한 필드를 남깁니다
-
-`trace.traceId`, `trace.requestId`, `http.route`, `http.statusCode`, `http.latencyMs`, `response.error.code`를 구조화된 필드로 기록합니다. Authorization header는 마스킹하고, 바이너리·이미지·SSE 응답은 body 수집 대상에서 제외합니다.
-
-- [RequestResponseLoggingFilter.kt](./src/main/kotlin/com/aandi/gateway/logging/RequestResponseLoggingFilter.kt)
-- [ApiLogFactory.kt](./src/main/kotlin/com/aandi/gateway/logging/ApiLogFactory.kt)
-
-### 운영 알림이 또 다른 장애가 되지 않게 합니다
-
-Discord 요청은 Ed25519 서명과 replay window를 검증합니다. 같은 원인의 반복 알림은 cooldown 동안 묶고, CRITICAL로 분류된 서버 장애만 별도 채널과 허용된 role mention을 사용합니다.
+Discord 요청은 서명과 replay window를 검증합니다. 같은 원인의 장애는 cooldown 동안 반복 전송하지 않으며, CRITICAL 서버 장애만 별도 채널과 허용된 운영자 역할을 mention합니다.
 
 ![Discord Alert Example](./docs/assets/images/discord-critical-alert.png)
 
-- [signature.go](./monitor-bot/internal/discord/signature.go)
-- [alerts.go](./monitor-bot/internal/monitor/alerts.go)
+## Gateway 경유 비용 측정
 
-## k6로 확인한 Gateway 비용
-
-Gateway 자체의 최대 처리량을 주장하기보다, 동일한 Mock Downstream을 직접 호출했을 때와 Gateway를 거쳤을 때의 추가 지연을 비교했습니다.
+동일한 Mock Downstream을 직접 호출한 경우와 Gateway를 거친 경우를 비교했습니다. 정책·라우팅·로깅 계층이 변경될 때 지연이 크게 늘지 않는지 확인하기 위한 회귀 기준입니다.
 
 | 측정 조건 | 값 |
 | :--- | :--- |
@@ -95,38 +116,28 @@ Gateway 자체의 최대 처리량을 주장하기보다, 동일한 Mock Downstr
 
 ![Gateway k6 overhead](./docs/assets/performance/gateway-k6-overhead.svg)
 
-성능 측정과 별도로 인증·권한·allowlist·rate limit·downstream failure 오류 계약도 검증했습니다.
+같은 실행에서 인증·권한·라우팅 오류 계약도 확인했습니다.
 
-```bash
-./performance/k6/run-local.sh
-```
+| 시나리오 | 결과 |
+| :--- | :--- |
+| Token 없이 사용자 API 요청 | `401 AUTHENTICATION_FAILED` |
+| USER 권한으로 관리자 API 요청 | `403 ACCESS_DENIED` |
+| allowlist 밖의 경로 요청 | `404 ENDPOINT_NOT_ALLOWLISTED` |
+| Downstream 연결 실패 | `502 DOWNSTREAM_SERVICE_UNAVAILABLE` |
+| 로그인 요청 제한 | 12건 중 10건 허용, 2건 차단 |
 
-> 위 결과는 로컬 Mock 환경의 회귀 baseline입니다. 운영 최대 처리량이나 성능 개선율로 해석하지 않습니다.
+> 위 수치는 로컬 Mock 환경에서 얻은 회귀 기준이며 운영 환경의 최대 처리량을 의미하지 않습니다.
 
-## 현재 알고 있는 한계
-
-### Rate Limit은 아직 인스턴스 로컬입니다
-
-현재 인증 요청 제한은 `ConcurrentHashMap` 기반의 Gateway 인스턴스별 카운터입니다. Redis는 token context cache에 사용되며 전역 Rate Limit 저장소로 사용하지 않습니다. Gateway를 여러 대로 확장하려면 Redis 기반 원자 연산과 TTL을 사용하는 분산 제한기로 바꿔야 합니다.
-
-### JSON body 로깅에는 명시적인 크기 상한이 더 필요합니다
-
-현재 구조화 로그 필터는 JSON 요청과 응답 body를 메모리에 모아 분석합니다. 큰 응답이나 동시 요청에서 메모리 사용량을 예측할 수 있도록 capture byte 상한을 두고, 1KB·64KB·1MB payload별 P95와 heap 사용량을 비교할 계획입니다.
-
-### 라우팅과 정책 정의가 여러 위치에 나뉘어 있습니다
-
-라우트는 `application.yaml`, 역할 정책은 `SecurityConfig`, 메서드·경로 정책은 `GatewayRequestPolicyFilter`에 있습니다. 기능 추가 시 세 설정이 어긋날 수 있으므로 route metadata를 단일 원천으로 사용하거나, 라우트와 정책의 불일치를 검출하는 계약 테스트를 강화할 필요가 있습니다.
-
-## 테스트와 실행
-
-```bash
-./gradlew test
-cd monitor-bot && go test ./...
-```
+## 실행 및 테스트
 
 ```bash
 docker compose up -d redis gateway
 curl -i http://localhost:8080/actuator/health
+```
+
+```bash
+./gradlew test
+cd monitor-bot && go test ./...
 ```
 
 ## 기술 스택
@@ -141,9 +152,9 @@ curl -i http://localhost:8080/actuator/health
 | Infra | Docker, Docker Compose, Nginx, GitHub Actions |
 | Performance | k6 |
 
-## 필요한 문서만 남겼습니다
+## 참고 문서
 
 - [Gateway 오류 계약](./docs/GATEWAY_ERROR_CODES.md)
 - [서비스 연동 원칙](./docs/SERVICE_GATEWAY_INTEGRATION.md)
-- [성능 측정 기준과 결과](./docs/PERFORMANCE.md)
+- [성능 측정 환경과 전체 결과](./docs/PERFORMANCE.md)
 - [Discord Monitor Bot 실행과 운영](./monitor-bot/README.md)
