@@ -47,6 +47,15 @@ class GenerateGatewayK6AssetsTests(unittest.TestCase):
         self.assertIn("56.959 ms", svg)
         self.assertIn("65.357 ms", svg)
         self.assertIn("+8.399 ms", svg)
+        self.assertIn("HTTP 실패율 0.00%", svg)
+        self.assertIn("Check 성공률 100.00%", svg)
+
+    def test_svg_uses_design_system_palette(self):
+        svg = generate_gateway_k6_assets.render_svg(aggregate())
+        self.assertIn("#0F172A", svg)
+        self.assertIn("#2563EB", svg)
+        self.assertIn("#F8FAFC", svg)
+        self.assertNotIn("#c95d41", svg.lower())
 
     def test_svg_has_no_external_references_or_script(self):
         svg = generate_gateway_k6_assets.render_svg(aggregate())
@@ -68,7 +77,7 @@ class GenerateGatewayK6AssetsTests(unittest.TestCase):
         svg = generate_gateway_k6_assets.render_svg(data)
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "gateway-k6-overhead.svg"
-            path.write_text(svg.replace("Gateway Local", "Changed"), encoding="utf-8")
+            path.write_text(svg.replace("Gateway 경유", "Changed"), encoding="utf-8")
             with self.assertRaises(generate_gateway_k6_assets.AssetError):
                 generate_gateway_k6_assets.check_svg(svg, path)
 
