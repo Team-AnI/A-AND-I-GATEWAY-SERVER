@@ -81,7 +81,7 @@ class SecurityConfig(
                 it.pathMatchers(HttpMethod.POST, "/internal/v1/cache/invalidation").permitAll()
                 it.pathMatchers("/api/ping/**", "/v2/ping/**").permitAll()
                 it.pathMatchers("/", "/index.html").permitAll()
-                it.pathMatchers("/v3/api-docs/**").permitAll()
+                it.pathMatchers("/v3/api-docs", "/v3/api-docs/**").permitAll()
                 it.pathMatchers("/v2/*/v3/api-docs", "/v2/*/v3/api-docs/**").permitAll()
                 it.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**", "/v2/swagger-ui/index.html", "/v2/swagger-ui/**").permitAll()
                 it.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()

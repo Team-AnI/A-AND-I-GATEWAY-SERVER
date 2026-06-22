@@ -122,6 +122,7 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/ping/**")),
         AllowRule(HttpMethod.GET, parser.parse("/")),
         AllowRule(HttpMethod.GET, parser.parse("/index.html")),
+        AllowRule(HttpMethod.GET, parser.parse("/v3/api-docs")),
         AllowRule(HttpMethod.GET, parser.parse("/v3/api-docs/**")),
         AllowRule(HttpMethod.GET, parser.parse("/swagger-ui.html")),
         AllowRule(HttpMethod.GET, parser.parse("/swagger-ui/**")),
@@ -301,7 +302,9 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/submissions")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/testcases")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}/stream"))
+        AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}/stream")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/service-availability")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/admin/service-availability/{service}"))
     )
 
     private val denyRules: List<AllowRule> = listOf(
