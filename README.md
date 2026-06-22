@@ -2,21 +2,25 @@
 
 > Auth, Assignment & Report, Blog, Online Judge로 나뉜 A&I 백엔드의 공통 진입점입니다.
 
-클라이언트는 서비스마다 다른 주소와 인증 규칙을 알 필요 없이 Gateway 한 곳으로 요청합니다. Gateway는 요청을 전달하기 전에 공통 정책과 권한을 확인하고, 응답 뒤에는 같은 요청을 끝까지 따라갈 수 있는 로그를 남깁니다.
+클라이언트는 서비스마다 다른 주소와 인증 규칙을 알 필요 없이 Gateway 한 곳으로 요청합니다.
+Gateway는 요청을 전달하기 전에 공통 정책과 권한을 확인하고, 응답 뒤에는 같은 요청을 끝까지 따라갈 수 있는 로그를 남깁니다.
 
 ## A&I 서비스 전체 구조
 
 ![A&I 서비스 전체 구조](./docs/assets/diagrams/aandi-platform-architecture.png)
 
-외부 요청은 Nginx와 Gateway를 거쳐 각 서비스로 전달됩니다. 과제와 채점 데이터는 서비스끼리 직접 호출하지 않고 SNS/SQS 이벤트로 맞춥니다.
+외부 요청은 Nginx와 Gateway를 거쳐 각 서비스로 전달됩니다.
+과제와 채점 데이터는 서비스끼리 직접 호출하지 않고 SNS/SQS 이벤트로 맞춥니다.
 
 ## Gateway와 운영 조회 구조
 
 ![Gateway와 Discord Monitor Bot 운영 구조](./docs/assets/diagrams/gateway-architecture.png)
 
-Gateway는 라우팅, JWT 권한 검사, allowlist, 공통 오류 응답과 구조화 로그를 담당합니다. 인증 요청 제한은 Gateway 인스턴스 안에서 처리하고, Redis는 token context cache에 사용합니다.
+Gateway는 라우팅, JWT 권한 검사, allowlist, 공통 오류 응답과 구조화 로그를 담당합니다.
+인증 요청 제한은 Gateway 인스턴스 안에서 처리하고, Redis는 token context cache에 사용합니다.
 
-Discord Monitor Bot은 Gateway JVM과 분리된 Go sidecar입니다. CloudWatch Logs와 WEB Admin GET API를 읽기 전용으로 조회하며 서비스 데이터를 바꾸는 명령은 제공하지 않습니다.
+Discord Monitor Bot은 Gateway JVM과 분리된 Go sidecar입니다.
+CloudWatch Logs와 WEB Admin GET API를 읽기 전용으로 조회하며 서비스 데이터를 바꾸는 명령은 제공하지 않습니다.
 
 ## 요청 처리 흐름
 
@@ -51,7 +55,8 @@ sequenceDiagram
     end
 ```
 
-허용되지 않은 요청은 downstream까지 보내지 않고 Gateway에서 종료합니다. `traceId`와 `requestId`는 서비스 요청과 로그에 함께 남아 Gateway와 각 서비스의 기록을 하나의 요청으로 이어 줍니다.
+허용되지 않은 요청은 downstream까지 보내지 않고 Gateway에서 종료합니다.
+`traceId`와 `requestId`는 서비스 요청과 로그에 함께 남아 Gateway와 각 서비스의 기록을 하나의 요청으로 이어 줍니다.
 
 ## 장애 확인 흐름
 
@@ -82,13 +87,15 @@ sequenceDiagram
 
 ![Discord Alert Example](./docs/assets/images/discord-critical-alert.png)
 
-동일한 원인의 장애는 cooldown 동안 반복 전송하지 않습니다. CRITICAL 서버 장애만 전용 채널과 허용된 운영자 역할 mention을 사용합니다.
+동일한 원인의 장애는 cooldown 동안 반복 전송하지 않습니다.
+CRITICAL 서버 장애만 전용 채널과 허용된 운영자 역할 mention을 사용합니다.
 
 ## k6 부하 테스트
 
 ![Gateway k6 overhead](./docs/assets/performance/gateway-k6-overhead.svg)
 
-동일한 Mock Downstream에서 Direct P95는 `56.959 ms`, Gateway P95는 `65.357 ms`였고 추가 지연은 `8.399 ms`였습니다. 3회 측정의 HTTP 실패율은 `0.00%`, check 성공률은 `100.00%`였습니다.
+동일한 Mock Downstream에서 Direct P95는 `56.959 ms`, Gateway P95는 `65.357 ms`였고 추가 지연은 `8.399 ms`였습니다.
+3회 측정의 HTTP 실패율은 `0.00%`, check 성공률은 `100.00%`였습니다.
 
 이 결과는 정책·라우팅·로깅 계층의 회귀를 확인하기 위한 로컬 기준이며 운영 환경의 최대 처리량을 뜻하지 않습니다.
 

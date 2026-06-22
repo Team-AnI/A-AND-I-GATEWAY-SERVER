@@ -1,6 +1,7 @@
 # Gateway 성능 측정
 
-> 이 문서는 Gateway의 운영 최대 처리량을 주장하지 않습니다. 동일한 로컬 Mock Downstream을 직접 호출한 경우와 Gateway를 경유한 경우를 비교해, 정책·라우팅·로깅 계층의 회귀를 확인하기 위한 기준입니다.
+> 이 문서는 Gateway의 운영 최대 처리량을 주장하지 않습니다.
+> 동일한 로컬 Mock Downstream을 직접 호출한 경우와 Gateway를 경유한 경우를 비교해, 정책·라우팅·로깅 계층의 회귀를 확인하기 위한 기준입니다.
 
 [README로 돌아가기](../README.md)
 
@@ -12,7 +13,8 @@ Gateway 성능 검증은 세 가지를 분리해 실행합니다.
 2. 인증·권한·allowlist·downstream failure 오류 계약
 3. 로그인 요청 제한 동작
 
-실제 Auth, Report, Blog, Online Judge 서버에는 부하를 보내지 않습니다. 부하 테스트 대상은 로컬 또는 명시적으로 허용한 staging으로 제한하며 production 대상 실행은 스크립트에서 차단합니다.
+실제 Auth, Report, Blog, Online Judge 서버에는 부하를 보내지 않습니다.
+부하 테스트 대상은 로컬 또는 명시적으로 허용한 staging으로 제한하며 production 대상 실행은 스크립트에서 차단합니다.
 
 ## 측정 환경
 
@@ -28,7 +30,8 @@ Gateway 성능 검증은 세 가지를 분리해 실행합니다.
 | Protected route | `/v1/me` |
 | Admin route | `/v1/admin/ping` |
 
-각 측정 전 Direct, Gateway, protected route를 10회씩 warm-up했습니다. Warm-up 결과는 P95 계산에서 제외했습니다.
+각 측정 전 Direct, Gateway, protected route를 10회씩 warm-up했습니다.
+Warm-up 결과는 P95 계산에서 제외했습니다.
 
 ## Direct와 Gateway 비교
 
@@ -95,11 +98,13 @@ k6 run performance/k6/gateway-rate-limit.js
 - route, Mock 지연, payload 크기와 상태 코드
 - JVM, Docker, 하드웨어 환경
 
-이 결과는 로컬 회귀 baseline입니다. Gateway 최대 처리량, 운영 처리량, 성능 개선율로 표현하지 않습니다.
+이 결과는 로컬 회귀 baseline입니다.
+Gateway 최대 처리량, 운영 처리량, 성능 개선율로 표현하지 않습니다.
 
 ## 다음 측정
 
-현재 public GET 경로의 추가 지연은 확인했습니다. 다음 측정은 JSON body 수집이 포함된 요청을 대상으로 합니다.
+현재 public GET 경로의 추가 지연은 확인했습니다.
+다음 측정은 JSON body 수집이 포함된 요청을 대상으로 합니다.
 
 - payload 1KB, 64KB, 1MB별 P95와 heap 사용량
 - 구조화 로깅 on/off 비교
