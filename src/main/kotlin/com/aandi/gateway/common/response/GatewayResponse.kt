@@ -154,6 +154,13 @@ enum class GatewayErrorCode(
         category = "외부 시스템",
         severity = "HIGH"
     ),
+    SERVICE_TEMPORARILY_DISABLED(
+        code = 17001,
+        httpStatus = HttpStatus.SERVICE_UNAVAILABLE,
+        value = "SERVICE_TEMPORARILY_DISABLED",
+        message = "요청한 백엔드 서비스가 운영 정책에 의해 일시적으로 비활성화되었습니다.",
+        alert = "현재 해당 기능을 이용할 수 없어요. 운영 시즌에 다시 시도해 주세요."
+    ),
     INTERNAL_SERVER_ERROR(
         code = 18801,
         httpStatus = HttpStatus.INTERNAL_SERVER_ERROR,

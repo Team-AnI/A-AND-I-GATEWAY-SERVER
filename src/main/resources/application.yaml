@@ -795,6 +795,8 @@ springdoc:
   swagger-ui:
     path: /
     urls:
+      - name: gateway
+        url: /v3/api-docs
       - name: report-service-v1
         url: /v2/report/v3/api-docs/v1
       - name: report-service-v2
