@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "project": "A-AND-I-GATEWAY-SERVER",
+  "resultType": "ci-parallelization",
+  "generatedAt": "2026-06-28T03:36:05Z",
+  "measurementSource": "GitHub Actions metadata read-only",
+  "confidence": "확인 완료",
+  "resumeUse": "사용 가능",
+  "caution": "single-run before/after comparison; mention GitHub Actions metadata 기준",
+  "before": {
+    "runId": 27965838063,
+    "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965838063",
+    "branch": "main",
+    "headSha": "9c3bcf803fc653df84fd42b62ad8dda5d0967380",
+    "event": "push",
+    "conclusion": "success",
+    "createdAt": "2026-06-22T15:55:39Z",
+    "updatedAt": "2026-06-22T15:58:36Z",
+    "durationSeconds": 177,
+    "jobs": [
+      {
+        "name": "build",
+        "durationSeconds": 173,
+        "steps": [
+          { "name": "Run tests", "durationSeconds": 112 },
+          { "name": "Run monitor-bot tests", "durationSeconds": 38 },
+          { "name": "Build JAR", "durationSeconds": 3 },
+          { "name": "Install k6", "durationSeconds": 1 },
+          { "name": "Validate performance assets", "durationSeconds": 4 }
+        ]
+      }
+    ]
+  },
+  "after": {
+    "runId": 28310185706,
+    "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28310185706",
+    "branch": "develop-ci-parallel-timing",
+    "headSha": "d66c2f06d6a395cd4c3166faf0ca3ea0f82a5ac6",
+    "event": "pull_request",
+    "conclusion": "success",
+    "createdAt": "2026-06-28T03:33:56Z",
+    "updatedAt": "2026-06-28T03:36:05Z",
+    "durationSeconds": 129,
+    "jobs": [
+      { "name": "gateway-tests", "durationSeconds": 118 },
+      { "name": "jar-build", "durationSeconds": 93 },
+      { "name": "monitor-bot-tests", "durationSeconds": 38 },
+      { "name": "performance-assets", "durationSeconds": 9 },
+      { "name": "build", "durationSeconds": 4 }
+    ]
+  },
+  "improvement": {
+    "durationReductionSeconds": 48,
+    "durationReductionPercent": 27.1,
+    "beforeDurationSeconds": 177,
+    "afterDurationSeconds": 129
+  },
+  "safety": {
+    "cdWorkflowExecuted": false,
+    "dockerPushExecuted": false,
+    "ecrPushExecuted": false,
+    "ec2SshExecuted": false,
+    "awsCliExecuted": false,
+    "productionDeployExecuted": false,
+    "metadataReadOnly": true
+  },
+  "resumeSentence": "GitHub Actions CI를 Gateway 테스트, Monitor Bot 테스트, JAR 빌드, k6 asset 검증 job으로 병렬화해 단일 run 기준 검증 시간을 177초에서 129초로 27.1% 단축"
+}
