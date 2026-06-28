@@ -62,10 +62,12 @@ def confidence(before_count, after_count, before_value, after_value):
     return "확인 완료"
 
 
-def resume_use(confidence_value, failure_rate_before, failure_rate_after, conditional=False):
+def resume_use(confidence_value, failure_rate_before, failure_rate_after, improvement_percent, conditional=False):
     if confidence_value != "확인 완료":
         return "사용 비추천"
     if (failure_rate_before or 0) > 0 or (failure_rate_after or 0) > 0:
+        return "사용 비추천"
+    if improvement_percent is None or improvement_percent <= 0:
         return "사용 비추천"
     return "조건부 사용" if conditional else "사용 가능"
 
@@ -76,11 +78,12 @@ def row(label, before_summary, after_summary, before_selector, after_selector, c
     before_count = count(before_summary, before_selector)
     after_count = count(after_summary, after_selector)
     confidence_value = confidence(before_count, after_count, before_median, after_median)
+    improvement_percent = improvement(before_median, after_median)
     return {
         "item": label,
         "beforeMedianSeconds": before_median,
         "afterMedianSeconds": after_median,
-        "improvementPercent": improvement(before_median, after_median),
+        "improvementPercent": improvement_percent,
         "beforeRunCount": before_count,
         "afterRunCount": after_count,
         "confidence": confidence_value,
@@ -88,6 +91,7 @@ def row(label, before_summary, after_summary, before_selector, after_selector, c
             confidence_value,
             before_summary.get("failureRate"),
             after_summary.get("failureRate"),
+            improvement_percent,
             conditional=conditional,
         ),
     }
@@ -101,12 +105,12 @@ def compare(before_ci, after_ci, before_cd=None, after_cd=None):
             for label, before_sel, after_sel in CD_METRICS
         ])
 
-    confirmed = [item for item in rows if item["confidence"] == "확인 완료"]
+    usable = [item for item in rows if item["resumeUse"] in ("사용 가능", "조건부 사용")]
     return {
         "schemaVersion": 1,
         "resultType": "gateway-cicd-before-after",
-        "confidence": "확인 완료" if confirmed else "측정 필요",
-        "resumeUse": "사용 가능" if confirmed else "사용 비추천",
+        "confidence": "확인 완료" if usable else "측정 필요",
+        "resumeUse": "사용 가능" if usable else "사용 비추천",
         "before": {
             "ci": source_summary(before_ci),
             "cd": source_summary(before_cd) if before_cd else None,
@@ -178,24 +182,24 @@ def to_markdown(summary):
         "",
     ])
     ci_total = next((item for item in summary["metrics"] if item["item"] == "CI 전체 시간"), None)
-    if ci_total and ci_total["confidence"] == "확인 완료":
+    if ci_total and ci_total["resumeUse"] == "사용 가능":
         lines.append(
             "GitHub Actions CI를 Backend test, Monitor Bot test, Performance asset validation, Build job으로 분리해 "
             f"PR 검증 시간을 median {fmt(ci_total['beforeMedianSeconds'])} → {fmt(ci_total['afterMedianSeconds'])}로 "
             f"{fmt_pct(ci_total['improvementPercent'])} 단축"
         )
     else:
-        lines.append("[측정 필요] GitHub Actions CI 병렬화 before/after median 표본이 부족해 이력서 사용 비추천")
+        lines.append("[사용 비추천] GitHub Actions CI 전체 시간 단축은 before/after median 기준으로 확인되지 않음")
 
     cd_total = next((item for item in summary["metrics"] if item["item"] == "CD dry-run 전체 시간"), None)
-    if cd_total and cd_total["confidence"] == "확인 완료":
+    if cd_total and cd_total["resumeUse"] == "조건부 사용":
         lines.append(
             "Gateway와 Monitor Bot Docker image build를 병렬화하고 BuildKit cache를 적용해 "
             f"CD dry-run image build 시간을 median {fmt(cd_total['beforeMedianSeconds'])} → {fmt(cd_total['afterMedianSeconds'])}로 "
             f"{fmt_pct(cd_total['improvementPercent'])} 단축"
         )
     else:
-        lines.append("[측정 필요] CD dry-run image build before/after median 표본이 부족해 이력서 사용 비추천")
+        lines.append("[측정 필요] CD dry-run image build before/after median 표본이 부족하거나 직접 비교가 어려워 이력서 사용 비추천")
     lines.append("")
     return "\n".join(lines)
 

@@ -58,20 +58,21 @@ def resume_use(count, failure_rate):
 
 
 def list_runs(repo, workflow, branch, limit):
-    return run_gh([
+    args = [
         "run",
         "list",
         "--repo",
         repo,
         "--workflow",
         workflow,
-        "--branch",
-        branch,
         "--limit",
         str(limit),
         "--json",
         "databaseId,conclusion,createdAt,updatedAt,displayTitle,event,headBranch,headSha,status,url",
-    ])
+    ]
+    if branch:
+        args.extend(["--branch", branch])
+    return run_gh(args)
 
 
 def view_run(repo, run_id):
@@ -166,7 +167,7 @@ def collect(repo, workflow, branch, limit):
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "repo": repo,
         "workflow": workflow,
-        "branch": branch,
+        "branch": branch or "all-refs",
         "limit": limit,
         "completedRunCount": len(completed),
         "successfulRunCount": run_count,
@@ -239,16 +240,22 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description="Collect GitHub Actions duration metrics via gh read-only metadata.")
     parser.add_argument("--repo", required=True)
     parser.add_argument("--workflow", required=True)
-    parser.add_argument("--branch", required=True)
+    parser.add_argument("--branch")
+    parser.add_argument("--all-refs", action="store_true", help="Collect workflow runs across branches and tags.")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--out-json", required=True, type=Path)
     parser.add_argument("--out-md", type=Path)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.branch and args.all_refs:
+        parser.error("--branch and --all-refs cannot be used together")
+    if not args.branch and not args.all_refs:
+        parser.error("one of --branch or --all-refs is required")
+    return args
 
 
 def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
-    summary = collect(args.repo, args.workflow, args.branch, args.limit)
+    summary = collect(args.repo, args.workflow, None if args.all_refs else args.branch, args.limit)
     write_outputs(summary, args.out_json, args.out_md)
     print(args.out_json)
     return 0
