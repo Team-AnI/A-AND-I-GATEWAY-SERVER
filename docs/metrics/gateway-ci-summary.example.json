@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-28T00:00:00Z",
+  "repository": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+  "source": {
+    "readOnly": true,
+    "commands": [
+      "gh run list",
+      "gh run view --json jobs"
+    ],
+    "forbiddenOperations": [
+      "workflow_dispatch",
+      "tag push",
+      "aws cli",
+      "ssh",
+      "docker push",
+      "production url access"
+    ]
+  },
+  "minimumResumeRuns": 3,
+  "workflows": {
+    "ci": {
+      "workflow": "CI",
+      "branch": "main",
+      "limit": 20,
+      "runsAnalyzed": 3,
+      "metrics": {
+        "overall": {
+          "key": "overall",
+          "label": "CI 전체 시간",
+          "count": 3,
+          "expectedCount": 3,
+          "missingCount": 0,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 170.0,
+          "medianSeconds": 171.0,
+          "minSeconds": 161.0,
+          "maxSeconds": 178.0
+        }
+      },
+      "runs": [
+        {
+          "runId": 123456789,
+          "workflowName": "CI",
+          "displayTitle": "example commit title",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "0123456789abcdef0123456789abcdef01234567",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-28T00:00:00Z",
+          "updatedAt": "2026-06-28T00:02:51Z",
+          "durationSeconds": 171.0,
+          "steps": {}
+        }
+      ]
+    }
+  },
+  "resumeSentenceCandidate": "GitHub Actions에서 Gateway 테스트, Monitor Bot 테스트, JAR 빌드, k6 asset 검증을 자동화하고 CI median 2m 51s 기준으로 검증 시간을 관리"
+}

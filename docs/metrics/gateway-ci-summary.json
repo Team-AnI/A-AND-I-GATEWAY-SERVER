@@ -1,0 +1,2201 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-28T02:00:13Z",
+  "repository": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+  "source": {
+    "readOnly": true,
+    "commands": [
+      "gh run list",
+      "gh run view --json jobs"
+    ],
+    "forbiddenOperations": [
+      "workflow_dispatch",
+      "tag push",
+      "aws cli",
+      "ssh",
+      "docker push",
+      "production url access"
+    ]
+  },
+  "minimumResumeRuns": 3,
+  "workflows": {
+    "ci": {
+      "workflow": "CI",
+      "branch": "main",
+      "limit": 20,
+      "runsAnalyzed": 20,
+      "metrics": {
+        "overall": {
+          "key": "overall",
+          "label": "CI 전체 시간",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 149.3,
+          "medianSeconds": 147.5,
+          "minSeconds": 118.0,
+          "maxSeconds": 189.0
+        },
+        "gradle_test": {
+          "key": "gradle_test",
+          "label": "./gradlew test",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 102.75,
+          "medianSeconds": 101.5,
+          "minSeconds": 83.0,
+          "maxSeconds": 126.0
+        },
+        "monitor_bot_go_test": {
+          "key": "monitor_bot_go_test",
+          "label": "monitor-bot go test",
+          "count": 16,
+          "expectedCount": 20,
+          "missingCount": 4,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 30.625,
+          "medianSeconds": 30.0,
+          "minSeconds": 24.0,
+          "maxSeconds": 38.0
+        },
+        "jar_build": {
+          "key": "jar_build",
+          "label": "./gradlew build 또는 build -x test",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 2.45,
+          "medianSeconds": 2.0,
+          "minSeconds": 2.0,
+          "maxSeconds": 3.0
+        },
+        "k6_install": {
+          "key": "k6_install",
+          "label": "k6 install",
+          "count": 7,
+          "expectedCount": 20,
+          "missingCount": 13,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 1.0,
+          "medianSeconds": 1.0,
+          "minSeconds": 1.0,
+          "maxSeconds": 1.0
+        },
+        "performance_asset_validation": {
+          "key": "performance_asset_validation",
+          "label": "performance asset validation",
+          "count": 7,
+          "expectedCount": 20,
+          "missingCount": 13,
+          "failureCount": 0,
+          "failureRate": 0.0,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 2.7142857142857144,
+          "medianSeconds": 2.0,
+          "minSeconds": 1.0,
+          "maxSeconds": 7.0
+        }
+      },
+      "runs": [
+        {
+          "runId": 27965838063,
+          "workflowName": "CI",
+          "displayTitle": "docs(readme): render sentence breaks",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "9c3bcf803fc653df84fd42b62ad8dda5d0967380",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-22T15:55:39Z",
+          "updatedAt": "2026-06-22T15:58:36Z",
+          "durationSeconds": 177.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 112.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 38.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 4.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27965637091,
+          "workflowName": "CI",
+          "displayTitle": "docs(readme): improve sentence line breaks",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "0354c8e368dcac46b2173c7c4ada0a6c23ce757d",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-22T15:52:33Z",
+          "updatedAt": "2026-06-22T15:55:05Z",
+          "durationSeconds": 152.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 98.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27965308872,
+          "workflowName": "CI",
+          "displayTitle": "docs(readme): finalize gateway architecture and performance assets",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "e75eedb7d1e2aea079840a9a1911772e0c9704f8",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-22T15:47:17Z",
+          "updatedAt": "2026-06-22T15:49:58Z",
+          "durationSeconds": 161.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 106.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27957870475,
+          "workflowName": "CI",
+          "displayTitle": "Merge pull request #36 from stdiodh/docs/gateway-readme-sequence-flow",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "b03504ed30897f37e359b9c1a578197852fff040",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-22T13:53:34Z",
+          "updatedAt": "2026-06-22T13:56:01Z",
+          "durationSeconds": 147.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 99.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 29.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27957833133,
+          "workflowName": "CI",
+          "displayTitle": "Merge pull request #37 from SangWook16074/feat/backend-availability-t…",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "b604cbd5e233403def2aa450514409b9c14cb97f",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-22T13:53:00Z",
+          "updatedAt": "2026-06-22T13:55:56Z",
+          "durationSeconds": 176.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 117.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27911431729,
+          "workflowName": "CI",
+          "displayTitle": "docs(readme): simplify gateway documentation",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "f78b1c44e243b3c6e3c6dc3ae4a33fd87e1cefea",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-21T17:04:38Z",
+          "updatedAt": "2026-06-21T17:07:20Z",
+          "durationSeconds": 162.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 106.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 7.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27893124105,
+          "workflowName": "CI",
+          "displayTitle": "docs(performance): record gateway k6 check",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "a6509f24ee91968ebada61ffcb05bd3ed71e9437",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-21T04:10:44Z",
+          "updatedAt": "2026-06-21T04:13:09Z",
+          "durationSeconds": 145.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 95.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": "Install k6",
+              "durationSeconds": 1.0,
+              "conclusion": "success"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": "Validate performance assets",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 27489921331,
+          "workflowName": "CI",
+          "displayTitle": "docs(readme): 자연스러운 표현으로 정리",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "c4fcbfa4ace70e8293f250b600e13984400f7dd3",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-14T05:51:03Z",
+          "updatedAt": "2026-06-14T05:53:43Z",
+          "durationSeconds": 160.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 108.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 27489838624,
+          "workflowName": "CI",
+          "displayTitle": "Merge pull request #33 from stdiodh/develop-portfolio-readme-clean",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "b6e917b0e3e602376fed714f31db6a2012fd2b55",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-06-14T05:46:51Z",
+          "updatedAt": "2026-06-14T05:50:00Z",
+          "durationSeconds": 189.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 126.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 35.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26434162219,
+          "workflowName": "CI",
+          "displayTitle": "chore(release): sync develop for v2.0.25",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "cf54279177ee1449aa3608e503b85a3681740fdf",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-26T05:29:26Z",
+          "updatedAt": "2026-05-26T05:32:11Z",
+          "durationSeconds": 165.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 113.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26225502378,
+          "workflowName": "CI",
+          "displayTitle": "Merge pull request #30 from Team-AnI/develop",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "eb243ed831fe46a0a0838134bb426a0669f7ee1d",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-21T12:19:46Z",
+          "updatedAt": "2026-05-21T12:21:55Z",
+          "durationSeconds": 129.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 83.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 24.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26220621262,
+          "workflowName": "CI",
+          "displayTitle": "Merge pull request #27 from stdiodh/develop-docs-placeholder-polish",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "c6beb0f1c2e3eb9128d277f7c39be79c9bbdcdcf",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-21T10:32:11Z",
+          "updatedAt": "2026-05-21T10:34:39Z",
+          "durationSeconds": 148.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 95.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26219927701,
+          "workflowName": "CI",
+          "displayTitle": "Merge pull request #26 from stdiodh/develop-dashboard-recent-grouping",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "829d3f14741e3dd23867896e5778638b14a6632a",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-21T10:17:06Z",
+          "updatedAt": "2026-05-21T10:19:30Z",
+          "durationSeconds": 144.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 97.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 27.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26144986481,
+          "workflowName": "CI",
+          "displayTitle": "fix(monitor-bot): clarify ops help",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "e5d9df83ef21a281dcd0069e5e9941bdf82ff28b",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-20T06:14:37Z",
+          "updatedAt": "2026-05-20T06:16:57Z",
+          "durationSeconds": 140.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 95.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26105083529,
+          "workflowName": "CI",
+          "displayTitle": "fix(monitor-bot): accept ok health status (#24)",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "f162fbaafc73643be48064e1daf7f09bda2dd30b",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-19T14:50:29Z",
+          "updatedAt": "2026-05-19T14:52:54Z",
+          "durationSeconds": 145.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 97.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 28.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 26102871221,
+          "workflowName": "CI",
+          "displayTitle": "Feat: Auth/Blog V2 ops 로그 연결 (#23)",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "a03bc451a9b5a532d10f0578b37b439d8a9ccc91",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-19T14:12:28Z",
+          "updatedAt": "2026-05-19T14:15:09Z",
+          "durationSeconds": 161.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 105.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Run monitor-bot tests",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 25959432636,
+          "workflowName": "CI",
+          "displayTitle": "feat(monitor-bot): connect auth v2 logs",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "3d6b6c29bc0938dc3263dbacd01efbdaff0fb86f",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-16T10:18:17Z",
+          "updatedAt": "2026-05-16T10:20:23Z",
+          "durationSeconds": 126.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 106.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 25795075365,
+          "workflowName": "CI",
+          "displayTitle": "fix(monitor-bot): allow channel-targeted ops watches",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "86bd287755ccd80467f46dad118ba6d98d2af741",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-13T11:03:48Z",
+          "updatedAt": "2026-05-13T11:05:47Z",
+          "durationSeconds": 119.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 102.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 25793705147,
+          "workflowName": "CI",
+          "displayTitle": "fix(cd): pass service URIs to monitor bot",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "37e0c509acafb411c007e2ec20fc83cc535bbfaf",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-13T10:34:15Z",
+          "updatedAt": "2026-05-13T10:36:13Z",
+          "durationSeconds": 118.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 94.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        },
+        {
+          "runId": 25792619215,
+          "workflowName": "CI",
+          "displayTitle": "feat(monitor-bot): automate ops dashboards",
+          "event": "push",
+          "headBranch": "main",
+          "headSha": "493b84f9afb82b5f45936a6497e45cf4de8d2511",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-13T10:11:25Z",
+          "updatedAt": "2026-05-13T10:13:27Z",
+          "durationSeconds": 122.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 101.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build 또는 build -x test",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "k6_install": {
+              "label": "k6 install",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "performance_asset_validation": {
+              "label": "performance asset validation",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            }
+          }
+        }
+      ]
+    },
+    "cd": {
+      "workflow": "CD",
+      "branch": null,
+      "limit": 20,
+      "runsAnalyzed": 20,
+      "metrics": {
+        "overall": {
+          "key": "overall",
+          "label": "CD 전체 시간",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 1,
+          "failureRate": 0.05,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 38012.75,
+          "medianSeconds": 257.5,
+          "minSeconds": 49.0,
+          "maxSeconds": 755519.0
+        },
+        "gradle_test": {
+          "key": "gradle_test",
+          "label": "./gradlew test",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 1,
+          "failureRate": 0.05,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 95.0,
+          "medianSeconds": 97.0,
+          "minSeconds": 34.0,
+          "maxSeconds": 115.0
+        },
+        "monitor_bot_go_test": {
+          "key": "monitor_bot_go_test",
+          "label": "monitor-bot go test",
+          "count": 14,
+          "expectedCount": 20,
+          "missingCount": 6,
+          "failureCount": 1,
+          "failureRate": 0.07142857142857142,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 27.857142857142858,
+          "medianSeconds": 30.0,
+          "minSeconds": 0.0,
+          "maxSeconds": 36.0
+        },
+        "jar_build": {
+          "key": "jar_build",
+          "label": "./gradlew build",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 1,
+          "failureRate": 0.05,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 2.55,
+          "medianSeconds": 3.0,
+          "minSeconds": 0.0,
+          "maxSeconds": 3.0
+        },
+        "gateway_docker_build_push": {
+          "key": "gateway_docker_build_push",
+          "label": "Gateway Docker build/push",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 1,
+          "failureRate": 0.05,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 23.6,
+          "medianSeconds": 25.0,
+          "minSeconds": 0.0,
+          "maxSeconds": 29.0
+        },
+        "monitor_bot_docker_build_push": {
+          "key": "monitor_bot_docker_build_push",
+          "label": "monitor-bot Docker build/push",
+          "count": 14,
+          "expectedCount": 20,
+          "missingCount": 6,
+          "failureCount": 1,
+          "failureRate": 0.07142857142857142,
+          "confidence": "확인 완료",
+          "resumeUse": "사용 가능",
+          "averageSeconds": 35.785714285714285,
+          "medianSeconds": 38.0,
+          "minSeconds": 0.0,
+          "maxSeconds": 45.0
+        },
+        "deploy_step_metadata": {
+          "key": "deploy_step_metadata",
+          "label": "Deploy step 조회 전용",
+          "count": 20,
+          "expectedCount": 20,
+          "missingCount": 0,
+          "failureCount": 1,
+          "failureRate": 0.05,
+          "confidence": "확인 완료",
+          "resumeUse": "참고용",
+          "averageSeconds": 39.6,
+          "medianSeconds": 43.0,
+          "minSeconds": 0.0,
+          "maxSeconds": 51.0
+        }
+      },
+      "runs": [
+        {
+          "runId": 26434168425,
+          "workflowName": "CD",
+          "displayTitle": "chore(release): sync develop for v2.0.25",
+          "event": "push",
+          "headBranch": "v2.0.25",
+          "headSha": "cf54279177ee1449aa3608e503b85a3681740fdf",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-26T05:29:37Z",
+          "updatedAt": "2026-05-26T05:34:00Z",
+          "durationSeconds": 263.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 98.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 23.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 46.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 26225518445,
+          "workflowName": "CD",
+          "displayTitle": "Merge pull request #30 from Team-AnI/develop",
+          "event": "push",
+          "headBranch": "v2.0.24",
+          "headSha": "eb243ed831fe46a0a0838134bb426a0669f7ee1d",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-21T12:20:07Z",
+          "updatedAt": "2026-05-21T12:24:28Z",
+          "durationSeconds": 261.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 97.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 29.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 29.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 38.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 45.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 26222303551,
+          "workflowName": "CD",
+          "displayTitle": "Merge pull request #28 from stdiodh/develop-alert-dedupe-auth-mapping",
+          "event": "push",
+          "headBranch": "v2.0.23",
+          "headSha": "d55d919329a0d2b8de1114079b4524a6f8610537",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-21T11:09:39Z",
+          "updatedAt": "2026-05-21T11:14:01Z",
+          "durationSeconds": 262.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 100.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 22.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 47.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 26145008458,
+          "workflowName": "CD",
+          "displayTitle": "fix(monitor-bot): clarify ops help",
+          "event": "push",
+          "headBranch": "v2.0.22",
+          "headSha": "e5d9df83ef21a281dcd0069e5e9941bdf82ff28b",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-20T06:15:12Z",
+          "updatedAt": "2026-05-20T06:19:24Z",
+          "durationSeconds": 252.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 92.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 21.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 45.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 26105106388,
+          "workflowName": "CD",
+          "displayTitle": "fix(monitor-bot): accept ok health status (#24)",
+          "event": "push",
+          "headBranch": "v2.0.21",
+          "headSha": "f162fbaafc73643be48064e1daf7f09bda2dd30b",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-19T14:50:52Z",
+          "updatedAt": "2026-05-19T14:55:22Z",
+          "durationSeconds": 270.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 104.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 26.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 39.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 26104121323,
+          "workflowName": "CD",
+          "displayTitle": "CD",
+          "event": "workflow_dispatch",
+          "headBranch": "v2.0.20",
+          "headSha": "a03bc451a9b5a532d10f0578b37b439d8a9ccc91",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-19T14:34:05Z",
+          "updatedAt": "2026-05-19T14:38:32Z",
+          "durationSeconds": 267.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 102.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 28.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 22.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 38.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 43.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 26103045011,
+          "workflowName": "CD",
+          "displayTitle": "Feat: Auth/Blog V2 ops 로그 연결 (#23)",
+          "event": "push",
+          "headBranch": "v2.0.20",
+          "headSha": "a03bc451a9b5a532d10f0578b37b439d8a9ccc91",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-19T14:15:30Z",
+          "updatedAt": "2026-05-19T14:25:55Z",
+          "durationSeconds": 625.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 115.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 28.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 45.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 43.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25795079388,
+          "workflowName": "CD",
+          "displayTitle": "fix(monitor-bot): allow channel-targeted ops watches",
+          "event": "push",
+          "headBranch": "v2.0.19",
+          "headSha": "86bd287755ccd80467f46dad118ba6d98d2af741",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-13T11:03:54Z",
+          "updatedAt": "2026-05-13T11:08:11Z",
+          "durationSeconds": 257.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 92.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 28.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 41.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 44.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25793705988,
+          "workflowName": "CD",
+          "displayTitle": "fix(cd): pass service URIs to monitor bot",
+          "event": "push",
+          "headBranch": "v2.0.19",
+          "headSha": "37e0c509acafb411c007e2ec20fc83cc535bbfaf",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "createdAt": "2026-05-13T10:34:17Z",
+          "updatedAt": "2026-05-13T10:35:06Z",
+          "durationSeconds": 49.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 34.0,
+              "conclusion": "cancelled"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 0.0,
+              "conclusion": "skipped"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 0.0,
+              "conclusion": "skipped"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 0.0,
+              "conclusion": "skipped"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 0.0,
+              "conclusion": "skipped"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 0.0,
+              "conclusion": "skipped"
+            }
+          }
+        },
+        {
+          "runId": 25792625966,
+          "workflowName": "CD",
+          "displayTitle": "feat(monitor-bot): automate ops dashboards",
+          "event": "push",
+          "headBranch": "v2.0.18",
+          "headSha": "493b84f9afb82b5f45936a6497e45cf4de8d2511",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-13T10:11:34Z",
+          "updatedAt": "2026-05-13T10:15:51Z",
+          "durationSeconds": 257.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 90.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 26.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 29.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 39.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 45.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25713455598,
+          "workflowName": "CD",
+          "displayTitle": "fix(monitor-bot): disable legacy command registration",
+          "event": "push",
+          "headBranch": "v2.0.17",
+          "headSha": "12dfe111003cfa53d642e57c579029b7f5c3af3b",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-12T04:30:42Z",
+          "updatedAt": "2026-05-12T04:35:00Z",
+          "durationSeconds": 258.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 97.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 21.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 42.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25713197457,
+          "workflowName": "CD",
+          "displayTitle": "fix(monitor-bot): clarify ops UX",
+          "event": "push",
+          "headBranch": "v2.0.16",
+          "headSha": "0a3eec360250ba48323249bdd9156989718c43b8",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-12T04:22:48Z",
+          "updatedAt": "2026-05-12T04:27:18Z",
+          "durationSeconds": 270.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 100.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 26.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 40.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 43.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25711339580,
+          "workflowName": "CD",
+          "displayTitle": "fix(monitor-bot): make discord command registration compatible",
+          "event": "push",
+          "headBranch": "v2.0.15",
+          "headSha": "d24683efee7e16650c69c834b6ed9348548f11f5",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-12T03:22:57Z",
+          "updatedAt": "2026-05-12T03:27:11Z",
+          "durationSeconds": 254.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 93.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 27.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 27.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 38.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 44.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25710582439,
+          "workflowName": "CD",
+          "displayTitle": "fix(cd): reduce ssh script expressions",
+          "event": "push",
+          "headBranch": "v2.0.14",
+          "headSha": "f9cf5562846a7a7b1e19e14a5777254ce8bb0680",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-12T02:59:18Z",
+          "updatedAt": "2026-05-12T03:03:49Z",
+          "durationSeconds": 271.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 103.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": "Test monitor-bot",
+              "durationSeconds": 30.0,
+              "conclusion": "success"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 25.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": "Build and push monitor-bot Docker image",
+              "durationSeconds": 39.0,
+              "conclusion": "success"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 51.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25273370646,
+          "workflowName": "CD",
+          "displayTitle": "CD",
+          "event": "push",
+          "headBranch": "v2.0.13",
+          "headSha": "347d90aa27cc4b528a071b9e2ccb9d1abce388d8",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-03T07:42:04Z",
+          "updatedAt": "2026-05-12T01:34:03Z",
+          "durationSeconds": 755519.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 94.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 22.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 31.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 25214072683,
+          "workflowName": "CD",
+          "displayTitle": "CD",
+          "event": "push",
+          "headBranch": "v2.0.12",
+          "headSha": "66a00fa174a6b0880f124b6894ed7002a1a31c25",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-05-01T12:21:17Z",
+          "updatedAt": "2026-05-01T12:24:33Z",
+          "durationSeconds": 196.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 100.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 23.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 45.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 24517628900,
+          "workflowName": "CD",
+          "displayTitle": "fix: validate CORS origin in error responses against allowed patterns",
+          "event": "push",
+          "headBranch": "v2.0.10",
+          "headSha": "05b829ff4cb3a682aa3a79044f7650d11a4ed920",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-04-16T15:01:54Z",
+          "updatedAt": "2026-04-16T15:04:57Z",
+          "durationSeconds": 183.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 95.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 2.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 25.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 24462204917,
+          "workflowName": "CD",
+          "displayTitle": "CD",
+          "event": "push",
+          "headBranch": "v2.0.9",
+          "headSha": "33c186941e42cb77743f1b5e4a5df4e809145a0b",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-04-15T15:07:45Z",
+          "updatedAt": "2026-04-15T15:10:54Z",
+          "durationSeconds": 189.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 106.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 22.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 32.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 24460643341,
+          "workflowName": "CD",
+          "displayTitle": "CD",
+          "event": "push",
+          "headBranch": "v2.0.8",
+          "headSha": "160a6080c67a3280d3e8586ac33a7f1ea4ee404d",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-04-15T14:35:36Z",
+          "updatedAt": "2026-04-15T14:38:33Z",
+          "durationSeconds": 177.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 96.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 28.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 32.0,
+              "conclusion": "success"
+            }
+          }
+        },
+        {
+          "runId": 24460072731,
+          "workflowName": "CD",
+          "displayTitle": "CD",
+          "event": "push",
+          "headBranch": "v2.0.7",
+          "headSha": "02bbce6f940044e8871ddb294654d5a6a581bad3",
+          "status": "completed",
+          "conclusion": "success",
+          "createdAt": "2026-04-15T14:24:26Z",
+          "updatedAt": "2026-04-15T14:27:21Z",
+          "durationSeconds": 175.0,
+          "steps": {
+            "gradle_test": {
+              "label": "./gradlew test",
+              "name": "Run tests",
+              "durationSeconds": 92.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_go_test": {
+              "label": "monitor-bot go test",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "jar_build": {
+              "label": "./gradlew build",
+              "name": "Build JAR",
+              "durationSeconds": 3.0,
+              "conclusion": "success"
+            },
+            "gateway_docker_build_push": {
+              "label": "Gateway Docker build/push",
+              "name": "Build and push Docker image",
+              "durationSeconds": 25.0,
+              "conclusion": "success"
+            },
+            "monitor_bot_docker_build_push": {
+              "label": "monitor-bot Docker build/push",
+              "name": null,
+              "durationSeconds": null,
+              "conclusion": null,
+              "confidence": "확인 필요"
+            },
+            "deploy_step_metadata": {
+              "label": "Deploy step 조회 전용",
+              "name": "Deploy to EC2 via SSH",
+              "durationSeconds": 36.0,
+              "conclusion": "success"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "resumeSentenceCandidate": "GitHub Actions에서 Gateway 테스트, Monitor Bot 테스트, JAR 빌드, k6 asset 검증을 자동화하고 CI median 2m 28s 기준으로 검증 시간을 관리"
+}
