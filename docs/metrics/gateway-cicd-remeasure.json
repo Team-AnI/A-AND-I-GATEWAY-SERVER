@@ -23,6 +23,17 @@
       "official_measurement": false,
       "reason": "GitHub workflow parser rejected job-level runner.temp context before creating a run.",
       "error": "HTTP 422: failed to parse workflow: Unrecognized named-value: 'runner' within expression: runner.temp"
+    },
+    {
+      "attempted_at": "2026-06-28T06:20:22Z",
+      "run_id": 28313639595,
+      "run_url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28313639595",
+      "ref": "develop-gateway-cicd-same-scope-remeasure",
+      "candidate_commit": "b7c1cf0",
+      "status": "workflow_failed",
+      "official_measurement": false,
+      "reason": "Baseline performance/full-gate jobs checked out main, where scripts/ci/install-k6.sh does not exist.",
+      "error": "performance-assets-before and full-gate-ci-before failed in Install k6 with exit code 127 before writing measurement artifacts."
     }
   ],
   "smoke_check": {

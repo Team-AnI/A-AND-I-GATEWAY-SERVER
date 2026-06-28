@@ -209,7 +209,60 @@ jobs:
 
       - name: Install k6
         if: contains('full-gate-ci,performance-assets', matrix.scope)
-        run: scripts/ci/install-k6.sh
+        run: |
+          version_file="performance/k6/K6_VERSION"
+          cache_root="$HOME/.cache/k6"
+          install_dir="/usr/local/bin"
+
+          k6_version="$(tr -d '[:space:]' < "$version_file")"
+          case "$k6_version" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "Invalid k6 version: $k6_version" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
+            echo "Unsupported k6 install target: $(uname -s) $(uname -m)" >&2
+            exit 1
+          fi
+
+          cache_dir="$cache_root/$k6_version"
+          cache_bin="$cache_dir/k6"
+          mkdir -p "$cache_dir"
+
+          k6_actual_version() {
+            "$1" version | awk 'NR == 1 { print $2 }'
+          }
+
+          assert_k6_version() {
+            local binary="$1"
+            local actual
+
+            actual="$(k6_actual_version "$binary")"
+            if [ "$actual" != "$k6_version" ]; then
+              echo "k6 version mismatch for $binary: expected $k6_version, got $actual" >&2
+              exit 1
+            fi
+          }
+
+          if [ -x "$cache_bin" ]; then
+            assert_k6_version "$cache_bin"
+          else
+            tmp_dir="$(mktemp -d)"
+            trap 'rm -rf "$tmp_dir"' EXIT
+
+            archive="$tmp_dir/k6.tar.gz"
+            curl -fsSL "https://github.com/grafana/k6/releases/download/${k6_version}/k6-${k6_version}-linux-amd64.tar.gz" -o "$archive"
+            tar -xzf "$archive" -C "$tmp_dir"
+            install -m 0755 "$tmp_dir/k6-${k6_version}-linux-amd64/k6" "$cache_bin"
+            assert_k6_version "$cache_bin"
+          fi
+
+          sudo install -m 0755 "$cache_bin" "$install_dir/k6"
+          assert_k6_version "$install_dir/k6"
+          "$install_dir/k6" version
 
       - name: Run measurement scope
         id: run-measurement
@@ -250,7 +303,9 @@ jobs:
           }
 
           run_performance_assets() {
-            bash -n scripts/ci/install-k6.sh
+            if [ -f scripts/ci/install-k6.sh ]; then
+              bash -n scripts/ci/install-k6.sh
+            fi
             bash -n performance/k6/run-local.sh
             node --check performance/mock-upstream/server.js
             find performance/k6 -name '*.js' -print0 | xargs -0 -n1 node --check
