@@ -7,12 +7,26 @@ COMPOSE_FILE="$ROOT_DIR/performance/mock-upstream/docker-compose.performance.yml
 PERFORMANCE_JWT_SECRET="${PERFORMANCE_JWT_SECRET:-performance-local-only-jwt-secret-at-least-32-bytes}"
 EXPECTED_K6_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/performance/k6/K6_VERSION")"
 
-if [[ -f "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-fi
+load_env_defaults() {
+  local file="$1"
+  local line key value
+  [[ -f "$file" ]] || return
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -n "$line" ]] || continue
+    [[ "$line" == *=* ]] || continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    if [[ -z "${!key+x}" ]]; then
+      export "$key=$value"
+    fi
+  done < "$file"
+}
+
+load_env_defaults "$ENV_FILE"
 
 export BASE_URL="${BASE_URL:-http://localhost:${GATEWAY_PORT:-8080}}"
 export UPSTREAM_BASE_URL="${UPSTREAM_BASE_URL:-http://localhost:${MOCK_UPSTREAM_PORT:-18080}}"
@@ -51,6 +65,7 @@ export OVERHEAD_ROUTE_KINDS="${OVERHEAD_ROUTE_KINDS:-public,protected}"
 export OVERHEAD_LOGGING_MODES="${OVERHEAD_LOGGING_MODES:-enabled,disabled}"
 export MEASUREMENT_DATE="${MEASUREMENT_DATE:-$(date -u +%Y-%m-%d)}"
 export PERFORMANCE_JWT_SECRET
+K6_BIN="${K6_BIN:-k6}"
 
 fail() {
   echo "$1" >&2
@@ -65,6 +80,17 @@ require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     fail "Missing required command: $1"
   fi
+}
+
+require_executable() {
+  local executable="$1"
+  if [[ "$executable" == */* ]]; then
+    if [[ ! -x "$executable" ]]; then
+      fail "Missing executable: $executable"
+    fi
+    return
+  fi
+  require_command "$executable"
 }
 
 url_host() {
@@ -179,7 +205,7 @@ resolve_result_dir() {
 }
 
 run_k6() {
-  k6 run "$ROOT_DIR/$1"
+  "$K6_BIN" run "$ROOT_DIR/$1"
 }
 
 assert_file_exists() {
@@ -275,13 +301,13 @@ assert_downstream_url PERFORMANCE_REPORT_SERVICE_URI "$PERFORMANCE_REPORT_SERVIC
 assert_base_url GATEWAY_MANAGEMENT_URL "$GATEWAY_MANAGEMENT_URL"
 
 require_command docker
-require_command k6
+require_executable "$K6_BIN"
 require_command java
 require_command python3
 require_command curl
 select_compose
 
-K6_VERSION_OUTPUT="$(k6 version | head -n1)"
+K6_VERSION_OUTPUT="$("$K6_BIN" version | head -n1)"
 K6_VERSION="$(awk '{print $2}' <<< "$K6_VERSION_OUTPUT")"
 if [[ "$K6_VERSION" != "$EXPECTED_K6_VERSION" || "$K6_VERSION_OUTPUT" == *"commit/devel"* ]]; then
   echo "Expected k6 version: $EXPECTED_K6_VERSION" >&2

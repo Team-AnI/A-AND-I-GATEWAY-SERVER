@@ -41,6 +41,7 @@ out/
 .omc/
 .codex-prompt.txt
 .omx/
+.tools/
 performance/results/*
 !performance/results/.gitkeep
 performance/k6/env.local

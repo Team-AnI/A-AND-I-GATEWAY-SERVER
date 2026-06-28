@@ -3,10 +3,10 @@
   "project": "A-AND-I-GATEWAY-SERVER",
   "resultType": "gateway-local-overhead",
   "generatedAt": "2026-06-28T00:00:00+00:00",
-  "measurementStatus": "측정 필요",
-  "confidence": "측정 필요",
-  "resumeUse": "사용 비추천",
-  "acceptedPairCount": 0,
+  "measurementStatus": "확인 완료",
+  "confidence": "확인 완료",
+  "resumeUse": "사용 가능",
+  "acceptedPairCount": 21,
   "requiredPairCountPerDimension": 3,
   "localRegressionNote": "운영 최대 처리량이 아니라 로컬 Mock Downstream 기반 회귀 검증 기준",
   "safety": {
@@ -27,10 +27,10 @@
     ]
   },
   "environment": {
-    "commitSha": "9c3bcf803fc653df84fd42b62ad8dda5d0967380",
-    "k6Version": "k6 v2.0.0 (commit/devel, go1.26.3, darwin/arm64)",
+    "commitSha": "910def3e12d278be087140083fd255de331d92b8",
+    "k6Version": "v1.7.1",
     "jvmVersion": "openjdk version \"21.0.6\" 2025-01-21",
-    "dockerVersion": "unavailable: docker daemon is not running",
+    "dockerVersion": "29.5.3",
     "plannedMeasurement": {
       "vus": "1",
       "duration": "10s",
@@ -60,57 +60,1163 @@
       "DOWNSTREAM_URL": "http://localhost:18080"
     }
   },
-  "blockingReasons": [
-    "Docker daemon unavailable: docker API socket is not running",
-    "Installed k6 is k6 v2.0.0 (commit/devel, go1.26.3, darwin/arm64); expected official v1.7.1"
-  ],
-  "groups": [],
-  "missingGroups": [
+  "blockingReasons": [],
+  "groups": [
     {
-      "scenario": "payload-overhead",
-      "dimension": 1024
-    },
-    {
-      "scenario": "payload-overhead",
-      "dimension": 65536
-    },
-    {
-      "scenario": "payload-overhead",
-      "dimension": 1048576
-    },
-    {
-      "scenario": "route-overhead",
-      "dimension": "public"
-    },
-    {
-      "scenario": "route-overhead",
-      "dimension": "protected"
+      "scenario": "logging-overhead",
+      "dimension": "disabled",
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 1024,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v2/blogs"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 53.434,
+        "directP90Ms": 55.009,
+        "directP95Ms": 55.4894,
+        "directP99Ms": 56.73148,
+        "gatewayP50Ms": 62.412000000000006,
+        "gatewayP90Ms": 64.6345,
+        "gatewayP95Ms": 64.829,
+        "gatewayP99Ms": 66.23396,
+        "gatewayAdditionalP50Ms": 8.919000000000004,
+        "gatewayAdditionalP90Ms": 9.625500000000002,
+        "gatewayAdditionalP95Ms": 9.511999999999993,
+        "gatewayAdditionalP99Ms": 9.357119999999995,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 6.461110575446388,
+        "gatewayThroughputRps": 6.121297256908476,
+        "directIterations": 65,
+        "gatewayIterations": 62,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 8.709699999999998,
+          "max": 13.2624
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 9.085819999999991,
+          "max": 30.106519999999982
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 53.434,
+            "p90Ms": 54.8162,
+            "p95Ms": 55.6776,
+            "p99Ms": 56.73148,
+            "throughputRps": 6.458235238535912,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 63.625,
+            "p90Ms": 67.048,
+            "p95Ms": 68.94,
+            "p99Ms": 86.83799999999998,
+            "throughputRps": 6.035687934353088,
+            "requestCount": 61,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 61,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 10.191000000000003,
+            "p90": 12.2318,
+            "p95": 13.2624,
+            "p99": 30.106519999999982
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 53.493,
+            "p90Ms": 55.009,
+            "p95Ms": 55.317,
+            "p99Ms": 56.87684,
+            "throughputRps": 6.461207555954803,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 62.412000000000006,
+            "p90Ms": 64.6345,
+            "p95Ms": 64.829,
+            "p99Ms": 66.23396,
+            "throughputRps": 6.121297256908476,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 8.919000000000004,
+            "p90": 9.625500000000002,
+            "p95": 9.511999999999993,
+            "p99": 9.357119999999995
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 53.396,
+            "p90Ms": 55.1806,
+            "p95Ms": 55.4894,
+            "p99Ms": 55.59964,
+            "throughputRps": 6.461110575446388,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 60.838499999999996,
+            "p90Ms": 63.7851,
+            "p95Ms": 64.1991,
+            "p99Ms": 64.68545999999999,
+            "throughputRps": 6.175495633326959,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 7.4424999999999955,
+            "p90": 8.604500000000002,
+            "p95": 8.709699999999998,
+            "p99": 9.085819999999991
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
     },
     {
       "scenario": "logging-overhead",
-      "dimension": "enabled"
+      "dimension": "enabled",
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 1024,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v2/blogs"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 53.445,
+        "directP90Ms": 55.1002,
+        "directP95Ms": 55.642599999999995,
+        "directP99Ms": 56.99216,
+        "gatewayP50Ms": 62.7115,
+        "gatewayP90Ms": 65.87100000000001,
+        "gatewayP95Ms": 66.6562,
+        "gatewayP99Ms": 69.23226,
+        "gatewayAdditionalP50Ms": 9.235500000000002,
+        "gatewayAdditionalP90Ms": 10.770800000000008,
+        "gatewayAdditionalP95Ms": 10.849600000000002,
+        "gatewayAdditionalP99Ms": 11.758579999999995,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 6.457031682667688,
+        "gatewayThroughputRps": 6.106983315721581,
+        "directIterations": 65,
+        "gatewayIterations": 62,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 8.794350000000001,
+          "max": 13.315999999999995
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 9.154609999999998,
+          "max": 29.07483999999998
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 53.116,
+            "p90Ms": 54.5578,
+            "p95Ms": 55.299,
+            "p99Ms": 56.99216,
+            "throughputRps": 6.474794918341878,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 64.29,
+            "p90Ms": 67.621,
+            "p95Ms": 68.615,
+            "p99Ms": 86.06699999999998,
+            "throughputRps": 6.028904743700387,
+            "requestCount": 61,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 61,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 11.174000000000007,
+            "p90": 13.063199999999995,
+            "p95": 13.315999999999995,
+            "p99": 29.07483999999998
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 53.476,
+            "p90Ms": 55.1002,
+            "p95Ms": 55.806599999999996,
+            "p99Ms": 57.47368,
+            "throughputRps": 6.4523923137911545,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 62.7115,
+            "p90Ms": 65.87100000000001,
+            "p95Ms": 66.6562,
+            "p99Ms": 69.23226,
+            "throughputRps": 6.106983315721581,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 9.235500000000002,
+            "p90": 10.770800000000008,
+            "p95": 10.849600000000002,
+            "p99": 11.758579999999995
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 53.445,
+            "p90Ms": 55.114399999999996,
+            "p95Ms": 55.642599999999995,
+            "p99Ms": 56.12632,
+            "throughputRps": 6.457031682667688,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 60.963499999999996,
+            "p90Ms": 63.7066,
+            "p95Ms": 64.43695,
+            "p99Ms": 65.28093,
+            "throughputRps": 6.1700745215629675,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 7.518499999999996,
+            "p90": 8.592200000000005,
+            "p95": 8.794350000000001,
+            "p99": 9.154609999999998
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
     },
     {
-      "scenario": "logging-overhead",
-      "dimension": "disabled"
+      "scenario": "payload-overhead",
+      "dimension": 1024,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 1024,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v2/blogs"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 53.405,
+        "directP90Ms": 55.517,
+        "directP95Ms": 55.8382,
+        "directP99Ms": 56.25744,
+        "gatewayP50Ms": 61.7615,
+        "gatewayP90Ms": 65.3282,
+        "gatewayP95Ms": 65.81694999999999,
+        "gatewayP99Ms": 66.67183,
+        "gatewayAdditionalP50Ms": 8.253000000000007,
+        "gatewayAdditionalP90Ms": 10.41769999999999,
+        "gatewayAdditionalP95Ms": 10.90594999999999,
+        "gatewayAdditionalP99Ms": 10.715589999999999,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 6.457174725783658,
+        "gatewayThroughputRps": 6.129508203852415,
+        "directIterations": 65,
+        "gatewayIterations": 62,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 6.358699999999999,
+          "max": 11.50685
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 8.520359999999997,
+          "max": 13.467359999999992
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 53.647,
+            "p90Ms": 55.517,
+            "p95Ms": 56.197199999999995,
+            "p99Ms": 56.51064,
+            "throughputRps": 6.447025436689268,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 61.900000000000006,
+            "p90Ms": 65.93469999999999,
+            "p95Ms": 67.70405,
+            "p99Ms": 69.978,
+            "throughputRps": 6.118885604867632,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 8.253000000000007,
+            "p90": 10.41769999999999,
+            "p95": 11.50685,
+            "p99": 13.467359999999992
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 53.404,
+            "p90Ms": 55.562,
+            "p95Ms": 55.8382,
+            "p99Ms": 56.25744,
+            "throughputRps": 6.457174725783658,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 59.152,
+            "p90Ms": 60.9394,
+            "p95Ms": 62.1969,
+            "p99Ms": 64.7778,
+            "throughputRps": 6.234610161702037,
+            "requestCount": 63,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 63,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 5.7479999999999976,
+            "p90": 5.3774000000000015,
+            "p95": 6.358699999999999,
+            "p99": 8.520359999999997
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 53.405,
+            "p90Ms": 54.5276,
+            "p95Ms": 54.911,
+            "p99Ms": 55.95624,
+            "throughputRps": 6.460605810012866,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 61.7615,
+            "p90Ms": 65.3282,
+            "p95Ms": 65.81694999999999,
+            "p99Ms": 66.67183,
+            "throughputRps": 6.129508203852415,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 8.356499999999997,
+            "p90": 10.800599999999996,
+            "p95": 10.90594999999999,
+            "p99": 10.715589999999999
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
+    },
+    {
+      "scenario": "payload-overhead",
+      "dimension": 65536,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 65536,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v2/blogs"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 54.4555,
+        "directP90Ms": 56.1449,
+        "directP95Ms": 56.4445,
+        "directP99Ms": 57.69514,
+        "gatewayP50Ms": 61.3945,
+        "gatewayP90Ms": 64.2248,
+        "gatewayP95Ms": 64.70530000000001,
+        "gatewayP99Ms": 66.64641999999999,
+        "gatewayAdditionalP50Ms": 6.939,
+        "gatewayAdditionalP90Ms": 8.171800000000005,
+        "gatewayAdditionalP95Ms": 8.300500000000007,
+        "gatewayAdditionalP99Ms": 8.95127999999999,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 6.393980706562842,
+        "gatewayThroughputRps": 6.139682530880127,
+        "directIterations": 64,
+        "gatewayIterations": 62,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 8.215200000000003,
+          "max": 9.6539
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 8.29173999999999,
+          "max": 14.071389999999994
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 54.3565,
+            "p90Ms": 56.599,
+            "p95Ms": 56.87135,
+            "p99Ms": 58.04288,
+            "throughputRps": 6.393980706562842,
+            "requestCount": 64,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 64,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 62.254000000000005,
+            "p90Ms": 65.7213,
+            "p95Ms": 66.52525,
+            "p99Ms": 72.11426999999999,
+            "throughputRps": 6.101218826708066,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 7.897500000000008,
+            "p90": 9.122300000000003,
+            "p95": 9.6539,
+            "p99": 14.071389999999994
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 54.4555,
+            "p90Ms": 56.1449,
+            "p95Ms": 56.4445,
+            "p99Ms": 57.69514,
+            "throughputRps": 6.393601283835138,
+            "requestCount": 64,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 64,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 61.3945,
+            "p90Ms": 64.2248,
+            "p95Ms": 64.6597,
+            "p99Ms": 66.64641999999999,
+            "throughputRps": 6.139682530880127,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 6.939,
+            "p90": 8.079900000000002,
+            "p95": 8.215200000000003,
+            "p99": 8.95127999999999
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 54.634,
+            "p90Ms": 55.9374,
+            "p95Ms": 56.4048,
+            "p99Ms": 56.8652,
+            "throughputRps": 6.4027827084677105,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 60.2475,
+            "p90Ms": 64.1092,
+            "p95Ms": 64.70530000000001,
+            "p99Ms": 65.15693999999999,
+            "throughputRps": 6.170151890231008,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 5.613500000000002,
+            "p90": 8.171800000000005,
+            "p95": 8.300500000000007,
+            "p99": 8.29173999999999
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
+    },
+    {
+      "scenario": "payload-overhead",
+      "dimension": 1048576,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 1048576,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v2/blogs"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 68.898,
+        "directP90Ms": 71.0244,
+        "directP95Ms": 71.5604,
+        "directP99Ms": 72.80420000000001,
+        "gatewayP50Ms": 74.89,
+        "gatewayP90Ms": 78.6936,
+        "gatewayP95Ms": 80.11699999999999,
+        "gatewayP99Ms": 80.63848,
+        "gatewayAdditionalP50Ms": 5.885000000000005,
+        "gatewayAdditionalP90Ms": 7.669200000000004,
+        "gatewayAdditionalP95Ms": 8.565399999999983,
+        "gatewayAdditionalP99Ms": 7.565840000000009,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 5.690040721724765,
+        "gatewayThroughputRps": 5.499607328036778,
+        "directIterations": 57,
+        "gatewayIterations": 55,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 7.4140000000000015,
+          "max": 9.037899999999993
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 7.37251999999998,
+          "max": 9.25182000000001
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 68.898,
+            "p90Ms": 71.0154,
+            "p95Ms": 71.5604,
+            "p99Ms": 73.07263999999999,
+            "throughputRps": 5.681903704890296,
+            "requestCount": 57,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 57,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 75.41,
+            "p90Ms": 79.57979999999999,
+            "p95Ms": 80.5983,
+            "p99Ms": 80.63848,
+            "throughputRps": 5.489822418218864,
+            "requestCount": 55,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 55,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 6.5120000000000005,
+            "p90": 8.564399999999992,
+            "p95": 9.037899999999993,
+            "p99": 7.565840000000009
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 69.005,
+            "p90Ms": 71.4106,
+            "p95Ms": 72.0962,
+            "p99Ms": 72.80420000000001,
+            "throughputRps": 5.690040721724765,
+            "requestCount": 57,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 57,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 74.89,
+            "p90Ms": 78.5816,
+            "p95Ms": 79.5102,
+            "p99Ms": 80.17671999999999,
+            "throughputRps": 5.499607328036778,
+            "requestCount": 55,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 55,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 5.885000000000005,
+            "p90": 7.170999999999992,
+            "p95": 7.4140000000000015,
+            "p99": 7.37251999999998
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 68.29050000000001,
+            "p90Ms": 71.0244,
+            "p95Ms": 71.55160000000001,
+            "p99Ms": 72.01585999999999,
+            "throughputRps": 5.718778476805325,
+            "requestCount": 58,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 58,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 71.894,
+            "p90Ms": 78.6936,
+            "p95Ms": 80.11699999999999,
+            "p99Ms": 81.26768,
+            "throughputRps": 5.603989647366494,
+            "requestCount": 57,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 57,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 3.603499999999997,
+            "p90": 7.669200000000004,
+            "p95": 8.565399999999983,
+            "p99": 9.25182000000001
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
+    },
+    {
+      "scenario": "route-overhead",
+      "dimension": "protected",
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 1024,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v1/me"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 53.238,
+        "directP90Ms": 54.761399999999995,
+        "directP95Ms": 55.300399999999996,
+        "directP99Ms": 56.88348,
+        "gatewayP50Ms": 61.211,
+        "gatewayP90Ms": 64.6353,
+        "gatewayP95Ms": 65.54724999999999,
+        "gatewayP99Ms": 65.89086,
+        "gatewayAdditionalP50Ms": 8.326,
+        "gatewayAdditionalP90Ms": 9.686900000000001,
+        "gatewayAdditionalP95Ms": 9.853449999999988,
+        "gatewayAdditionalP99Ms": 8.847059999999999,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 6.465102025775069,
+        "gatewayThroughputRps": 6.1619187260809465,
+        "directIterations": 65,
+        "gatewayIterations": 62,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 8.305700000000002,
+          "max": 10.401249999999997
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 8.221470000000004,
+          "max": 9.401899999999998
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 53.346,
+            "p90Ms": 55.3286,
+            "p95Ms": 55.6938,
+            "p99Ms": 56.871120000000005,
+            "throughputRps": 6.456190229956584,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 62.706,
+            "p90Ms": 65.0155,
+            "p95Ms": 65.54724999999999,
+            "p99Ms": 66.27302,
+            "throughputRps": 6.1119578582477265,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 9.360000000000007,
+            "p90": 9.686900000000001,
+            "p95": 9.853449999999988,
+            "p99": 9.401899999999998
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 52.885,
+            "p90Ms": 54.7562,
+            "p95Ms": 55.1856,
+            "p99Ms": 57.043800000000005,
+            "throughputRps": 6.474754930525879,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 61.211,
+            "p90Ms": 64.6353,
+            "p95Ms": 65.58685,
+            "p99Ms": 65.89086,
+            "throughputRps": 6.1619187260809465,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 8.326,
+            "p90": 9.879100000000001,
+            "p95": 10.401249999999997,
+            "p99": 8.847059999999999
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 53.238,
+            "p90Ms": 54.761399999999995,
+            "p95Ms": 55.300399999999996,
+            "p99Ms": 56.88348,
+            "throughputRps": 6.465102025775069,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 60.5285,
+            "p90Ms": 62.6992,
+            "p95Ms": 63.6061,
+            "p99Ms": 65.10495,
+            "throughputRps": 6.1938594077831235,
+            "requestCount": 62,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 62,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 7.2905000000000015,
+            "p90": 7.937800000000003,
+            "p95": 8.305700000000002,
+            "p99": 8.221470000000004
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
+    },
+    {
+      "scenario": "route-overhead",
+      "dimension": "public",
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능",
+      "acceptedPairCount": 3,
+      "requiredPairCount": 3,
+      "load": {
+        "vus": 1,
+        "duration": "10s",
+        "payloadBytes": 1024,
+        "mockDelayMs": 50,
+        "publicRoutePath": "/v2/blogs"
+      },
+      "target": {
+        "gatewayBaseUrl": "http://localhost:8080",
+        "upstreamBaseUrl": "http://localhost:18080",
+        "downstreamUrl": "http://localhost:18080"
+      },
+      "median": {
+        "directP50Ms": 53.757,
+        "directP90Ms": 55.6616,
+        "directP95Ms": 56.263,
+        "directP99Ms": 57.23208,
+        "gatewayP50Ms": 60.274,
+        "gatewayP90Ms": 62.195,
+        "gatewayP95Ms": 63.0952,
+        "gatewayP99Ms": 64.0166,
+        "gatewayAdditionalP50Ms": 6.530999999999999,
+        "gatewayAdditionalP90Ms": 6.5334,
+        "gatewayAdditionalP95Ms": 6.639300000000006,
+        "gatewayAdditionalP99Ms": 7.140999999999998,
+        "httpFailedRate": 0,
+        "checkRate": 1,
+        "directThroughputRps": 6.44144405283768,
+        "gatewayThroughputRps": 6.206100458837694,
+        "directIterations": 65,
+        "gatewayIterations": 63,
+        "droppedIterations": 0
+      },
+      "range": {
+        "gatewayAdditionalP95Ms": {
+          "min": 6.527700000000003,
+          "max": 7.537600000000005
+        },
+        "gatewayAdditionalP99Ms": {
+          "min": 6.570279999999997,
+          "max": 7.4731200000000015
+        }
+      },
+      "pairs": [
+        {
+          "pairIndex": 1,
+          "direct": {
+            "p50Ms": 53.743,
+            "p90Ms": 54.8154,
+            "p95Ms": 55.557599999999994,
+            "p99Ms": 56.0822,
+            "throughputRps": 6.448273881405529,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 60.274,
+            "p90Ms": 62.9742,
+            "p95Ms": 63.0952,
+            "p99Ms": 63.55532,
+            "throughputRps": 6.206100458837694,
+            "requestCount": 63,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 63,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 6.530999999999999,
+            "p90": 8.158800000000006,
+            "p95": 7.537600000000005,
+            "p99": 7.4731200000000015
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 2,
+          "direct": {
+            "p50Ms": 53.757,
+            "p90Ms": 55.6616,
+            "p95Ms": 56.263,
+            "p99Ms": 57.23208,
+            "throughputRps": 6.44144405283768,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 60.315,
+            "p90Ms": 62.195,
+            "p95Ms": 62.902300000000004,
+            "p99Ms": 64.37308,
+            "throughputRps": 6.199510888112409,
+            "requestCount": 63,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 63,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 6.558,
+            "p90": 6.5334,
+            "p95": 6.639300000000006,
+            "p99": 7.140999999999998
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        },
+        {
+          "pairIndex": 3,
+          "direct": {
+            "p50Ms": 53.838,
+            "p90Ms": 56.2146,
+            "p95Ms": 56.6222,
+            "p99Ms": 57.44632,
+            "throughputRps": 6.430474990497737,
+            "requestCount": 65,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 65,
+            "droppedIterations": null
+          },
+          "gateway": {
+            "p50Ms": 59.263,
+            "p90Ms": 62.0562,
+            "p95Ms": 63.1499,
+            "p99Ms": 64.0166,
+            "throughputRps": 6.232691296877629,
+            "requestCount": 63,
+            "httpFailedRate": 0,
+            "checkRate": 1,
+            "iterations": 63,
+            "droppedIterations": null
+          },
+          "gatewayAdditionalLatencyMs": {
+            "p50": 5.424999999999997,
+            "p90": 5.8416,
+            "p95": 6.527700000000003,
+            "p99": 6.570279999999997
+          },
+          "httpFailedRate": 0,
+          "checkRate": 1,
+          "droppedIterations": 0
+        }
+      ],
+      "discardedPairs": []
     }
   ],
+  "missingGroups": [],
   "rateLimit": {
-    "confidence": "측정 필요",
-    "resumeUse": "사용 비추천",
-    "expectedAllowed": null,
-    "expectedRejected": null,
-    "actualAllowed": null,
-    "actualRejected": null,
-    "checksRate": null,
-    "httpFailedRate": null
+    "confidence": "확인 완료",
+    "resumeUse": "사용 가능",
+    "expectedAllowed": 10,
+    "expectedRejected": 2,
+    "actualAllowed": 10,
+    "actualRejected": 2,
+    "checksRate": 1,
+    "httpFailedRate": 0,
+    "thresholdFailures": []
   },
   "errorContract": {
-    "confidence": "측정 필요",
-    "resumeUse": "사용 비추천",
-    "status": "[측정 필요]",
-    "checksRate": null,
-    "httpFailedRate": null
+    "confidence": "확인 완료",
+    "resumeUse": "사용 가능",
+    "status": "passed",
+    "checksRate": 1,
+    "httpFailedRate": 0,
+    "expectReport502": true,
+    "thresholdFailures": []
   },
   "limitations": [
     "local mock downstream only",

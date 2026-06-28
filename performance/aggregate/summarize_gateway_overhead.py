@@ -419,9 +419,10 @@ def to_markdown(summary):
         "",
         "- 확인된 경우: 로컬 Mock Downstream 기준 payload 1KB/64KB/1MB별 Gateway P95/P99와 추가 지연을 측정해 라우팅·정책·로깅 계층 회귀 기준을 관리",
         "- 확인된 경우: 구조화 로깅 on/off 비교로 Gateway 요청 추적 기능의 지연 비용을 로컬 기준으로 검증",
-        "- 측정 부족 시: [측정 필요] Mock Downstream 기반 k6 시나리오로 Gateway 라우팅·인증·오류 계약의 성능 회귀를 검증",
-        "",
     ])
+    if summary["measurementStatus"] != "확인 완료":
+        lines.append("- 측정 부족 시: [측정 필요] Mock Downstream 기반 k6 시나리오로 Gateway 라우팅·인증·오류 계약의 성능 회귀를 검증")
+    lines.append("")
     return "\n".join(lines)
 
 

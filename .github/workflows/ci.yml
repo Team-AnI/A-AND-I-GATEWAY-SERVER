@@ -49,6 +49,7 @@ jobs:
         run: |
           bash -n performance/k6/run-local.sh
           bash -n performance/k6/run-local-overhead.sh
+          bash -n scripts/performance/install_pinned_k6.sh
           node --check performance/mock-upstream/server.js
           find performance/k6 -name '*.js' -print0 | xargs -0 -n1 node --check
           python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py performance/aggregate/summarize_gateway_runs.py performance/aggregate/summarize_gateway_overhead.py performance/report/generate_gateway_k6_assets.py
