@@ -11,7 +11,11 @@ object MaskingUtil {
         "refreshtoken",
         "authorization",
         "authenticate",
+        "discordtoken",
+        "discordbottoken",
         "token",
+        "webhook",
+        "webhookurl",
         "salt",
         "secret"
     )
@@ -42,7 +46,7 @@ object MaskingUtil {
     }
 
     fun maskByKey(key: String?, value: Any?): Any? {
-        val normalized = key?.trim().orEmpty().lowercase()
+        val normalized = key?.trim().orEmpty().lowercase().replace(Regex("[_-]"), "")
         return when {
             normalized in fullMaskKeys -> FULL_MASK
             normalized in partialMaskKeys -> partialMask(value?.toString())

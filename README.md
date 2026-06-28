@@ -149,6 +149,7 @@ cd monitor-bot && go test ./...
 - [성능 측정 환경과 전체 결과](./docs/PERFORMANCE.md)
 - [CI/CD optimization metrics](docs/cicd-optimization.md)
 - [CI/CD measurement audit](docs/cicd-measurement-audit.md)
+- [Observability metrics](docs/observability-metrics.md)
 - [Resume metrics](docs/resume-metrics.md)
 - [PR cleanup plan](docs/pr-cleanup-plan.md)
 - [Discord Monitor Bot 실행과 운영](./monitor-bot/README.md)

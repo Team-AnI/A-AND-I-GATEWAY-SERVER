@@ -27,3 +27,26 @@ Monitor Bot test는 median이 `0.308s`에서 `0.31s`로 악화되어 단독 resu
 | gateway_image_build_only | 개선 없음 | 운영 배포가 아닌 CD dry-run image build 단계에서 median moved from 0.902s to 1.635s (-81.26%). |
 | monitor_bot_image_build_only | 개선 없음 | 운영 배포가 아닌 CD dry-run image build 단계에서 median moved from 0.313s to 1.042s (-232.91%). |
 | image_build_warm_cache | 개선 없음 | BuildKit cache hit evidence was true, but median moved from 5.264s to 5.332s (-1.29%), so no cache-hit speedup claim is allowed. |
+
+## Gateway Observability
+
+Source of truth: [`docs/metrics/gateway-observability-summary.json`](./metrics/gateway-observability-summary.json)
+
+These candidates are based on local tests and mock/fake Monitor Bot coverage. They are not CI/CD speedup, runtime performance improvement, production CloudWatch, Discord API, or production URL claims.
+
+## Observability Resume Sentence Candidates
+
+- traceId/requestId 기반 구조화 로그와 공통 오류 응답 계약을 테스트로 검증해 요청 추적성과 장애 분석 흐름을 관리
+- Mock CloudWatch/Discord 기반 Monitor Bot 테스트로 장애 알림 cooldown과 중복 mention 억제 동작을 검증
+
+## Observability Evidence
+
+| 항목 | 값 |
+| :--- | ---: |
+| traceId/requestId tests | 2 |
+| Gateway error contract tests | 7 |
+| structured log redaction tests | 2 |
+| Gateway observability related tests | 30 |
+| Monitor Bot mock tests | 93 |
+
+Safety flags in the source JSON keep actual AWS CloudWatch access, actual Discord API access, production URL access, and production secret storage as `false`.

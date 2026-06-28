@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-28T15:32:44Z",
+  "repository": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+  "scope": "Gateway observability, error contract, redaction, and Monitor Bot mock tests",
+  "safety": {
+    "actualAwsCloudWatchAccess": false,
+    "actualDiscordApiAccess": false,
+    "productionUrlAccess": false,
+    "productionSecretStored": false
+  },
+  "metrics": {
+    "traceIdRequestIdTestCount": 2,
+    "errorContractTestCount": 7,
+    "logRedactionTestCount": 2,
+    "gatewayObservabilityTestCount": 30,
+    "monitorBotMockTestCount": 93
+  },
+  "categories": {
+    "traceIdRequestIdTests": {
+      "label": "traceId/requestId tests",
+      "testCount": 2,
+      "files": [
+        {
+          "path": "src/test/kotlin/com/aandi/gateway/observability/TraceIdRequestIdTest.kt",
+          "testCount": 2
+        }
+      ]
+    },
+    "errorContractTests": {
+      "label": "Gateway error contract tests",
+      "testCount": 7,
+      "files": [
+        {
+          "path": "src/test/kotlin/com/aandi/gateway/errorcontract/GatewayErrorContractTest.kt",
+          "testCount": 7
+        }
+      ]
+    },
+    "logRedactionTests": {
+      "label": "structured log redaction tests",
+      "testCount": 2,
+      "files": [
+        {
+          "path": "src/test/kotlin/com/aandi/gateway/logging/StructuredLogRedactionTest.kt",
+          "testCount": 2
+        }
+      ]
+    },
+    "existingLoggingContractTests": {
+      "label": "existing Gateway logging contract tests",
+      "testCount": 19,
+      "files": [
+        {
+          "path": "src/test/kotlin/com/aandi/gateway/logging/ApiLoggingContractTests.kt",
+          "testCount": 19
+        }
+      ]
+    },
+    "monitorBotMockTests": {
+      "label": "Monitor Bot mock tests",
+      "testCount": 93,
+      "files": [
+        {
+          "path": "monitor-bot/internal/discord/observability_handlers_test.go",
+          "testCount": 4
+        },
+        {
+          "path": "monitor-bot/internal/discord/interactions_test.go",
+          "testCount": 9
+        },
+        {
+          "path": "monitor-bot/internal/discord/commands_test.go",
+          "testCount": 23
+        },
+        {
+          "path": "monitor-bot/internal/cloudwatch/queries_test.go",
+          "testCount": 20
+        },
+        {
+          "path": "monitor-bot/internal/monitor/alerts_test.go",
+          "testCount": 23
+        },
+        {
+          "path": "monitor-bot/internal/monitor/dashboard_test.go",
+          "testCount": 14
+        }
+      ]
+    }
+  },
+  "resumeSentenceCandidates": [
+    "traceId/requestId 기반 구조화 로그와 공통 오류 응답 계약을 테스트로 검증해 요청 추적성과 장애 분석 흐름을 관리",
+    "Mock CloudWatch/Discord 기반 Monitor Bot 테스트로 장애 알림 cooldown과 중복 mention 억제 동작을 검증"
+  ]
+}
