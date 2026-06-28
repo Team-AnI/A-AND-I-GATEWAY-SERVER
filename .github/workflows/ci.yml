@@ -27,6 +27,16 @@ jobs:
       - name: Run backend tests
         run: ./gradlew test
 
+      - name: Save backend build outputs
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/classes
+            build/generated
+            build/resources
+            build/tmp
+          key: backend-build-outputs-${{ github.run_id }}-${{ github.run_attempt }}
+
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -104,6 +114,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore backend build outputs
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            build/classes
+            build/generated
+            build/resources
+            build/tmp
+          key: backend-build-outputs-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
@@ -114,7 +135,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build JAR
-        run: ./gradlew build -x test
+        run: ./gradlew bootJar -x test
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
