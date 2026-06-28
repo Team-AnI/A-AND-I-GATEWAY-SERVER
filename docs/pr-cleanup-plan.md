@@ -12,11 +12,14 @@
 
 Each closed PR received the superseded comment that points to #44 as the completed 5-run remeasurement PR and states that no production deploy, AWS, ECR, SSH, or docker push was executed.
 
+## Closed after follow-up review
+
+- #41: closed because it added local Gateway runtime overhead measurement coverage but did not provide a clear performance improvement metric, and after #44 it conflicted with the completed CI/CD resume metrics document.
+
 ## Left Open
 
 - #18: left open because it is a refresh response security PR and is unrelated to Gateway CI/CD remeasurement.
-- #40: left open because it is an observability/error contract metrics PR, not a superseded CI/CD measurement PR.
-- #41: left open because it is a performance overhead scenario PR, not a superseded CI/CD measurement PR.
+- #40: kept as a separate observability/error contract metrics PR. It adds local tests, mock/fake Monitor Bot coverage, and `docs/metrics/gateway-observability-summary.json` without changing #44's CI/CD measurement source of truth.
 
 Open PR diff review confirmed these retained PRs do not duplicate the #44 CI/CD remeasurement artifact set.
 

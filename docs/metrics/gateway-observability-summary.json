@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-28T02:25:07Z",
+  "generatedAt": "2026-06-28T15:32:44Z",
   "repository": "Team-AnI/A-AND-I-GATEWAY-SERVER",
   "scope": "Gateway observability, error contract, redaction, and Monitor Bot mock tests",
   "safety": {

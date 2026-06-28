@@ -170,7 +170,6 @@ def render_markdown(summary: dict[str, Any]) -> str:
             "",
             "- traceId/requestId 기반 구조화 로그와 공통 오류 응답 계약을 테스트로 검증해 요청 추적성과 장애 분석 흐름을 관리",
             "- Mock CloudWatch/Discord 기반 Monitor Bot 테스트로 장애 알림 cooldown과 중복 mention 억제 동작을 검증",
-            "- [확인 필요] traceId/requestId 구조화 로그와 Discord Monitor Bot 기반 운영 조회 흐름 구축",
             "",
         ]
     )
