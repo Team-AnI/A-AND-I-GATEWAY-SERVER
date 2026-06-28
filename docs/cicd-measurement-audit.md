@@ -58,9 +58,9 @@ Image-only metrics isolate Docker image construction:
 
 BuildKit cache hit evidence remains `확인 필요`; no cache-hit-based speed claim is allowed.
 
-### Cold and Warm Cache
+### Measurement Profile
 
-The measurement workflow separates `cold` and `warm` cache modes. The official dispatch was blocked before either mode produced samples. Therefore, cache mode impact is not measured.
+The measurement workflow uses `measurement_profile=official` for the 5-run gate. The official dispatch was blocked before the updated profile produced samples. Therefore, cache impact is not measured.
 
 ### Resume Usage
 

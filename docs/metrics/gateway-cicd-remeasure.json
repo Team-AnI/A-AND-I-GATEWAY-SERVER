@@ -28,8 +28,7 @@
   },
   "manual_commands": [
     "Ensure .github/workflows/measure-gateway-cicd.yml exists on the default branch main, or run the measurement from a default-branch workflow that checks out baseline_ref and candidate_ref.",
-    "gh workflow run \"Measure Gateway CI/CD Same Scope\" --ref develop-gateway-cicd-same-scope-remeasure -f baseline_ref=main -f candidate_ref=develop-gateway-cicd-same-scope-remeasure -f iterations=5 -f cache_mode=cold",
-    "gh workflow run \"Measure Gateway CI/CD Same Scope\" --ref develop-gateway-cicd-same-scope-remeasure -f baseline_ref=main -f candidate_ref=develop-gateway-cicd-same-scope-remeasure -f iterations=5 -f cache_mode=warm"
+    "gh workflow run \"Measure Gateway CI/CD Same Scope\" --ref develop-gateway-cicd-same-scope-remeasure -f baseline_ref=main -f candidate_ref=develop-gateway-cicd-same-scope-remeasure -f iterations=5 -f measurement_profile=official"
   ],
   "safety": {
     "production_deploy_executed": false,

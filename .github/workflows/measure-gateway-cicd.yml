@@ -12,16 +12,17 @@ on:
         required: true
         default: develop-gateway-cicd-same-scope-remeasure
       iterations:
-        description: Number of official runs per side
+        description: Number of runs per side
         required: true
         default: "5"
-      cache_mode:
-        description: cold or warm
+      measurement_profile:
+        description: Measurement profile
         required: true
+        default: official
         type: choice
         options:
-          - cold
-          - warm
+          - official
+          - smoke
 
 permissions:
   contents: read
@@ -34,12 +35,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - measurement: same-scope-ci-before
-            side: before
-            scope: same-scope-ci
-          - measurement: same-scope-ci-after
-            side: after
-            scope: same-scope-ci
           - measurement: full-gate-ci-before
             side: before
             scope: full-gate-ci
@@ -96,11 +91,12 @@ jobs:
             scope: image-build-warm-cache
 
     env:
-      CACHE_MODE: ${{ inputs.cache_mode }}
       ITERATIONS: ${{ inputs.iterations }}
+      MEASUREMENT_PROFILE: ${{ inputs.measurement_profile }}
       MEASURE_NAME: ${{ matrix.measurement }}
       MEASURE_SCOPE: ${{ matrix.scope }}
       MEASURE_SIDE: ${{ matrix.side }}
+      RESULT_DIR: ${{ runner.temp }}/gateway-cicd-measurements
 
     steps:
       - name: Checkout measured ref
@@ -110,10 +106,10 @@ jobs:
 
       - name: Validate measurement inputs
         run: |
-          case "$CACHE_MODE" in
-            cold|warm) ;;
+          case "$MEASUREMENT_PROFILE" in
+            official|smoke) ;;
             *)
-              echo "cache_mode must be cold or warm" >&2
+              echo "measurement_profile must be official or smoke" >&2
               exit 1
               ;;
           esac
@@ -130,50 +126,52 @@ jobs:
             exit 1
           fi
 
+          if [ "$MEASUREMENT_PROFILE" = "official" ] && [ "$ITERATIONS" -lt 5 ]; then
+            echo "official measurement_profile requires iterations >= 5" >&2
+            exit 1
+          fi
+
           {
             echo "measurement=$MEASURE_NAME"
             echo "scope=$MEASURE_SCOPE"
             echo "side=$MEASURE_SIDE"
-            echo "cache-mode=$CACHE_MODE"
+            echo "measurement-profile=$MEASUREMENT_PROFILE"
             echo "iterations=$ITERATIONS"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Java 21 with Gradle cache
-        if: inputs.cache_mode == 'warm' && contains('same-scope-ci,full-gate-ci,backend-test,build-jar-same-scope,cd-dry-run-full-path,gateway-image-build-only,image-build-warm-cache', matrix.scope)
+        if: contains('full-gate-ci,backend-test,build-jar-same-scope,cd-dry-run-full-path,gateway-image-build-only,image-build-warm-cache', matrix.scope)
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Java 21 without Gradle cache
-        if: inputs.cache_mode == 'cold' && contains('same-scope-ci,full-gate-ci,backend-test,build-jar-same-scope,cd-dry-run-full-path,gateway-image-build-only,image-build-warm-cache', matrix.scope)
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Setup Go with module cache
-        if: inputs.cache_mode == 'warm' && contains('same-scope-ci,full-gate-ci,monitor-bot-test,cd-dry-run-full-path', matrix.scope)
+      - name: Setup Go
+        id: setup-go
+        if: contains('full-gate-ci,monitor-bot-test,cd-dry-run-full-path', matrix.scope)
         uses: actions/setup-go@v5
         with:
           go-version-file: monitor-bot/go.mod
-          cache: true
+          cache: ${{ matrix.side == 'after' }}
           cache-dependency-path: monitor-bot/go.sum
 
-      - name: Setup Go without module cache
-        if: inputs.cache_mode == 'cold' && contains('same-scope-ci,full-gate-ci,monitor-bot-test,cd-dry-run-full-path', matrix.scope)
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: monitor-bot/go.mod
-          cache: false
+      - name: Log Go cache inputs
+        if: contains('full-gate-ci,monitor-bot-test,cd-dry-run-full-path', matrix.scope)
+        run: |
+          echo "go-version-file=monitor-bot/go.mod"
+          echo "cache-dependency-path=monitor-bot/go.sum"
+          echo "go-cache-configured=${{ matrix.side == 'after' }}"
+          echo "setup-go-cache-hit=${{ steps.setup-go.outputs.cache-hit }}"
+          sha256sum monitor-bot/go.sum
 
       - name: Set up Docker Buildx
         if: contains('cd-dry-run-full-path,gateway-image-build-only,monitor-bot-image-build-only,image-build-warm-cache', matrix.scope)
         uses: docker/setup-buildx-action@v3
 
       - name: Restore Docker BuildKit cache
-        if: contains('cd-dry-run-full-path,gateway-image-build-only,monitor-bot-image-build-only,image-build-warm-cache', matrix.scope) && (inputs.cache_mode == 'warm' || matrix.scope == 'image-build-warm-cache')
+        id: buildkit-cache
+        if: contains('cd-dry-run-full-path,gateway-image-build-only,monitor-bot-image-build-only,image-build-warm-cache', matrix.scope) && (matrix.side == 'after' || matrix.scope == 'image-build-warm-cache')
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
@@ -181,8 +179,14 @@ jobs:
           restore-keys: |
             buildx-${{ runner.os }}-${{ matrix.scope }}-${{ matrix.side }}-
 
+      - name: Log BuildKit cache inputs
+        if: contains('cd-dry-run-full-path,gateway-image-build-only,monitor-bot-image-build-only,image-build-warm-cache', matrix.scope)
+        run: |
+          echo "buildkit-cache-configured=${{ matrix.side == 'after' || matrix.scope == 'image-build-warm-cache' }}"
+          echo "buildkit-cache-hit=${{ steps.buildkit-cache.outputs.cache-hit }}"
+
       - name: Read k6 version
-        if: contains('same-scope-ci,full-gate-ci,performance-assets', matrix.scope)
+        if: contains('full-gate-ci,performance-assets', matrix.scope)
         id: k6-version
         run: |
           k6_version="$(tr -d '[:space:]' < performance/k6/K6_VERSION)"
@@ -190,85 +194,55 @@ jobs:
           echo "version=$k6_version" >> "$GITHUB_OUTPUT"
 
       - name: Restore k6 binary
-        if: inputs.cache_mode == 'warm' && contains('same-scope-ci,full-gate-ci,performance-assets', matrix.scope)
+        id: k6-cache
+        if: matrix.side == 'after' && contains('full-gate-ci,performance-assets', matrix.scope)
         uses: actions/cache@v4
         with:
           path: ~/.cache/k6/${{ steps.k6-version.outputs.version }}/k6
           key: k6-${{ runner.os }}-amd64-${{ steps.k6-version.outputs.version }}
 
-      - name: Install k6
-        if: contains('same-scope-ci,full-gate-ci,performance-assets', matrix.scope)
+      - name: Log k6 cache inputs
+        if: contains('full-gate-ci,performance-assets', matrix.scope)
         run: |
-          version_file="performance/k6/K6_VERSION"
-          cache_root="$HOME/.cache/k6"
-          install_dir="/usr/local/bin"
+          echo "k6-version=${{ steps.k6-version.outputs.version }}"
+          echo "k6-cache-configured=${{ matrix.side == 'after' }}"
+          echo "k6-cache-hit=${{ steps.k6-cache.outputs.cache-hit }}"
 
-          k6_version="$(tr -d '[:space:]' < "$version_file")"
-          case "$k6_version" in
-            v[0-9]*.[0-9]*.[0-9]*) ;;
-            *)
-              echo "Invalid k6 version: $k6_version" >&2
-              exit 1
-              ;;
-          esac
-
-          if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
-            echo "Unsupported k6 install target: $(uname -s) $(uname -m)" >&2
-            exit 1
-          fi
-
-          cache_dir="$cache_root/$k6_version"
-          cache_bin="$cache_dir/k6"
-          mkdir -p "$cache_dir"
-
-          k6_actual_version() {
-            "$1" version | awk 'NR == 1 { print $2 }'
-          }
-
-          assert_k6_version() {
-            local binary="$1"
-            local actual
-
-            actual="$(k6_actual_version "$binary")"
-            if [ "$actual" != "$k6_version" ]; then
-              echo "k6 version mismatch for $binary: expected $k6_version, got $actual" >&2
-              exit 1
-            fi
-          }
-
-          if [ -x "$cache_bin" ]; then
-            assert_k6_version "$cache_bin"
-          else
-            tmp_dir="$(mktemp -d)"
-            trap 'rm -rf "$tmp_dir"' EXIT
-
-            archive="$tmp_dir/k6.tar.gz"
-            curl -fsSL "https://github.com/grafana/k6/releases/download/${k6_version}/k6-${k6_version}-linux-amd64.tar.gz" -o "$archive"
-            tar -xzf "$archive" -C "$tmp_dir"
-            install -m 0755 "$tmp_dir/k6-${k6_version}-linux-amd64/k6" "$cache_bin"
-            assert_k6_version "$cache_bin"
-          fi
-
-          sudo install -m 0755 "$cache_bin" "$install_dir/k6"
-          assert_k6_version "$install_dir/k6"
-          "$install_dir/k6" version
+      - name: Install k6
+        if: contains('full-gate-ci,performance-assets', matrix.scope)
+        run: scripts/ci/install-k6.sh
 
       - name: Run measurement scope
+        id: run-measurement
+        env:
+          BASELINE_REF: ${{ inputs.baseline_ref }}
+          CANDIDATE_REF: ${{ inputs.candidate_ref }}
+          GO_CACHE_CONFIGURED: ${{ contains('full-gate-ci,monitor-bot-test,cd-dry-run-full-path', matrix.scope) && matrix.side == 'after' }}
+          GO_CACHE_HIT: ${{ steps.setup-go.outputs.cache-hit }}
+          K6_CACHE_CONFIGURED: ${{ contains('full-gate-ci,performance-assets', matrix.scope) && matrix.side == 'after' }}
+          K6_CACHE_HIT: ${{ steps.k6-cache.outputs.cache-hit }}
+          BUILDKIT_CACHE_CONFIGURED: ${{ contains('cd-dry-run-full-path,gateway-image-build-only,monitor-bot-image-build-only,image-build-warm-cache', matrix.scope) && (matrix.side == 'after' || matrix.scope == 'image-build-warm-cache') }}
+          BUILDKIT_CACHE_HIT: ${{ steps.buildkit-cache.outputs.cache-hit }}
         run: |
           set -Eeuo pipefail
+
+          mkdir -p "$RESULT_DIR" measure-artifacts
+          runs_jsonl="$RESULT_DIR/${MEASURE_NAME}.jsonl"
+          result_json="$RESULT_DIR/${MEASURE_NAME}.json"
+          : > "$runs_jsonl"
 
           run_backend_tests() {
             ./gradlew test --build-cache --no-daemon
           }
 
-          build_gateway_jar_after_tests() {
-            ./gradlew bootJar -x test --build-cache --no-daemon
+          run_backend_test_and_jar() {
+            ./gradlew test bootJar --build-cache --no-daemon
             test -f build/libs/app.jar
           }
 
-          run_backend_test_and_jar() {
-            run_backend_tests
-            build_gateway_jar_after_tests
+          build_gateway_jar_only() {
+            ./gradlew bootJar --build-cache --no-daemon
+            test -f build/libs/app.jar
           }
 
           run_monitor_bot_tests() {
@@ -276,9 +250,7 @@ jobs:
           }
 
           run_performance_assets() {
-            if [ -f scripts/ci/install-k6.sh ]; then
-              bash -n scripts/ci/install-k6.sh
-            fi
+            bash -n scripts/ci/install-k6.sh
             bash -n performance/k6/run-local.sh
             node --check performance/mock-upstream/server.js
             find performance/k6 -name '*.js' -print0 | xargs -0 -n1 node --check
@@ -298,30 +270,8 @@ jobs:
             git diff --check
           }
 
-          run_same_scope_ci() {
-            run_backend_test_and_jar
-            run_monitor_bot_tests
-            run_performance_assets
-          }
-
-          run_full_gate_ci() {
-            run_same_scope_ci
-            mkdir -p measure-artifacts
-            cp build/libs/*.jar measure-artifacts/
-            cat > "measure-artifacts/${MEASURE_NAME}.json" <<JSON
-          {
-            "measurement": "${MEASURE_NAME}",
-            "scope": "${MEASURE_SCOPE}",
-            "side": "${MEASURE_SIDE}",
-            "productionDeployExecuted": false,
-            "awsEcrSshExecuted": false,
-            "dockerPushExecuted": false
-          }
-          JSON
-          }
-
           docker_cache_enabled() {
-            [ "$CACHE_MODE" = "warm" ] || [ "$MEASURE_SCOPE" = "image-build-warm-cache" ]
+            [ "$BUILDKIT_CACHE_CONFIGURED" = "true" ]
           }
 
           docker_build_local() {
@@ -352,14 +302,7 @@ jobs:
             fi
           }
 
-          prepare_gateway_image_artifact() {
-            if [ ! -f build/libs/app.jar ]; then
-              build_gateway_jar_after_tests
-            fi
-          }
-
           build_gateway_image_only() {
-            prepare_gateway_image_artifact
             docker_build_local gateway . "aandi-gateway-server:measure-${MEASURE_SIDE}"
           }
 
@@ -374,62 +317,153 @@ jobs:
             build_monitor_bot_image_only
           }
 
+          run_full_gate_ci() {
+            run_backend_test_and_jar
+            run_monitor_bot_tests
+            run_performance_assets
+            cp build/libs/app.jar measure-artifacts/
+            cat > "measure-artifacts/${MEASURE_NAME}.json" <<JSON
+          {
+            "measurement": "${MEASURE_NAME}",
+            "scope": "${MEASURE_SCOPE}",
+            "side": "${MEASURE_SIDE}",
+            "production_deploy_executed": false,
+            "aws_ecr_ssh_executed": false,
+            "docker_push_executed": false
+          }
+          JSON
+          }
+
           run_image_build_warm_cache() {
-            prepare_gateway_image_artifact
             docker_build_local gateway . "aandi-gateway-server:measure-${MEASURE_SIDE}-prime"
             docker_build_local monitor-bot ./monitor-bot "aandi-gateway-monitor-bot:measure-${MEASURE_SIDE}-prime"
             docker_build_local gateway . "aandi-gateway-server:measure-${MEASURE_SIDE}-warm"
             docker_build_local monitor-bot ./monitor-bot "aandi-gateway-monitor-bot:measure-${MEASURE_SIDE}-warm"
           }
 
+          if [ "$MEASURE_SCOPE" = "gateway-image-build-only" ] || [ "$MEASURE_SCOPE" = "image-build-warm-cache" ]; then
+            build_gateway_jar_only
+          fi
+
+          failure_count=0
           for iteration in $(seq 1 "$ITERATIONS"); do
             echo "::group::${MEASURE_NAME} iteration ${iteration}/${ITERATIONS}"
-            case "$MEASURE_SCOPE" in
-              same-scope-ci)
-                run_same_scope_ci
-                ;;
-              full-gate-ci)
-                run_full_gate_ci
-                ;;
-              backend-test)
-                run_backend_tests
-                ;;
-              monitor-bot-test)
-                run_monitor_bot_tests
-                ;;
-              performance-assets)
-                run_performance_assets
-                ;;
-              build-jar-same-scope)
-                run_backend_test_and_jar
-                ;;
-              cd-dry-run-full-path)
-                run_cd_dry_run_full_path
-                ;;
-              gateway-image-build-only)
-                build_gateway_image_only
-                ;;
-              monitor-bot-image-build-only)
-                build_monitor_bot_image_only
-                ;;
-              image-build-warm-cache)
-                run_image_build_warm_cache
-                ;;
-              *)
-                echo "Unknown measurement scope: $MEASURE_SCOPE" >&2
-                exit 1
-                ;;
-            esac
+            start_ns="$(date +%s%N)"
+            set +e
+            (
+              set -Eeuo pipefail
+              case "$MEASURE_SCOPE" in
+                full-gate-ci)
+                  run_full_gate_ci
+                  ;;
+                backend-test)
+                  run_backend_tests
+                  ;;
+                monitor-bot-test)
+                  run_monitor_bot_tests
+                  ;;
+                performance-assets)
+                  run_performance_assets
+                  ;;
+                build-jar-same-scope)
+                  run_backend_test_and_jar
+                  ;;
+                cd-dry-run-full-path)
+                  run_cd_dry_run_full_path
+                  ;;
+                gateway-image-build-only)
+                  build_gateway_image_only
+                  ;;
+                monitor-bot-image-build-only)
+                  build_monitor_bot_image_only
+                  ;;
+                image-build-warm-cache)
+                  run_image_build_warm_cache
+                  ;;
+                *)
+                  echo "Unknown measurement scope: $MEASURE_SCOPE" >&2
+                  exit 1
+                  ;;
+              esac
+            )
+            status_code="$?"
+            set -e
+            end_ns="$(date +%s%N)"
+            if [ "$status_code" -eq 0 ]; then
+              status="success"
+            else
+              status="failure"
+              failure_count=$((failure_count + 1))
+            fi
+
+            python3 - "$runs_jsonl" "$iteration" "$status" "$status_code" "$start_ns" "$end_ns" <<'PY'
+          import json
+          import sys
+
+          output_path, iteration, status, status_code, start_ns, end_ns = sys.argv[1:]
+          duration_seconds = (int(end_ns) - int(start_ns)) / 1_000_000_000
+          with open(output_path, "a", encoding="utf-8") as handle:
+              handle.write(json.dumps({
+                  "iteration": int(iteration),
+                  "status": status,
+                  "exit_code": int(status_code),
+                  "duration_seconds": round(duration_seconds, 3),
+              }, ensure_ascii=False) + "\n")
+          PY
             echo "::endgroup::"
           done
 
+          python3 - "$runs_jsonl" "$result_json" <<'PY'
+          import json
+          import os
+          import sys
+
+          runs_path, result_path = sys.argv[1:]
+          with open(runs_path, encoding="utf-8") as handle:
+              runs = [json.loads(line) for line in handle if line.strip()]
+
+          payload = {
+              "repository": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+              "baseline_ref": os.environ["BASELINE_REF"],
+              "candidate_ref": os.environ["CANDIDATE_REF"],
+              "measurement_profile": os.environ["MEASUREMENT_PROFILE"],
+              "measurement": os.environ["MEASURE_NAME"],
+              "scope": os.environ["MEASURE_SCOPE"],
+              "side": os.environ["MEASURE_SIDE"],
+              "iterations_requested": int(os.environ["ITERATIONS"]),
+              "runs": runs,
+              "go_cache_configured": os.environ["GO_CACHE_CONFIGURED"] == "true",
+              "go_cache_hit_observed": os.environ.get("GO_CACHE_HIT") or "확인 필요",
+              "k6_cache_configured": os.environ["K6_CACHE_CONFIGURED"] == "true",
+              "k6_cache_hit_observed": os.environ.get("K6_CACHE_HIT") or "확인 필요",
+              "buildkit_cache_configured": os.environ["BUILDKIT_CACHE_CONFIGURED"] == "true",
+              "buildkit_cache_hit_observed": os.environ.get("BUILDKIT_CACHE_HIT") or "확인 필요",
+              "production_deploy_executed": False,
+              "docker_push_executed": False,
+              "aws_ecr_ssh_executed": False,
+          }
+          with open(result_path, "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, ensure_ascii=False, indent=2)
+              handle.write("\n")
+          PY
+
+          echo "failure_count=$failure_count" >> "$GITHUB_OUTPUT"
+
+      - name: Upload measurement result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-cicd-measure-${{ matrix.measurement }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/gateway-cicd-measurements/${{ matrix.measurement }}.json
+          if-no-files-found: warn
+
       - name: Upload full gate artifacts
-        if: matrix.scope == 'full-gate-ci'
+        if: always() && matrix.scope == 'full-gate-ci'
         uses: actions/upload-artifact@v4
         with:
           name: measure-${{ matrix.measurement }}-${{ github.run_id }}
           path: measure-artifacts/
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Download full gate artifacts
         if: matrix.scope == 'full-gate-ci'
@@ -441,3 +475,49 @@ jobs:
       - name: Verify full gate artifacts
         if: matrix.scope == 'full-gate-ci'
         run: test -n "$(find "$RUNNER_TEMP/measure-full-gate-download" -type f -print -quit)"
+
+      - name: Fail failed measurement scope
+        if: steps.run-measurement.outputs.failure_count != '0'
+        run: |
+          echo "${{ matrix.measurement }} had ${{ steps.run-measurement.outputs.failure_count }} failed iteration(s)" >&2
+          exit 1
+
+  finalize:
+    name: Finalize gateway CI/CD metrics
+    runs-on: ubuntu-latest
+    needs: measure
+    if: always()
+    steps:
+      - name: Checkout candidate ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_ref }}
+
+      - name: Download measurement results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: gateway-cicd-measure-*
+          path: ${{ runner.temp }}/gateway-cicd-results
+
+      - name: Aggregate metrics
+        if: always()
+        run: |
+          python3 scripts/aggregate-gateway-cicd-metrics.py \
+            --input-dir "$RUNNER_TEMP/gateway-cicd-results" \
+            --output docs/metrics/gateway-cicd-remeasure.json \
+            --baseline-ref "${{ inputs.baseline_ref }}" \
+            --candidate-ref "${{ inputs.candidate_ref }}" \
+            --iterations "${{ inputs.iterations }}" \
+            --measurement-profile "${{ inputs.measurement_profile }}"
+
+      - name: Upload final metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-cicd-remeasure-${{ github.run_id }}
+          path: docs/metrics/gateway-cicd-remeasure.json
+          if-no-files-found: error
+
+      - name: Validate final metrics
+        run: python3 scripts/validate-gateway-cicd-metrics.py docs/metrics/gateway-cicd-remeasure.json
