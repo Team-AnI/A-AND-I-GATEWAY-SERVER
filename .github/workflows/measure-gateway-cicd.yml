@@ -96,7 +96,6 @@ jobs:
       MEASURE_NAME: ${{ matrix.measurement }}
       MEASURE_SCOPE: ${{ matrix.scope }}
       MEASURE_SIDE: ${{ matrix.side }}
-      RESULT_DIR: ${{ runner.temp }}/gateway-cicd-measurements
 
     steps:
       - name: Checkout measured ref
@@ -226,6 +225,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
+          RESULT_DIR="$RUNNER_TEMP/gateway-cicd-measurements"
           mkdir -p "$RESULT_DIR" measure-artifacts
           runs_jsonl="$RESULT_DIR/${MEASURE_NAME}.jsonl"
           result_json="$RESULT_DIR/${MEASURE_NAME}.json"

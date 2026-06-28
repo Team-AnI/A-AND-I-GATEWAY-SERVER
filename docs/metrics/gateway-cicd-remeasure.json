@@ -14,6 +14,17 @@
   "blocking_reason": "GitHub Actions workflow_dispatch API returned HTTP 404 because .github/workflows/measure-gateway-cicd.yml is not present on the default branch main. No official measurement dispatch was started.",
   "dispatch_attempted": false,
   "dispatch_error": "HTTP 404: workflow .github/workflows/measure-gateway-cicd.yml not found on the default branch",
+  "superseded_measurement_attempts": [
+    {
+      "attempted_at": "2026-06-28T06:19:36Z",
+      "ref": "develop-gateway-cicd-same-scope-remeasure",
+      "candidate_commit": "9a4ffd5",
+      "status": "dispatch_failed",
+      "official_measurement": false,
+      "reason": "GitHub workflow parser rejected job-level runner.temp context before creating a run.",
+      "error": "HTTP 422: failed to parse workflow: Unrecognized named-value: 'runner' within expression: runner.temp"
+    }
+  ],
   "smoke_check": {
     "candidate_branch_checked_out": true,
     "measurement_workflow_exists_locally": true,
