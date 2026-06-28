@@ -1,6 +1,7 @@
 import {
   ENV,
   assertLocalTargetAllowed,
+  assertLocalRegressionTargetAllowed,
   baseConfig,
   buildContractOptions,
   buildLoadOptions,
@@ -14,6 +15,7 @@ import {
 export {
   ENV,
   assertLocalTargetAllowed,
+  assertLocalRegressionTargetAllowed,
   baseConfig,
   buildContractOptions,
   buildLoadOptions,

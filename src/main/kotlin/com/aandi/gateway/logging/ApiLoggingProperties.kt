@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties("aandi.logging")
 data class ApiLoggingProperties(
     val env: String = "local",
+    val requestResponseEnabled: Boolean = true,
     val service: ServiceProperties = ServiceProperties()
 ) {
     data class ServiceProperties(

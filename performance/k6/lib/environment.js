@@ -76,8 +76,9 @@ function localTimestamp() {
 export const ENV = Object.freeze({
   baseUrl: trimTrailingSlash(__ENV.BASE_URL || 'http://localhost:8080'),
   upstreamBaseUrl: trimTrailingSlash(__ENV.UPSTREAM_BASE_URL || 'http://localhost:18080'),
+  downstreamUrl: trimTrailingSlash(__ENV.DOWNSTREAM_URL || __ENV.UPSTREAM_BASE_URL || 'http://localhost:18080'),
   allowRemoteLoadTest: parseBoolean('ALLOW_REMOTE_LOAD_TEST', false),
-  targetEnvironment: (__ENV.TARGET_ENVIRONMENT || 'local').trim().toLowerCase(),
+  targetEnvironment: (__ENV.TARGET_ENVIRONMENT || __ENV.TARGET_ENV || 'local').trim().toLowerCase(),
   remoteTargetAllowlist: (__ENV.REMOTE_TARGET_ALLOWLIST || '')
     .split(',')
     .map((value) => value.trim().toLowerCase())
@@ -155,6 +156,30 @@ function parseHttpUrl(url, name) {
   };
 }
 
+function isPublicIpv4(host) {
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+    return false;
+  }
+  const parts = host.split('.').map((part) => Number(part));
+  if (parts.some((part) => part < 0 || part > 255)) {
+    throw new Error(`${host} is not a valid IPv4 address`);
+  }
+  return host !== '127.0.0.1';
+}
+
+function assertNoForbiddenProductionTarget(url, name, host) {
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('aandiclub.com') || lowerUrl.includes('api.aandiclub.com')) {
+    throw new Error(`${name}=${url} is blocked because production host strings are forbidden`);
+  }
+  if (isPublicIpv4(host)) {
+    throw new Error(`${name}=${url} is blocked because EC2/public IPv4 targets are forbidden`);
+  }
+  if (ENV.targetEnvironment === 'prod' || ENV.targetEnvironment === 'production') {
+    throw new Error(`${name}=${url} is blocked because TARGET_ENV=${ENV.targetEnvironment}`);
+  }
+}
+
 export function assertLocalTargetAllowed(url, name) {
   const { protocol, host } = parseHttpUrl(url, name);
   const allowed = host === 'localhost'
@@ -183,6 +208,20 @@ export function assertLocalTargetAllowed(url, name) {
   throw new Error(
     `${name}=${url} is not an approved local or staging target. Set ALLOW_REMOTE_LOAD_TEST=true, TARGET_ENVIRONMENT=staging, and include the exact host in REMOTE_TARGET_ALLOWLIST.`,
   );
+}
+
+export function assertLocalRegressionTargetAllowed(url, name, options = {}) {
+  const { host } = parseHttpUrl(url, name);
+  assertNoForbiddenProductionTarget(url, name, host);
+
+  const allowMockUpstream = options.allowMockUpstream === true;
+  const allowed = host === 'localhost'
+    || host === '127.0.0.1'
+    || (allowMockUpstream && host === 'mock-upstream');
+
+  if (!allowed) {
+    throw new Error(`${name}=${url} is not allowed for local Gateway overhead measurements`);
+  }
 }
 
 export function buildLoadOptions() {

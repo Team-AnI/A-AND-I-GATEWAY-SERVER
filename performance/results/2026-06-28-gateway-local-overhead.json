@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "project": "A-AND-I-GATEWAY-SERVER",
+  "resultType": "gateway-local-overhead",
+  "generatedAt": "2026-06-28T00:00:00+00:00",
+  "measurementStatus": "측정 필요",
+  "confidence": "측정 필요",
+  "resumeUse": "사용 비추천",
+  "acceptedPairCount": 0,
+  "requiredPairCountPerDimension": 3,
+  "localRegressionNote": "운영 최대 처리량이 아니라 로컬 Mock Downstream 기반 회귀 검증 기준",
+  "safety": {
+    "productionAccess": false,
+    "awsAccess": false,
+    "discordAccess": false,
+    "allowedTargets": [
+      "localhost",
+      "127.0.0.1",
+      "mock-upstream"
+    ],
+    "blockedTargets": [
+      "aandiclub.com",
+      "api.aandiclub.com",
+      "EC2 public IPv4",
+      "prod",
+      "production"
+    ]
+  },
+  "environment": {
+    "commitSha": "9c3bcf803fc653df84fd42b62ad8dda5d0967380",
+    "k6Version": "k6 v2.0.0 (commit/devel, go1.26.3, darwin/arm64)",
+    "jvmVersion": "openjdk version \"21.0.6\" 2025-01-21",
+    "dockerVersion": "unavailable: docker daemon is not running",
+    "plannedMeasurement": {
+      "vus": "1",
+      "duration": "10s",
+      "payloadBytes": [
+        1024,
+        65536,
+        1048576
+      ],
+      "targetUrls": {
+        "BASE_URL": "http://localhost:8080",
+        "UPSTREAM_BASE_URL": "http://localhost:18080",
+        "DOWNSTREAM_URL": "http://localhost:18080"
+      }
+    }
+  },
+  "plannedMeasurement": {
+    "vus": "1",
+    "duration": "10s",
+    "payloadBytes": [
+      1024,
+      65536,
+      1048576
+    ],
+    "targetUrls": {
+      "BASE_URL": "http://localhost:8080",
+      "UPSTREAM_BASE_URL": "http://localhost:18080",
+      "DOWNSTREAM_URL": "http://localhost:18080"
+    }
+  },
+  "blockingReasons": [
+    "Docker daemon unavailable: docker API socket is not running",
+    "Installed k6 is k6 v2.0.0 (commit/devel, go1.26.3, darwin/arm64); expected official v1.7.1"
+  ],
+  "groups": [],
+  "missingGroups": [
+    {
+      "scenario": "payload-overhead",
+      "dimension": 1024
+    },
+    {
+      "scenario": "payload-overhead",
+      "dimension": 65536
+    },
+    {
+      "scenario": "payload-overhead",
+      "dimension": 1048576
+    },
+    {
+      "scenario": "route-overhead",
+      "dimension": "public"
+    },
+    {
+      "scenario": "route-overhead",
+      "dimension": "protected"
+    },
+    {
+      "scenario": "logging-overhead",
+      "dimension": "enabled"
+    },
+    {
+      "scenario": "logging-overhead",
+      "dimension": "disabled"
+    }
+  ],
+  "rateLimit": {
+    "confidence": "측정 필요",
+    "resumeUse": "사용 비추천",
+    "expectedAllowed": null,
+    "expectedRejected": null,
+    "actualAllowed": null,
+    "actualRejected": null,
+    "checksRate": null,
+    "httpFailedRate": null
+  },
+  "errorContract": {
+    "confidence": "측정 필요",
+    "resumeUse": "사용 비추천",
+    "status": "[측정 필요]",
+    "checksRate": null,
+    "httpFailedRate": null
+  },
+  "limitations": [
+    "local mock downstream only",
+    "not a maximum throughput claim",
+    "not production traffic",
+    "requires at least 3 direct/gateway pairs before resume use"
+  ]
+}

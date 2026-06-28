@@ -54,6 +54,8 @@ function toMarkdown(summary) {
   const requests = summary.metrics.http_reqs;
   const failed = summary.metrics.http_req_failed;
   const checks = summary.metrics.checks;
+  const iterations = summary.metrics.iterations;
+  const dropped = summary.metrics.dropped_iterations;
 
   return [
     `# ${summary.testName}`,
@@ -74,6 +76,8 @@ function toMarkdown(summary) {
     `| HTTP duration P95 | ${markdownValue(duration.p95, ' ms')} |`,
     `| HTTP duration P99 | ${markdownValue(duration.p99, ' ms')} |`,
     `| Requests/sec | ${markdownValue(requests.rate)} |`,
+    `| Iterations | ${markdownValue(iterations.count)} |`,
+    `| Dropped iterations | ${markdownValue(dropped.count)} |`,
     `| HTTP failed rate | ${markdownValue(failed.rate)} |`,
     `| Check rate | ${markdownValue(checks.rate)} |`,
     '',
@@ -99,6 +103,7 @@ function buildSummary(data, testName, metadata) {
       http_reqs: httpReqs,
       http_req_failed: compactMetric(data, 'http_req_failed'),
       checks: compactMetric(data, 'checks'),
+      iterations: compactMetric(data, 'iterations'),
       dropped_iterations: droppedIterations,
       rate_limit_allowed_responses: compactMetric(data, 'rate_limit_allowed_responses'),
       rate_limit_rejected_responses: compactMetric(data, 'rate_limit_rejected_responses'),

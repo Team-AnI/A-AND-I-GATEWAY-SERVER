@@ -1,6 +1,7 @@
 package com.aandi.gateway.logging
 
 import org.reactivestreams.Publisher
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.core.Ordered
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferUtils
@@ -20,6 +21,12 @@ import java.security.Principal
 import java.util.Optional
 
 @Component
+@ConditionalOnProperty(
+    prefix = "aandi.logging",
+    name = ["request-response-enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class RequestResponseLoggingFilter(
     private val apiLogFactory: ApiLogFactory,
     private val apiStructuredLogger: ApiStructuredLogger

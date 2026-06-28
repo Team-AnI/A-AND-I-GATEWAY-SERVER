@@ -48,10 +48,12 @@ jobs:
       - name: Validate performance assets
         run: |
           bash -n performance/k6/run-local.sh
+          bash -n performance/k6/run-local-overhead.sh
           node --check performance/mock-upstream/server.js
           find performance/k6 -name '*.js' -print0 | xargs -0 -n1 node --check
-          python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py performance/aggregate/summarize_gateway_runs.py performance/report/generate_gateway_k6_assets.py
+          python3 -m py_compile performance/compare/compare_results.py performance/k6/tools/generate_test_jwt.py performance/aggregate/summarize_gateway_runs.py performance/aggregate/summarize_gateway_overhead.py performance/report/generate_gateway_k6_assets.py
           python3 -m json.tool docs/performance/data/2026-06-20-gateway-local-check.json >/dev/null
+          python3 -m json.tool docs/performance/data/2026-06-28-gateway-local-overhead.json >/dev/null
           python3 -m unittest performance.compare.test_compare_results
           python3 -m unittest discover -s performance/aggregate -p 'test_*.py' -v
           python3 -m unittest discover -s performance/report -p 'test_*.py' -v
@@ -61,6 +63,9 @@ jobs:
           k6 inspect performance/k6/direct-upstream.js
           k6 inspect performance/k6/gateway-public-route.js
           k6 inspect performance/k6/gateway-protected-route.js
+          k6 inspect performance/k6/gateway-payload-overhead.js
+          k6 inspect performance/k6/gateway-route-overhead.js
+          k6 inspect performance/k6/gateway-logging-overhead.js
           k6 inspect performance/k6/gateway-error-contract.js
           k6 inspect performance/k6/gateway-rate-limit.js
           git diff --check
