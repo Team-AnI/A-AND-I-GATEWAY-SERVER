@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  build:
+  gateway-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +26,20 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test/
+
+  monitor-bot-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -34,8 +48,31 @@ jobs:
       - name: Run monitor-bot tests
         run: cd monitor-bot && go test ./...
 
+  jar-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
       - name: Build JAR
         run: ./gradlew build -x test
+
+  performance-assets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install k6
         run: |
@@ -65,9 +102,19 @@ jobs:
           k6 inspect performance/k6/gateway-rate-limit.js
           git diff --check
 
-      - name: Upload test report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report
-          path: build/reports/tests/test/
+  build:
+    runs-on: ubuntu-latest
+    needs:
+      - gateway-tests
+      - monitor-bot-tests
+      - jar-build
+      - performance-assets
+    if: always()
+
+    steps:
+      - name: Verify CI jobs
+        run: |
+          test "${{ needs.gateway-tests.result }}" = "success"
+          test "${{ needs.monitor-bot-tests.result }}" = "success"
+          test "${{ needs.jar-build.result }}" = "success"
+          test "${{ needs.performance-assets.result }}" = "success"
