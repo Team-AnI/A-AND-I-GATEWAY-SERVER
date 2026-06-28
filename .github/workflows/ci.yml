@@ -27,16 +27,22 @@ jobs:
       - name: Run backend tests
         run: ./gradlew test --build-cache
 
+      - name: Prime bootJar cache
+        run: ./gradlew bootJar -x test --build-cache --configuration-cache
+
       - name: Save backend build outputs
         uses: actions/cache/save@v4
         with:
           path: |
+            .gradle/configuration-cache
             build/classes
             build/generated
             build/kotlin
+            build/libs
             build/resources
             build/tmp
             ~/.gradle/caches/build-cache-1
+            ~/.gradle/wrapper/dists
           key: backend-build-outputs-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload test report
@@ -120,12 +126,15 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
+            .gradle/configuration-cache
             build/classes
             build/generated
             build/kotlin
+            build/libs
             build/resources
             build/tmp
             ~/.gradle/caches/build-cache-1
+            ~/.gradle/wrapper/dists
           key: backend-build-outputs-${{ github.run_id }}-${{ github.run_attempt }}
           fail-on-cache-miss: true
 
@@ -139,7 +148,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build JAR
-        run: ./gradlew bootJar -x test --build-cache
+        run: ./gradlew bootJar -x test --build-cache --configuration-cache
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
