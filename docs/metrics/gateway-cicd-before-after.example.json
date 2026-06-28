@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "resultType": "gateway-cicd-before-after",
+  "confidence": "확인 완료",
+  "resumeUse": "사용 가능",
+  "before": {
+    "ci": {
+      "workflow": "CI",
+      "branch": "main",
+      "successfulRunCount": 5,
+      "failureRate": 0
+    },
+    "cd": {
+      "workflow": "CD",
+      "branch": "main",
+      "successfulRunCount": 5,
+      "failureRate": 0
+    }
+  },
+  "after": {
+    "ci": {
+      "workflow": "CI",
+      "branch": "develop-cicd-parallelization-metrics",
+      "successfulRunCount": 5,
+      "failureRate": 0
+    },
+    "cd": {
+      "workflow": "CD Dry Run",
+      "branch": "develop-cicd-parallelization-metrics",
+      "successfulRunCount": 5,
+      "failureRate": 0
+    }
+  },
+  "metrics": [
+    {
+      "item": "CI 전체 시간",
+      "beforeMedianSeconds": 148,
+      "afterMedianSeconds": 120,
+      "improvementPercent": 18.9,
+      "beforeRunCount": 5,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능"
+    }
+  ],
+  "safety": {
+    "productionDeployExecuted": false,
+    "awsEcrSshExecuted": false,
+    "dockerPushExecuted": false,
+    "metadataReadOnly": true
+  }
+}

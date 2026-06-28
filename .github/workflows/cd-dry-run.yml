@@ -1,0 +1,151 @@
+name: CD Dry Run
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '.github/workflows/cd-dry-run.yml'
+      - 'Dockerfile'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'src/**'
+      - 'monitor-bot/**'
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run backend tests
+        run: ./gradlew test
+
+      - name: Build JAR for image dry run
+        run: ./gradlew bootJar -x test
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-jar-for-dry-run
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+  monitor-bot-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: monitor-bot/go.mod
+          cache-dependency-path: monitor-bot/go.sum
+
+      - name: Run monitor-bot tests
+        run: cd monitor-bot && go test ./...
+
+  gateway-image-build-dry-run:
+    runs-on: ubuntu-latest
+    needs: backend-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: gateway-jar-for-dry-run
+          path: build/libs
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Gateway image dry-run build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: aandi-gateway-server:dry-run
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  monitor-bot-image-build-dry-run:
+    runs-on: ubuntu-latest
+    needs: monitor-bot-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Monitor Bot image dry-run build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./monitor-bot
+          push: false
+          tags: aandi-gateway-monitor-bot:dry-run
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  cd-dry-run-summary:
+    runs-on: ubuntu-latest
+    needs:
+      - gateway-image-build-dry-run
+      - monitor-bot-image-build-dry-run
+    if: always()
+
+    steps:
+      - name: Summarize CD dry-run jobs
+        run: |
+          mkdir -p cd-dry-run-summary
+          cat > cd-dry-run-summary/cd-dry-run-summary.json <<'JSON'
+          {
+            "gateway-image-build-dry-run": "${{ needs.gateway-image-build-dry-run.result }}",
+            "monitor-bot-image-build-dry-run": "${{ needs.monitor-bot-image-build-dry-run.result }}",
+            "productionDeployExecuted": false,
+            "awsEcrSshExecuted": false,
+            "dockerPushExecuted": false,
+            "buildKitCacheConfigured": true,
+            "cacheHit": "확인 필요"
+          }
+          JSON
+          {
+            echo "## CD Dry Run Summary"
+            echo ""
+            echo "| Job | Result |"
+            echo "| --- | --- |"
+            echo "| gateway-image-build-dry-run | ${{ needs.gateway-image-build-dry-run.result }} |"
+            echo "| monitor-bot-image-build-dry-run | ${{ needs.monitor-bot-image-build-dry-run.result }} |"
+            echo ""
+            echo "production-deploy-executed=false"
+            echo "aws-ecr-ssh-executed=false"
+            echo "docker-push-executed=false"
+            echo "cd-dry-run-marker=completed"
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "${{ needs.gateway-image-build-dry-run.result }}" = "success"
+          test "${{ needs.monitor-bot-image-build-dry-run.result }}" = "success"
+
+      - name: Upload CD dry-run summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cd-dry-run-summary
+          path: cd-dry-run-summary/cd-dry-run-summary.json

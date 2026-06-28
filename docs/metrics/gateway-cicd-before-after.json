@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "resultType": "gateway-cicd-before-after",
+  "confidence": "측정 필요",
+  "resumeUse": "사용 비추천",
+  "before": {
+    "ci": null,
+    "cd": null
+  },
+  "after": {
+    "ci": null,
+    "cd": null
+  },
+  "metrics": [],
+  "safety": {
+    "productionDeployExecuted": false,
+    "awsEcrSshExecuted": false,
+    "dockerPushExecuted": false,
+    "metadataReadOnly": true
+  }
+}
