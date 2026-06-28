@@ -191,6 +191,18 @@ def to_markdown(summary):
     else:
         lines.append("[사용 비추천] GitHub Actions CI 전체 시간 단축은 before/after median 기준으로 확인되지 않음")
 
+    usable_ci_details = [
+        item
+        for item in summary["metrics"]
+        if item["resumeUse"] == "사용 가능" and item["item"] != "CI 전체 시간"
+    ]
+    for item in usable_ci_details:
+        lines.append(
+            f"GitHub Actions에서 {item['item']}를 별도 job으로 분리해 median "
+            f"{fmt(item['beforeMedianSeconds'])} → {fmt(item['afterMedianSeconds'])}로 "
+            f"{fmt_pct(item['improvementPercent'])} 단축"
+        )
+
     cd_total = next((item for item in summary["metrics"] if item["item"] == "CD dry-run 전체 시간"), None)
     if cd_total and cd_total["resumeUse"] == "조건부 사용":
         lines.append(

@@ -1,0 +1,1944 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-28T04:21:08.870097+00:00",
+  "repo": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+  "workflow": "CD Dry Run",
+  "branch": "develop-cicd-parallelization-metrics",
+  "limit": 5,
+  "completedRunCount": 5,
+  "successfulRunCount": 5,
+  "failureCount": 0,
+  "failureRate": 0.0,
+  "confidence": "확인 완료",
+  "resumeUse": "사용 가능",
+  "summary": {
+    "workflowDuration": {
+      "count": 5,
+      "medianSeconds": 149,
+      "averageSeconds": 151,
+      "min": 145,
+      "max": 162,
+      "confidence": "확인 완료"
+    },
+    "jobs": {
+      "backend-test": {
+        "count": 5,
+        "medianSeconds": 117,
+        "averageSeconds": 118.8,
+        "min": 111,
+        "max": 134,
+        "confidence": "확인 완료"
+      },
+      "cd-dry-run-summary": {
+        "count": 5,
+        "medianSeconds": 4,
+        "averageSeconds": 4,
+        "min": 3,
+        "max": 6,
+        "confidence": "확인 완료"
+      },
+      "gateway-image-build-dry-run": {
+        "count": 5,
+        "medianSeconds": 19,
+        "averageSeconds": 19.8,
+        "min": 15,
+        "max": 26,
+        "confidence": "확인 완료"
+      },
+      "monitor-bot-image-build-dry-run": {
+        "count": 5,
+        "medianSeconds": 44,
+        "averageSeconds": 45,
+        "min": 40,
+        "max": 53,
+        "confidence": "확인 완료"
+      },
+      "monitor-bot-test": {
+        "count": 5,
+        "medianSeconds": 11,
+        "averageSeconds": 10.8,
+        "min": 9,
+        "max": 14,
+        "confidence": "확인 완료"
+      }
+    },
+    "steps": {
+      "Build JAR for image dry run": {
+        "count": 5,
+        "medianSeconds": 3,
+        "averageSeconds": 2.8,
+        "min": 2,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Checkout": {
+        "count": 20,
+        "medianSeconds": 1.0,
+        "averageSeconds": 0.9,
+        "min": 0,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Complete job": {
+        "count": 25,
+        "medianSeconds": 0,
+        "averageSeconds": 0.08,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Download JAR": {
+        "count": 5,
+        "medianSeconds": 2,
+        "averageSeconds": 2.2,
+        "min": 1,
+        "max": 4,
+        "confidence": "확인 완료"
+      },
+      "Gateway image dry-run build": {
+        "count": 5,
+        "medianSeconds": 4,
+        "averageSeconds": 4.8,
+        "min": 2,
+        "max": 9,
+        "confidence": "확인 완료"
+      },
+      "Monitor Bot image dry-run build": {
+        "count": 5,
+        "medianSeconds": 31,
+        "averageSeconds": 32.2,
+        "min": 30,
+        "max": 39,
+        "confidence": "확인 완료"
+      },
+      "Post Checkout": {
+        "count": 20,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0.1,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Gateway image dry-run build": {
+        "count": 5,
+        "medianSeconds": 1,
+        "averageSeconds": 1.2,
+        "min": 1,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Post Monitor Bot image dry-run build": {
+        "count": 5,
+        "medianSeconds": 1,
+        "averageSeconds": 1,
+        "min": 1,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Set up Docker Buildx": {
+        "count": 10,
+        "medianSeconds": 1.0,
+        "averageSeconds": 0.8,
+        "min": 0,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Go": {
+        "count": 5,
+        "medianSeconds": 0,
+        "averageSeconds": 0.2,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Gradle": {
+        "count": 5,
+        "medianSeconds": 0,
+        "averageSeconds": 0,
+        "min": 0,
+        "max": 0,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Java 21": {
+        "count": 5,
+        "medianSeconds": 0,
+        "averageSeconds": 0,
+        "min": 0,
+        "max": 0,
+        "confidence": "확인 완료"
+      },
+      "Run backend tests": {
+        "count": 5,
+        "medianSeconds": 101,
+        "averageSeconds": 103.6,
+        "min": 98,
+        "max": 116,
+        "confidence": "확인 완료"
+      },
+      "Run monitor-bot tests": {
+        "count": 5,
+        "medianSeconds": 4,
+        "averageSeconds": 4.2,
+        "min": 3,
+        "max": 5,
+        "confidence": "확인 완료"
+      },
+      "Set up Docker Buildx": {
+        "count": 10,
+        "medianSeconds": 5.5,
+        "averageSeconds": 6.2,
+        "min": 4,
+        "max": 9,
+        "confidence": "확인 완료"
+      },
+      "Set up job": {
+        "count": 25,
+        "medianSeconds": 1,
+        "averageSeconds": 1.4,
+        "min": 0,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Setup Go": {
+        "count": 5,
+        "medianSeconds": 2,
+        "averageSeconds": 2,
+        "min": 1,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Setup Gradle": {
+        "count": 5,
+        "medianSeconds": 2,
+        "averageSeconds": 1.4,
+        "min": 0,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Setup Java 21": {
+        "count": 5,
+        "medianSeconds": 1,
+        "averageSeconds": 0.8,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Summarize CD dry-run jobs": {
+        "count": 5,
+        "medianSeconds": 0,
+        "averageSeconds": 0,
+        "min": 0,
+        "max": 0,
+        "confidence": "확인 완료"
+      },
+      "Upload CD dry-run summary": {
+        "count": 5,
+        "medianSeconds": 1,
+        "averageSeconds": 0.8,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Upload JAR": {
+        "count": 5,
+        "medianSeconds": 3,
+        "averageSeconds": 3.4,
+        "min": 3,
+        "max": 4,
+        "confidence": "확인 완료"
+      }
+    }
+  },
+  "runs": [
+    {
+      "runId": 28311087328,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311087328",
+      "displayTitle": "CD Dry Run",
+      "event": "workflow_dispatch",
+      "branch": "develop-cicd-parallelization-metrics",
+      "headSha": "5be887e6b48a7e4dfb9d954f4a99a751598f4a67",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-28T04:17:11Z",
+      "updatedAt": "2026-06-28T04:19:44Z",
+      "durationSeconds": 153,
+      "jobs": [
+        {
+          "name": "monitor-bot-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:14Z",
+          "completedAt": "2026-06-28T04:17:28Z",
+          "durationSeconds": 14,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:17:17Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:17Z",
+              "completedAt": "2026-06-28T04:17:19Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:19Z",
+              "completedAt": "2026-06-28T04:17:21Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:21Z",
+              "completedAt": "2026-06-28T04:17:26Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:26Z",
+              "completedAt": "2026-06-28T04:17:27Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:27Z",
+              "completedAt": "2026-06-28T04:17:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:27Z",
+              "completedAt": "2026-06-28T04:17:27Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311087328/job/83875948631"
+        },
+        {
+          "name": "backend-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:14Z",
+          "completedAt": "2026-06-28T04:19:05Z",
+          "durationSeconds": 111,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:17:17Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:17Z",
+              "completedAt": "2026-06-28T04:17:18Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:18Z",
+              "completedAt": "2026-06-28T04:17:19Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:19Z",
+              "completedAt": "2026-06-28T04:17:19Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run backend tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:19Z",
+              "completedAt": "2026-06-28T04:18:57Z",
+              "durationSeconds": 98
+            },
+            {
+              "name": "Build JAR for image dry run",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:57Z",
+              "completedAt": "2026-06-28T04:19:00Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:00Z",
+              "completedAt": "2026-06-28T04:19:03Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:03Z",
+              "completedAt": "2026-06-28T04:19:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:03Z",
+              "completedAt": "2026-06-28T04:19:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:03Z",
+              "completedAt": "2026-06-28T04:19:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:03Z",
+              "completedAt": "2026-06-28T04:19:03Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311087328/job/83875948644"
+        },
+        {
+          "name": "monitor-bot-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:30Z",
+          "completedAt": "2026-06-28T04:18:11Z",
+          "durationSeconds": 41,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:31Z",
+              "completedAt": "2026-06-28T04:17:32Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:32Z",
+              "completedAt": "2026-06-28T04:17:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:32Z",
+              "completedAt": "2026-06-28T04:17:37Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:37Z",
+              "completedAt": "2026-06-28T04:18:08Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Post Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:08Z",
+              "completedAt": "2026-06-28T04:18:09Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:09Z",
+              "completedAt": "2026-06-28T04:18:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:10Z",
+              "completedAt": "2026-06-28T04:18:10Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:10Z",
+              "completedAt": "2026-06-28T04:18:10Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311087328/job/83875962440"
+        },
+        {
+          "name": "gateway-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:09Z",
+          "completedAt": "2026-06-28T04:19:35Z",
+          "durationSeconds": 26,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:10Z",
+              "completedAt": "2026-06-28T04:19:13Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:13Z",
+              "completedAt": "2026-06-28T04:19:14Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Download JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:14Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:18Z",
+              "completedAt": "2026-06-28T04:19:26Z",
+              "durationSeconds": 8
+            },
+            {
+              "name": "Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:26Z",
+              "completedAt": "2026-06-28T04:19:30Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:30Z",
+              "completedAt": "2026-06-28T04:19:32Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:32Z",
+              "completedAt": "2026-06-28T04:19:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:32Z",
+              "completedAt": "2026-06-28T04:19:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:32Z",
+              "completedAt": "2026-06-28T04:19:33Z",
+              "durationSeconds": 1
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311087328/job/83876045352"
+        },
+        {
+          "name": "cd-dry-run-summary",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:37Z",
+          "completedAt": "2026-06-28T04:19:43Z",
+          "durationSeconds": 6,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:38Z",
+              "completedAt": "2026-06-28T04:19:39Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Summarize CD dry-run jobs",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:39Z",
+              "completedAt": "2026-06-28T04:19:39Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Upload CD dry-run summary",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:39Z",
+              "completedAt": "2026-06-28T04:19:40Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:40Z",
+              "completedAt": "2026-06-28T04:19:40Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311087328/job/83876070757"
+        }
+      ]
+    },
+    {
+      "runId": 28311086027,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311086027",
+      "displayTitle": "CD Dry Run",
+      "event": "workflow_dispatch",
+      "branch": "develop-cicd-parallelization-metrics",
+      "headSha": "5be887e6b48a7e4dfb9d954f4a99a751598f4a67",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-28T04:17:08Z",
+      "updatedAt": "2026-06-28T04:19:37Z",
+      "durationSeconds": 149,
+      "jobs": [
+        {
+          "name": "backend-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:11Z",
+          "completedAt": "2026-06-28T04:19:09Z",
+          "durationSeconds": 118,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:12Z",
+              "completedAt": "2026-06-28T04:17:14Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:14Z",
+              "completedAt": "2026-06-28T04:17:15Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:17:16Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:16Z",
+              "completedAt": "2026-06-28T04:17:18Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run backend tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:18Z",
+              "completedAt": "2026-06-28T04:19:00Z",
+              "durationSeconds": 102
+            },
+            {
+              "name": "Build JAR for image dry run",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:00Z",
+              "completedAt": "2026-06-28T04:19:02Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:02Z",
+              "completedAt": "2026-06-28T04:19:06Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:06Z",
+              "completedAt": "2026-06-28T04:19:06Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:06Z",
+              "completedAt": "2026-06-28T04:19:06Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:06Z",
+              "completedAt": "2026-06-28T04:19:06Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:06Z",
+              "completedAt": "2026-06-28T04:19:06Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311086027/job/83875945168"
+        },
+        {
+          "name": "monitor-bot-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:11Z",
+          "completedAt": "2026-06-28T04:17:22Z",
+          "durationSeconds": 11,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:12Z",
+              "completedAt": "2026-06-28T04:17:13Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:13Z",
+              "completedAt": "2026-06-28T04:17:14Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:14Z",
+              "completedAt": "2026-06-28T04:17:17Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:17Z",
+              "completedAt": "2026-06-28T04:17:20Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:20Z",
+              "completedAt": "2026-06-28T04:17:20Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:20Z",
+              "completedAt": "2026-06-28T04:17:20Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:20Z",
+              "completedAt": "2026-06-28T04:17:20Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311086027/job/83875945173"
+        },
+        {
+          "name": "monitor-bot-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:24Z",
+          "completedAt": "2026-06-28T04:18:04Z",
+          "durationSeconds": 40,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:24Z",
+              "completedAt": "2026-06-28T04:17:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:25Z",
+              "completedAt": "2026-06-28T04:17:26Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:26Z",
+              "completedAt": "2026-06-28T04:17:31Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:31Z",
+              "completedAt": "2026-06-28T04:18:01Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Post Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:01Z",
+              "completedAt": "2026-06-28T04:18:02Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:02Z",
+              "completedAt": "2026-06-28T04:18:03Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:03Z",
+              "completedAt": "2026-06-28T04:18:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:03Z",
+              "completedAt": "2026-06-28T04:18:03Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311086027/job/83875956410"
+        },
+        {
+          "name": "gateway-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:11Z",
+          "completedAt": "2026-06-28T04:19:29Z",
+          "durationSeconds": 18,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:12Z",
+              "completedAt": "2026-06-28T04:19:13Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:13Z",
+              "completedAt": "2026-06-28T04:19:13Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Download JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:13Z",
+              "completedAt": "2026-06-28T04:19:15Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:15Z",
+              "completedAt": "2026-06-28T04:19:24Z",
+              "durationSeconds": 9
+            },
+            {
+              "name": "Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:24Z",
+              "completedAt": "2026-06-28T04:19:26Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:26Z",
+              "completedAt": "2026-06-28T04:19:27Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:27Z",
+              "completedAt": "2026-06-28T04:19:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:27Z",
+              "completedAt": "2026-06-28T04:19:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:27Z",
+              "completedAt": "2026-06-28T04:19:28Z",
+              "durationSeconds": 1
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311086027/job/83876048032"
+        },
+        {
+          "name": "cd-dry-run-summary",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:32Z",
+          "completedAt": "2026-06-28T04:19:36Z",
+          "durationSeconds": 4,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:33Z",
+              "completedAt": "2026-06-28T04:19:33Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Summarize CD dry-run jobs",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:33Z",
+              "completedAt": "2026-06-28T04:19:33Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Upload CD dry-run summary",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:33Z",
+              "completedAt": "2026-06-28T04:19:34Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:34Z",
+              "completedAt": "2026-06-28T04:19:34Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311086027/job/83876065600"
+        }
+      ]
+    },
+    {
+      "runId": 28311084782,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311084782",
+      "displayTitle": "CD Dry Run",
+      "event": "workflow_dispatch",
+      "branch": "develop-cicd-parallelization-metrics",
+      "headSha": "5be887e6b48a7e4dfb9d954f4a99a751598f4a67",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-28T04:17:04Z",
+      "updatedAt": "2026-06-28T04:19:46Z",
+      "durationSeconds": 162,
+      "jobs": [
+        {
+          "name": "monitor-bot-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:07Z",
+          "completedAt": "2026-06-28T04:17:16Z",
+          "durationSeconds": 9,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:07Z",
+              "completedAt": "2026-06-28T04:17:08Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:08Z",
+              "completedAt": "2026-06-28T04:17:09Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:09Z",
+              "completedAt": "2026-06-28T04:17:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:10Z",
+              "completedAt": "2026-06-28T04:17:15Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:17:15Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:17:15Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:17:15Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311084782/job/83875941792"
+        },
+        {
+          "name": "backend-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:07Z",
+          "completedAt": "2026-06-28T04:19:21Z",
+          "durationSeconds": 134,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:08Z",
+              "completedAt": "2026-06-28T04:17:11Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:11Z",
+              "completedAt": "2026-06-28T04:17:12Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:12Z",
+              "completedAt": "2026-06-28T04:17:13Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:13Z",
+              "completedAt": "2026-06-28T04:17:15Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run backend tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:15Z",
+              "completedAt": "2026-06-28T04:19:11Z",
+              "durationSeconds": 116
+            },
+            {
+              "name": "Build JAR for image dry run",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:11Z",
+              "completedAt": "2026-06-28T04:19:14Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:14Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:18Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:18Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:18Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:18Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311084782/job/83875941808"
+        },
+        {
+          "name": "monitor-bot-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:18Z",
+          "completedAt": "2026-06-28T04:18:05Z",
+          "durationSeconds": 47,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:19Z",
+              "completedAt": "2026-06-28T04:17:20Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:20Z",
+              "completedAt": "2026-06-28T04:17:21Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:21Z",
+              "completedAt": "2026-06-28T04:17:30Z",
+              "durationSeconds": 9
+            },
+            {
+              "name": "Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:30Z",
+              "completedAt": "2026-06-28T04:18:00Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Post Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:00Z",
+              "completedAt": "2026-06-28T04:18:01Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:01Z",
+              "completedAt": "2026-06-28T04:18:03Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:03Z",
+              "completedAt": "2026-06-28T04:18:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:03Z",
+              "completedAt": "2026-06-28T04:18:03Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311084782/job/83875951578"
+        },
+        {
+          "name": "gateway-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:23Z",
+          "completedAt": "2026-06-28T04:19:38Z",
+          "durationSeconds": 15,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:24Z",
+              "completedAt": "2026-06-28T04:19:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:25Z",
+              "completedAt": "2026-06-28T04:19:25Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Download JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:25Z",
+              "completedAt": "2026-06-28T04:19:27Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:27Z",
+              "completedAt": "2026-06-28T04:19:33Z",
+              "durationSeconds": 6
+            },
+            {
+              "name": "Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:33Z",
+              "completedAt": "2026-06-28T04:19:35Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:35Z",
+              "completedAt": "2026-06-28T04:19:36Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:36Z",
+              "completedAt": "2026-06-28T04:19:37Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:37Z",
+              "completedAt": "2026-06-28T04:19:37Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:37Z",
+              "completedAt": "2026-06-28T04:19:37Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311084782/job/83876058822"
+        },
+        {
+          "name": "cd-dry-run-summary",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:41Z",
+          "completedAt": "2026-06-28T04:19:45Z",
+          "durationSeconds": 4,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:41Z",
+              "completedAt": "2026-06-28T04:19:42Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Summarize CD dry-run jobs",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:42Z",
+              "completedAt": "2026-06-28T04:19:42Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Upload CD dry-run summary",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:42Z",
+              "completedAt": "2026-06-28T04:19:43Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:43Z",
+              "completedAt": "2026-06-28T04:19:43Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311084782/job/83876073846"
+        }
+      ]
+    },
+    {
+      "runId": 28311083519,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311083519",
+      "displayTitle": "CD Dry Run",
+      "event": "workflow_dispatch",
+      "branch": "develop-cicd-parallelization-metrics",
+      "headSha": "5be887e6b48a7e4dfb9d954f4a99a751598f4a67",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-28T04:17:01Z",
+      "updatedAt": "2026-06-28T04:19:27Z",
+      "durationSeconds": 146,
+      "jobs": [
+        {
+          "name": "backend-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:05Z",
+          "completedAt": "2026-06-28T04:19:02Z",
+          "durationSeconds": 117,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:06Z",
+              "completedAt": "2026-06-28T04:17:08Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:08Z",
+              "completedAt": "2026-06-28T04:17:09Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:09Z",
+              "completedAt": "2026-06-28T04:17:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:10Z",
+              "completedAt": "2026-06-28T04:17:11Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run backend tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:11Z",
+              "completedAt": "2026-06-28T04:18:52Z",
+              "durationSeconds": 101
+            },
+            {
+              "name": "Build JAR for image dry run",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:52Z",
+              "completedAt": "2026-06-28T04:18:55Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:55Z",
+              "completedAt": "2026-06-28T04:18:58Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:58Z",
+              "completedAt": "2026-06-28T04:18:58Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:58Z",
+              "completedAt": "2026-06-28T04:18:58Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:58Z",
+              "completedAt": "2026-06-28T04:18:59Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:59Z",
+              "completedAt": "2026-06-28T04:18:59Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311083519/job/83875938690"
+        },
+        {
+          "name": "monitor-bot-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:05Z",
+          "completedAt": "2026-06-28T04:17:16Z",
+          "durationSeconds": 11,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:06Z",
+              "completedAt": "2026-06-28T04:17:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:07Z",
+              "completedAt": "2026-06-28T04:17:08Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:08Z",
+              "completedAt": "2026-06-28T04:17:10Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:10Z",
+              "completedAt": "2026-06-28T04:17:14Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:14Z",
+              "completedAt": "2026-06-28T04:17:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:14Z",
+              "completedAt": "2026-06-28T04:17:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:14Z",
+              "completedAt": "2026-06-28T04:17:14Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311083519/job/83875938698"
+        },
+        {
+          "name": "monitor-bot-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:17:19Z",
+          "completedAt": "2026-06-28T04:18:12Z",
+          "durationSeconds": 53,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:20Z",
+              "completedAt": "2026-06-28T04:17:22Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:22Z",
+              "completedAt": "2026-06-28T04:17:23Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:23Z",
+              "completedAt": "2026-06-28T04:17:28Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:28Z",
+              "completedAt": "2026-06-28T04:18:07Z",
+              "durationSeconds": 39
+            },
+            {
+              "name": "Post Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:07Z",
+              "completedAt": "2026-06-28T04:18:08Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:08Z",
+              "completedAt": "2026-06-28T04:18:09Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:09Z",
+              "completedAt": "2026-06-28T04:18:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:10Z",
+              "completedAt": "2026-06-28T04:18:10Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311083519/job/83875951308"
+        },
+        {
+          "name": "gateway-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:03Z",
+          "completedAt": "2026-06-28T04:19:22Z",
+          "durationSeconds": 19,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:04Z",
+              "completedAt": "2026-06-28T04:19:05Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:05Z",
+              "completedAt": "2026-06-28T04:19:06Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Download JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:06Z",
+              "completedAt": "2026-06-28T04:19:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:07Z",
+              "completedAt": "2026-06-28T04:19:11Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:11Z",
+              "completedAt": "2026-06-28T04:19:18Z",
+              "durationSeconds": 7
+            },
+            {
+              "name": "Post Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:18Z",
+              "completedAt": "2026-06-28T04:19:19Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:19Z",
+              "completedAt": "2026-06-28T04:19:20Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:20Z",
+              "completedAt": "2026-06-28T04:19:20Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:20Z",
+              "completedAt": "2026-06-28T04:19:20Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311083519/job/83876041868"
+        },
+        {
+          "name": "cd-dry-run-summary",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:19:24Z",
+          "completedAt": "2026-06-28T04:19:27Z",
+          "durationSeconds": 3,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:24Z",
+              "completedAt": "2026-06-28T04:19:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Summarize CD dry-run jobs",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:25Z",
+              "completedAt": "2026-06-28T04:19:25Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Upload CD dry-run summary",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:25Z",
+              "completedAt": "2026-06-28T04:19:25Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:25Z",
+              "completedAt": "2026-06-28T04:19:25Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311083519/job/83876059260"
+        }
+      ]
+    },
+    {
+      "runId": 28311076154,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311076154",
+      "displayTitle": "feat(ci): Parallelize gateway CI/CD and measure before-after duration",
+      "event": "pull_request",
+      "branch": "develop-cicd-parallelization-metrics",
+      "headSha": "5be887e6b48a7e4dfb9d954f4a99a751598f4a67",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-28T04:16:37Z",
+      "updatedAt": "2026-06-28T04:19:02Z",
+      "durationSeconds": 145,
+      "jobs": [
+        {
+          "name": "backend-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:16:39Z",
+          "completedAt": "2026-06-28T04:18:33Z",
+          "durationSeconds": 114,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:39Z",
+              "completedAt": "2026-06-28T04:16:41Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:41Z",
+              "completedAt": "2026-06-28T04:16:42Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:42Z",
+              "completedAt": "2026-06-28T04:16:42Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:42Z",
+              "completedAt": "2026-06-28T04:16:44Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run backend tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:44Z",
+              "completedAt": "2026-06-28T04:18:25Z",
+              "durationSeconds": 101
+            },
+            {
+              "name": "Build JAR for image dry run",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:25Z",
+              "completedAt": "2026-06-28T04:18:28Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:28Z",
+              "completedAt": "2026-06-28T04:18:31Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:31Z",
+              "completedAt": "2026-06-28T04:18:31Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:31Z",
+              "completedAt": "2026-06-28T04:18:31Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:31Z",
+              "completedAt": "2026-06-28T04:18:31Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:31Z",
+              "completedAt": "2026-06-28T04:18:31Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311076154/job/83875917239"
+        },
+        {
+          "name": "monitor-bot-test",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:16:39Z",
+          "completedAt": "2026-06-28T04:16:48Z",
+          "durationSeconds": 9,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:39Z",
+              "completedAt": "2026-06-28T04:16:40Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:40Z",
+              "completedAt": "2026-06-28T04:16:41Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:41Z",
+              "completedAt": "2026-06-28T04:16:43Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:43Z",
+              "completedAt": "2026-06-28T04:16:47Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:47Z",
+              "completedAt": "2026-06-28T04:16:47Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:47Z",
+              "completedAt": "2026-06-28T04:16:47Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:47Z",
+              "completedAt": "2026-06-28T04:16:47Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311076154/job/83875917249"
+        },
+        {
+          "name": "monitor-bot-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:16:50Z",
+          "completedAt": "2026-06-28T04:17:34Z",
+          "durationSeconds": 44,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:50Z",
+              "completedAt": "2026-06-28T04:16:51Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:51Z",
+              "completedAt": "2026-06-28T04:16:52Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:52Z",
+              "completedAt": "2026-06-28T04:16:59Z",
+              "durationSeconds": 7
+            },
+            {
+              "name": "Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:16:59Z",
+              "completedAt": "2026-06-28T04:17:30Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Post Monitor Bot image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:30Z",
+              "completedAt": "2026-06-28T04:17:31Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:31Z",
+              "completedAt": "2026-06-28T04:17:32Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:32Z",
+              "completedAt": "2026-06-28T04:17:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:17:32Z",
+              "completedAt": "2026-06-28T04:17:32Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311076154/job/83875926855"
+        },
+        {
+          "name": "gateway-image-build-dry-run",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:18:35Z",
+          "completedAt": "2026-06-28T04:18:56Z",
+          "durationSeconds": 21,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:35Z",
+              "completedAt": "2026-06-28T04:18:37Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:37Z",
+              "completedAt": "2026-06-28T04:18:38Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Download JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:38Z",
+              "completedAt": "2026-06-28T04:18:40Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:40Z",
+              "completedAt": "2026-06-28T04:18:44Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:44Z",
+              "completedAt": "2026-06-28T04:18:53Z",
+              "durationSeconds": 9
+            },
+            {
+              "name": "Post Gateway image dry-run build",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:53Z",
+              "completedAt": "2026-06-28T04:18:54Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Set up Docker Buildx",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:54Z",
+              "completedAt": "2026-06-28T04:18:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:54Z",
+              "completedAt": "2026-06-28T04:18:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:54Z",
+              "completedAt": "2026-06-28T04:18:54Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311076154/job/83876016572"
+        },
+        {
+          "name": "cd-dry-run-summary",
+          "conclusion": "success",
+          "startedAt": "2026-06-28T04:18:58Z",
+          "completedAt": "2026-06-28T04:19:01Z",
+          "durationSeconds": 3,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:58Z",
+              "completedAt": "2026-06-28T04:18:59Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Summarize CD dry-run jobs",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:59Z",
+              "completedAt": "2026-06-28T04:18:59Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Upload CD dry-run summary",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:18:59Z",
+              "completedAt": "2026-06-28T04:19:00Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-28T04:19:00Z",
+              "completedAt": "2026-06-28T04:19:00Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/28311076154/job/83876036662"
+        }
+      ]
+    }
+  ]
+}

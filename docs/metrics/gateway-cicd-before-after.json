@@ -1,17 +1,118 @@
 {
   "schemaVersion": 1,
   "resultType": "gateway-cicd-before-after",
-  "confidence": "측정 필요",
-  "resumeUse": "사용 비추천",
+  "confidence": "확인 완료",
+  "resumeUse": "사용 가능",
   "before": {
-    "ci": null,
-    "cd": null
+    "ci": {
+      "workflow": "CI",
+      "branch": "main",
+      "successfulRunCount": 20,
+      "failureRate": 0.0
+    },
+    "cd": {
+      "workflow": "CD",
+      "branch": "all-refs",
+      "successfulRunCount": 19,
+      "failureRate": 0.05
+    }
   },
   "after": {
-    "ci": null,
-    "cd": null
+    "ci": {
+      "workflow": "CI",
+      "branch": "develop-cicd-parallelization-metrics",
+      "successfulRunCount": 5,
+      "failureRate": 0.0
+    },
+    "cd": {
+      "workflow": "CD Dry Run",
+      "branch": "develop-cicd-parallelization-metrics",
+      "successfulRunCount": 5,
+      "failureRate": 0.0
+    }
   },
-  "metrics": [],
+  "metrics": [
+    {
+      "item": "CI 전체 시간",
+      "beforeMedianSeconds": 147.5,
+      "afterMedianSeconds": 203,
+      "improvementPercent": -37.6271186440678,
+      "beforeRunCount": 20,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    },
+    {
+      "item": "Backend test",
+      "beforeMedianSeconds": 101.5,
+      "afterMedianSeconds": 114,
+      "improvementPercent": -12.31527093596059,
+      "beforeRunCount": 20,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    },
+    {
+      "item": "Monitor Bot test",
+      "beforeMedianSeconds": 30.0,
+      "afterMedianSeconds": 11,
+      "improvementPercent": 63.33333333333333,
+      "beforeRunCount": 16,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 가능"
+    },
+    {
+      "item": "Performance asset validation",
+      "beforeMedianSeconds": 2,
+      "afterMedianSeconds": 7,
+      "improvementPercent": -250.0,
+      "beforeRunCount": 7,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    },
+    {
+      "item": "Build JAR",
+      "beforeMedianSeconds": 2.0,
+      "afterMedianSeconds": 74,
+      "improvementPercent": -3600.0,
+      "beforeRunCount": 20,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    },
+    {
+      "item": "Gateway image dry-run build",
+      "beforeMedianSeconds": 25,
+      "afterMedianSeconds": 19,
+      "improvementPercent": 24.0,
+      "beforeRunCount": 19,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    },
+    {
+      "item": "Monitor Bot image dry-run build",
+      "beforeMedianSeconds": 38,
+      "afterMedianSeconds": 44,
+      "improvementPercent": -15.789473684210526,
+      "beforeRunCount": 13,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    },
+    {
+      "item": "CD dry-run 전체 시간",
+      "beforeMedianSeconds": 258,
+      "afterMedianSeconds": 149,
+      "improvementPercent": 42.248062015503876,
+      "beforeRunCount": 19,
+      "afterRunCount": 5,
+      "confidence": "확인 완료",
+      "resumeUse": "사용 비추천"
+    }
+  ],
   "safety": {
     "productionDeployExecuted": false,
     "awsEcrSshExecuted": false,

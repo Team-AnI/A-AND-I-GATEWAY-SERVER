@@ -1,0 +1,3556 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-28T04:21:27.291010+00:00",
+  "repo": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+  "workflow": "CD",
+  "branch": "all-refs",
+  "limit": 20,
+  "completedRunCount": 20,
+  "successfulRunCount": 19,
+  "failureCount": 1,
+  "failureRate": 0.05,
+  "confidence": "확인 완료",
+  "resumeUse": "사용 비추천",
+  "summary": {
+    "workflowDuration": {
+      "count": 19,
+      "medianSeconds": 258,
+      "averageSeconds": 40010.84210526316,
+      "min": 175,
+      "max": 755519,
+      "confidence": "확인 완료"
+    },
+    "jobs": {
+      "build-push-deploy": {
+        "count": 19,
+        "medianSeconds": 253,
+        "averageSeconds": 233.1578947368421,
+        "min": 167,
+        "max": 287,
+        "confidence": "확인 완료"
+      }
+    },
+    "steps": {
+      "Build JAR": {
+        "count": 19,
+        "medianSeconds": 3,
+        "averageSeconds": 2.6842105263157894,
+        "min": 2,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Build and push Docker image": {
+        "count": 19,
+        "medianSeconds": 25,
+        "averageSeconds": 24.842105263157894,
+        "min": 21,
+        "max": 29,
+        "confidence": "확인 완료"
+      },
+      "Build and push monitor-bot Docker image": {
+        "count": 13,
+        "medianSeconds": 38,
+        "averageSeconds": 38.53846153846154,
+        "min": 36,
+        "max": 45,
+        "confidence": "확인 완료"
+      },
+      "Checkout": {
+        "count": 19,
+        "medianSeconds": 1,
+        "averageSeconds": 0.8421052631578947,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Complete job": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.05263157894736842,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Configure AWS credentials": {
+        "count": 19,
+        "medianSeconds": 1,
+        "averageSeconds": 1.3157894736842106,
+        "min": 1,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Deploy to EC2 via SSH": {
+        "count": 19,
+        "medianSeconds": 43,
+        "averageSeconds": 41.68421052631579,
+        "min": 31,
+        "max": 51,
+        "confidence": "확인 완료"
+      },
+      "Login to Amazon ECR": {
+        "count": 19,
+        "medianSeconds": 3,
+        "averageSeconds": 2.473684210526316,
+        "min": 1,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Post Build and push Docker image": {
+        "count": 19,
+        "medianSeconds": 1,
+        "averageSeconds": 1.2105263157894737,
+        "min": 1,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Post Build and push monitor-bot Docker image": {
+        "count": 13,
+        "medianSeconds": 1,
+        "averageSeconds": 1.1538461538461537,
+        "min": 0,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Post Checkout": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.21052631578947367,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Configure AWS credentials": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.15789473684210525,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Login to Amazon ECR": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.15789473684210525,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Go": {
+        "count": 13,
+        "medianSeconds": 0,
+        "averageSeconds": 0.23076923076923078,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Gradle": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.15789473684210525,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Java 21": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.21052631578947367,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Run tests": {
+        "count": 19,
+        "medianSeconds": 97,
+        "averageSeconds": 98.21052631578948,
+        "min": 90,
+        "max": 115,
+        "confidence": "확인 완료"
+      },
+      "Set up job": {
+        "count": 19,
+        "medianSeconds": 5,
+        "averageSeconds": 5,
+        "min": 3,
+        "max": 8,
+        "confidence": "확인 완료"
+      },
+      "Setup Go": {
+        "count": 13,
+        "medianSeconds": 1,
+        "averageSeconds": 1,
+        "min": 0,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Setup Gradle": {
+        "count": 19,
+        "medianSeconds": 1,
+        "averageSeconds": 1.105263157894737,
+        "min": 0,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Setup Java 21": {
+        "count": 19,
+        "medianSeconds": 0,
+        "averageSeconds": 0.2631578947368421,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Test monitor-bot": {
+        "count": 13,
+        "medianSeconds": 30,
+        "averageSeconds": 30,
+        "min": 26,
+        "max": 36,
+        "confidence": "확인 완료"
+      }
+    }
+  },
+  "runs": [
+    {
+      "runId": 26434168425,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26434168425",
+      "displayTitle": "chore(release): sync develop for v2.0.25",
+      "event": "push",
+      "branch": "v2.0.25",
+      "headSha": "cf54279177ee1449aa3608e503b85a3681740fdf",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-26T05:29:37Z",
+      "updatedAt": "2026-05-26T05:34:00Z",
+      "durationSeconds": 263,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-26T05:29:40Z",
+          "completedAt": "2026-05-26T05:33:59Z",
+          "durationSeconds": 259,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:41Z",
+              "completedAt": "2026-05-26T05:29:46Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:46Z",
+              "completedAt": "2026-05-26T05:29:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:47Z",
+              "completedAt": "2026-05-26T05:29:47Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:47Z",
+              "completedAt": "2026-05-26T05:29:49Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:49Z",
+              "completedAt": "2026-05-26T05:29:51Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:51Z",
+              "completedAt": "2026-05-26T05:31:29Z",
+              "durationSeconds": 98
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:31:29Z",
+              "completedAt": "2026-05-26T05:32:00Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:00Z",
+              "completedAt": "2026-05-26T05:32:02Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:02Z",
+              "completedAt": "2026-05-26T05:32:04Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:04Z",
+              "completedAt": "2026-05-26T05:32:06Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:06Z",
+              "completedAt": "2026-05-26T05:32:29Z",
+              "durationSeconds": 23
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:29Z",
+              "completedAt": "2026-05-26T05:33:05Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:05Z",
+              "completedAt": "2026-05-26T05:33:51Z",
+              "durationSeconds": 46
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:51Z",
+              "completedAt": "2026-05-26T05:33:53Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:53Z",
+              "completedAt": "2026-05-26T05:33:54Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:54Z",
+              "completedAt": "2026-05-26T05:33:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:54Z",
+              "completedAt": "2026-05-26T05:33:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:54Z",
+              "completedAt": "2026-05-26T05:33:55Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:55Z",
+              "completedAt": "2026-05-26T05:33:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:55Z",
+              "completedAt": "2026-05-26T05:33:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:55Z",
+              "completedAt": "2026-05-26T05:33:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:33:55Z",
+              "completedAt": "2026-05-26T05:33:55Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26434168425/job/77813245655"
+        }
+      ]
+    },
+    {
+      "runId": 26225518445,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26225518445",
+      "displayTitle": "Merge pull request #30 from Team-AnI/develop",
+      "event": "push",
+      "branch": "v2.0.24",
+      "headSha": "eb243ed831fe46a0a0838134bb426a0669f7ee1d",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-21T12:20:07Z",
+      "updatedAt": "2026-05-21T12:24:28Z",
+      "durationSeconds": 261,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-21T12:20:10Z",
+          "completedAt": "2026-05-21T12:24:27Z",
+          "durationSeconds": 257,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:20:10Z",
+              "completedAt": "2026-05-21T12:20:13Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:20:13Z",
+              "completedAt": "2026-05-21T12:20:14Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:20:14Z",
+              "completedAt": "2026-05-21T12:20:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:20:14Z",
+              "completedAt": "2026-05-21T12:20:16Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:20:16Z",
+              "completedAt": "2026-05-21T12:20:17Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:20:17Z",
+              "completedAt": "2026-05-21T12:21:54Z",
+              "durationSeconds": 97
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:54Z",
+              "completedAt": "2026-05-21T12:22:23Z",
+              "durationSeconds": 29
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:22:23Z",
+              "completedAt": "2026-05-21T12:22:25Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:22:25Z",
+              "completedAt": "2026-05-21T12:22:27Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:22:27Z",
+              "completedAt": "2026-05-21T12:22:30Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:22:30Z",
+              "completedAt": "2026-05-21T12:22:59Z",
+              "durationSeconds": 29
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:22:59Z",
+              "completedAt": "2026-05-21T12:23:37Z",
+              "durationSeconds": 38
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:23:37Z",
+              "completedAt": "2026-05-21T12:24:22Z",
+              "durationSeconds": 45
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:22Z",
+              "completedAt": "2026-05-21T12:24:23Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:23Z",
+              "completedAt": "2026-05-21T12:24:24Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:24Z",
+              "completedAt": "2026-05-21T12:24:24Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:24Z",
+              "completedAt": "2026-05-21T12:24:24Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:24Z",
+              "completedAt": "2026-05-21T12:24:24Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:24Z",
+              "completedAt": "2026-05-21T12:24:24Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:24Z",
+              "completedAt": "2026-05-21T12:24:24Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:24Z",
+              "completedAt": "2026-05-21T12:24:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:24:25Z",
+              "completedAt": "2026-05-21T12:24:25Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26225518445/job/77171379736"
+        }
+      ]
+    },
+    {
+      "runId": 26222303551,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26222303551",
+      "displayTitle": "Merge pull request #28 from stdiodh/develop-alert-dedupe-auth-mapping",
+      "event": "push",
+      "branch": "v2.0.23",
+      "headSha": "d55d919329a0d2b8de1114079b4524a6f8610537",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-21T11:09:39Z",
+      "updatedAt": "2026-05-21T11:14:01Z",
+      "durationSeconds": 262,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-21T11:09:42Z",
+          "completedAt": "2026-05-21T11:14:00Z",
+          "durationSeconds": 258,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:09:43Z",
+              "completedAt": "2026-05-21T11:09:50Z",
+              "durationSeconds": 7
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:09:50Z",
+              "completedAt": "2026-05-21T11:09:51Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:09:51Z",
+              "completedAt": "2026-05-21T11:09:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:09:51Z",
+              "completedAt": "2026-05-21T11:09:52Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:09:52Z",
+              "completedAt": "2026-05-21T11:09:52Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:09:52Z",
+              "completedAt": "2026-05-21T11:11:32Z",
+              "durationSeconds": 100
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:11:32Z",
+              "completedAt": "2026-05-21T11:12:02Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:12:02Z",
+              "completedAt": "2026-05-21T11:12:04Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:12:04Z",
+              "completedAt": "2026-05-21T11:12:06Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:12:06Z",
+              "completedAt": "2026-05-21T11:12:08Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:12:08Z",
+              "completedAt": "2026-05-21T11:12:30Z",
+              "durationSeconds": 22
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:12:30Z",
+              "completedAt": "2026-05-21T11:13:06Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:06Z",
+              "completedAt": "2026-05-21T11:13:53Z",
+              "durationSeconds": 47
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:53Z",
+              "completedAt": "2026-05-21T11:13:54Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:54Z",
+              "completedAt": "2026-05-21T11:13:55Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:55Z",
+              "completedAt": "2026-05-21T11:13:56Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:56Z",
+              "completedAt": "2026-05-21T11:13:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:56Z",
+              "completedAt": "2026-05-21T11:13:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:56Z",
+              "completedAt": "2026-05-21T11:13:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:56Z",
+              "completedAt": "2026-05-21T11:13:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:56Z",
+              "completedAt": "2026-05-21T11:13:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T11:13:56Z",
+              "completedAt": "2026-05-21T11:13:57Z",
+              "durationSeconds": 1
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26222303551/job/77160140261"
+        }
+      ]
+    },
+    {
+      "runId": 26145008458,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26145008458",
+      "displayTitle": "fix(monitor-bot): clarify ops help",
+      "event": "push",
+      "branch": "v2.0.22",
+      "headSha": "e5d9df83ef21a281dcd0069e5e9941bdf82ff28b",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-20T06:15:12Z",
+      "updatedAt": "2026-05-20T06:19:24Z",
+      "durationSeconds": 252,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-20T06:15:15Z",
+          "completedAt": "2026-05-20T06:19:23Z",
+          "durationSeconds": 248,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:15:16Z",
+              "completedAt": "2026-05-20T06:15:21Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:15:21Z",
+              "completedAt": "2026-05-20T06:15:22Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:15:22Z",
+              "completedAt": "2026-05-20T06:15:22Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:15:22Z",
+              "completedAt": "2026-05-20T06:15:23Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:15:23Z",
+              "completedAt": "2026-05-20T06:15:24Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:15:24Z",
+              "completedAt": "2026-05-20T06:16:56Z",
+              "durationSeconds": 92
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:56Z",
+              "completedAt": "2026-05-20T06:17:26Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:17:26Z",
+              "completedAt": "2026-05-20T06:17:29Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:17:29Z",
+              "completedAt": "2026-05-20T06:17:30Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:17:30Z",
+              "completedAt": "2026-05-20T06:17:32Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:17:32Z",
+              "completedAt": "2026-05-20T06:17:53Z",
+              "durationSeconds": 21
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:17:53Z",
+              "completedAt": "2026-05-20T06:18:29Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:18:29Z",
+              "completedAt": "2026-05-20T06:19:14Z",
+              "durationSeconds": 45
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:14Z",
+              "completedAt": "2026-05-20T06:19:15Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:15Z",
+              "completedAt": "2026-05-20T06:19:17Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:17Z",
+              "completedAt": "2026-05-20T06:19:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:17Z",
+              "completedAt": "2026-05-20T06:19:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:17Z",
+              "completedAt": "2026-05-20T06:19:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:17Z",
+              "completedAt": "2026-05-20T06:19:18Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:18Z",
+              "completedAt": "2026-05-20T06:19:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:18Z",
+              "completedAt": "2026-05-20T06:19:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:19:18Z",
+              "completedAt": "2026-05-20T06:19:18Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26145008458/job/76898420799"
+        }
+      ]
+    },
+    {
+      "runId": 26105106388,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26105106388",
+      "displayTitle": "fix(monitor-bot): accept ok health status (#24)",
+      "event": "push",
+      "branch": "v2.0.21",
+      "headSha": "f162fbaafc73643be48064e1daf7f09bda2dd30b",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-19T14:50:52Z",
+      "updatedAt": "2026-05-19T14:55:22Z",
+      "durationSeconds": 270,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-19T14:50:56Z",
+          "completedAt": "2026-05-19T14:55:21Z",
+          "durationSeconds": 265,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:50:57Z",
+              "completedAt": "2026-05-19T14:51:02Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:51:02Z",
+              "completedAt": "2026-05-19T14:51:02Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:51:02Z",
+              "completedAt": "2026-05-19T14:51:03Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:51:03Z",
+              "completedAt": "2026-05-19T14:51:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:51:03Z",
+              "completedAt": "2026-05-19T14:51:06Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:51:06Z",
+              "completedAt": "2026-05-19T14:52:50Z",
+              "durationSeconds": 104
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:50Z",
+              "completedAt": "2026-05-19T14:53:21Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:53:21Z",
+              "completedAt": "2026-05-19T14:53:24Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:53:24Z",
+              "completedAt": "2026-05-19T14:53:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:53:25Z",
+              "completedAt": "2026-05-19T14:53:28Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:53:28Z",
+              "completedAt": "2026-05-19T14:53:54Z",
+              "durationSeconds": 26
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:53:54Z",
+              "completedAt": "2026-05-19T14:54:33Z",
+              "durationSeconds": 39
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:54:33Z",
+              "completedAt": "2026-05-19T14:55:15Z",
+              "durationSeconds": 42
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:15Z",
+              "completedAt": "2026-05-19T14:55:16Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:16Z",
+              "completedAt": "2026-05-19T14:55:17Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:17Z",
+              "completedAt": "2026-05-19T14:55:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:17Z",
+              "completedAt": "2026-05-19T14:55:18Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:18Z",
+              "completedAt": "2026-05-19T14:55:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:18Z",
+              "completedAt": "2026-05-19T14:55:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:18Z",
+              "completedAt": "2026-05-19T14:55:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:18Z",
+              "completedAt": "2026-05-19T14:55:18Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:55:18Z",
+              "completedAt": "2026-05-19T14:55:18Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26105106388/job/76766617582"
+        }
+      ]
+    },
+    {
+      "runId": 26104121323,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26104121323",
+      "displayTitle": "CD",
+      "event": "workflow_dispatch",
+      "branch": "v2.0.20",
+      "headSha": "a03bc451a9b5a532d10f0578b37b439d8a9ccc91",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-19T14:34:05Z",
+      "updatedAt": "2026-05-19T14:38:32Z",
+      "durationSeconds": 267,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-19T14:34:12Z",
+          "completedAt": "2026-05-19T14:38:31Z",
+          "durationSeconds": 259,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:34:13Z",
+              "completedAt": "2026-05-19T14:34:20Z",
+              "durationSeconds": 7
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:34:20Z",
+              "completedAt": "2026-05-19T14:34:21Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:34:21Z",
+              "completedAt": "2026-05-19T14:34:21Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:34:21Z",
+              "completedAt": "2026-05-19T14:34:23Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:34:23Z",
+              "completedAt": "2026-05-19T14:34:24Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:34:24Z",
+              "completedAt": "2026-05-19T14:36:06Z",
+              "durationSeconds": 102
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:36:06Z",
+              "completedAt": "2026-05-19T14:36:34Z",
+              "durationSeconds": 28
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:36:34Z",
+              "completedAt": "2026-05-19T14:36:37Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:36:37Z",
+              "completedAt": "2026-05-19T14:36:38Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:36:38Z",
+              "completedAt": "2026-05-19T14:36:41Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:36:41Z",
+              "completedAt": "2026-05-19T14:37:03Z",
+              "durationSeconds": 22
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:37:03Z",
+              "completedAt": "2026-05-19T14:37:41Z",
+              "durationSeconds": 38
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:37:41Z",
+              "completedAt": "2026-05-19T14:38:24Z",
+              "durationSeconds": 43
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:24Z",
+              "completedAt": "2026-05-19T14:38:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:25Z",
+              "completedAt": "2026-05-19T14:38:27Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:27Z",
+              "completedAt": "2026-05-19T14:38:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:27Z",
+              "completedAt": "2026-05-19T14:38:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:27Z",
+              "completedAt": "2026-05-19T14:38:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:27Z",
+              "completedAt": "2026-05-19T14:38:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:27Z",
+              "completedAt": "2026-05-19T14:38:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:27Z",
+              "completedAt": "2026-05-19T14:38:28Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:38:28Z",
+              "completedAt": "2026-05-19T14:38:28Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26104121323/job/76763066653"
+        }
+      ]
+    },
+    {
+      "runId": 26103045011,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26103045011",
+      "displayTitle": "Feat: Auth/Blog V2 ops 로그 연결 (#23)",
+      "event": "push",
+      "branch": "v2.0.20",
+      "headSha": "a03bc451a9b5a532d10f0578b37b439d8a9ccc91",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-19T14:15:30Z",
+      "updatedAt": "2026-05-19T14:25:55Z",
+      "durationSeconds": 625,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-19T14:21:03Z",
+          "completedAt": "2026-05-19T14:25:50Z",
+          "durationSeconds": 287,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:21:04Z",
+              "completedAt": "2026-05-19T14:21:07Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:21:07Z",
+              "completedAt": "2026-05-19T14:21:08Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:21:08Z",
+              "completedAt": "2026-05-19T14:21:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:21:08Z",
+              "completedAt": "2026-05-19T14:21:10Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:21:10Z",
+              "completedAt": "2026-05-19T14:21:11Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:21:11Z",
+              "completedAt": "2026-05-19T14:23:06Z",
+              "durationSeconds": 115
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:23:06Z",
+              "completedAt": "2026-05-19T14:23:42Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:23:42Z",
+              "completedAt": "2026-05-19T14:23:45Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:23:45Z",
+              "completedAt": "2026-05-19T14:23:46Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:23:46Z",
+              "completedAt": "2026-05-19T14:23:49Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:23:49Z",
+              "completedAt": "2026-05-19T14:24:17Z",
+              "durationSeconds": 28
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:24:17Z",
+              "completedAt": "2026-05-19T14:25:02Z",
+              "durationSeconds": 45
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:02Z",
+              "completedAt": "2026-05-19T14:25:45Z",
+              "durationSeconds": 43
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:45Z",
+              "completedAt": "2026-05-19T14:25:46Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:46Z",
+              "completedAt": "2026-05-19T14:25:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:47Z",
+              "completedAt": "2026-05-19T14:25:48Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:48Z",
+              "completedAt": "2026-05-19T14:25:48Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:48Z",
+              "completedAt": "2026-05-19T14:25:48Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:48Z",
+              "completedAt": "2026-05-19T14:25:48Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:48Z",
+              "completedAt": "2026-05-19T14:25:48Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:48Z",
+              "completedAt": "2026-05-19T14:25:49Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:25:49Z",
+              "completedAt": "2026-05-19T14:25:49Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26103045011/job/76760277381"
+        }
+      ]
+    },
+    {
+      "runId": 25795079388,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25795079388",
+      "displayTitle": "fix(monitor-bot): allow channel-targeted ops watches",
+      "event": "push",
+      "branch": "v2.0.19",
+      "headSha": "86bd287755ccd80467f46dad118ba6d98d2af741",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-13T11:03:54Z",
+      "updatedAt": "2026-05-13T11:08:11Z",
+      "durationSeconds": 257,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-13T11:03:57Z",
+          "completedAt": "2026-05-13T11:08:11Z",
+          "durationSeconds": 254,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:03:58Z",
+              "completedAt": "2026-05-13T11:04:01Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:04:01Z",
+              "completedAt": "2026-05-13T11:04:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:04:01Z",
+              "completedAt": "2026-05-13T11:04:02Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:04:02Z",
+              "completedAt": "2026-05-13T11:04:02Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:04:02Z",
+              "completedAt": "2026-05-13T11:04:03Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:04:03Z",
+              "completedAt": "2026-05-13T11:05:35Z",
+              "durationSeconds": 92
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:05:35Z",
+              "completedAt": "2026-05-13T11:06:06Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:06:06Z",
+              "completedAt": "2026-05-13T11:06:09Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:06:09Z",
+              "completedAt": "2026-05-13T11:06:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:06:10Z",
+              "completedAt": "2026-05-13T11:06:13Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:06:13Z",
+              "completedAt": "2026-05-13T11:06:41Z",
+              "durationSeconds": 28
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:06:41Z",
+              "completedAt": "2026-05-13T11:07:22Z",
+              "durationSeconds": 41
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:07:22Z",
+              "completedAt": "2026-05-13T11:08:06Z",
+              "durationSeconds": 44
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:06Z",
+              "completedAt": "2026-05-13T11:08:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:07Z",
+              "completedAt": "2026-05-13T11:08:08Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:08Z",
+              "completedAt": "2026-05-13T11:08:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:08Z",
+              "completedAt": "2026-05-13T11:08:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:08Z",
+              "completedAt": "2026-05-13T11:08:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:08Z",
+              "completedAt": "2026-05-13T11:08:09Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:09Z",
+              "completedAt": "2026-05-13T11:08:09Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:09Z",
+              "completedAt": "2026-05-13T11:08:09Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:08:09Z",
+              "completedAt": "2026-05-13T11:08:09Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25795079388/job/75770191171"
+        }
+      ]
+    },
+    {
+      "runId": 25793705988,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25793705988",
+      "displayTitle": "fix(cd): pass service URIs to monitor bot",
+      "event": "push",
+      "branch": "v2.0.19",
+      "headSha": "37e0c509acafb411c007e2ec20fc83cc535bbfaf",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "createdAt": "2026-05-13T10:34:17Z",
+      "updatedAt": "2026-05-13T10:35:06Z",
+      "durationSeconds": 49,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "cancelled",
+          "startedAt": "2026-05-13T10:34:20Z",
+          "completedAt": "2026-05-13T10:35:06Z",
+          "durationSeconds": 46,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:21Z",
+              "completedAt": "2026-05-13T10:34:24Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:24Z",
+              "completedAt": "2026-05-13T10:34:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:25Z",
+              "completedAt": "2026-05-13T10:34:25Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:25Z",
+              "completedAt": "2026-05-13T10:34:26Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:26Z",
+              "completedAt": "2026-05-13T10:34:27Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "cancelled",
+              "startedAt": "2026-05-13T10:34:27Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 34
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:35:01Z",
+              "completedAt": "2026-05-13T10:35:02Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:35:02Z",
+              "completedAt": "2026-05-13T10:35:03Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:35:03Z",
+              "completedAt": "2026-05-13T10:35:03Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25793705988/job/75765468034"
+        }
+      ]
+    },
+    {
+      "runId": 25792625966,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25792625966",
+      "displayTitle": "feat(monitor-bot): automate ops dashboards",
+      "event": "push",
+      "branch": "v2.0.18",
+      "headSha": "493b84f9afb82b5f45936a6497e45cf4de8d2511",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-13T10:11:34Z",
+      "updatedAt": "2026-05-13T10:15:51Z",
+      "durationSeconds": 257,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-13T10:11:37Z",
+          "completedAt": "2026-05-13T10:15:50Z",
+          "durationSeconds": 253,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:38Z",
+              "completedAt": "2026-05-13T10:11:46Z",
+              "durationSeconds": 8
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:46Z",
+              "completedAt": "2026-05-13T10:11:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:47Z",
+              "completedAt": "2026-05-13T10:11:48Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:48Z",
+              "completedAt": "2026-05-13T10:11:49Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:49Z",
+              "completedAt": "2026-05-13T10:11:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:49Z",
+              "completedAt": "2026-05-13T10:13:19Z",
+              "durationSeconds": 90
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:19Z",
+              "completedAt": "2026-05-13T10:13:45Z",
+              "durationSeconds": 26
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:45Z",
+              "completedAt": "2026-05-13T10:13:47Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:47Z",
+              "completedAt": "2026-05-13T10:13:48Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:48Z",
+              "completedAt": "2026-05-13T10:13:50Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:50Z",
+              "completedAt": "2026-05-13T10:14:19Z",
+              "durationSeconds": 29
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:14:19Z",
+              "completedAt": "2026-05-13T10:14:58Z",
+              "durationSeconds": 39
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:14:58Z",
+              "completedAt": "2026-05-13T10:15:43Z",
+              "durationSeconds": 45
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:43Z",
+              "completedAt": "2026-05-13T10:15:45Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:45Z",
+              "completedAt": "2026-05-13T10:15:46Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:46Z",
+              "completedAt": "2026-05-13T10:15:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:46Z",
+              "completedAt": "2026-05-13T10:15:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:46Z",
+              "completedAt": "2026-05-13T10:15:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:46Z",
+              "completedAt": "2026-05-13T10:15:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:46Z",
+              "completedAt": "2026-05-13T10:15:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:47Z",
+              "completedAt": "2026-05-13T10:15:47Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:15:47Z",
+              "completedAt": "2026-05-13T10:15:47Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25792625966/job/75761826945"
+        }
+      ]
+    },
+    {
+      "runId": 25713455598,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25713455598",
+      "displayTitle": "fix(monitor-bot): disable legacy command registration",
+      "event": "push",
+      "branch": "v2.0.17",
+      "headSha": "12dfe111003cfa53d642e57c579029b7f5c3af3b",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-12T04:30:42Z",
+      "updatedAt": "2026-05-12T04:35:00Z",
+      "durationSeconds": 258,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-12T04:30:51Z",
+          "completedAt": "2026-05-12T04:34:59Z",
+          "durationSeconds": 248,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:30:52Z",
+              "completedAt": "2026-05-12T04:30:56Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:30:56Z",
+              "completedAt": "2026-05-12T04:30:57Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:30:57Z",
+              "completedAt": "2026-05-12T04:30:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:30:57Z",
+              "completedAt": "2026-05-12T04:30:59Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:30:59Z",
+              "completedAt": "2026-05-12T04:30:59Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:30:59Z",
+              "completedAt": "2026-05-12T04:32:36Z",
+              "durationSeconds": 97
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:32:36Z",
+              "completedAt": "2026-05-12T04:33:06Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:33:06Z",
+              "completedAt": "2026-05-12T04:33:09Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:33:09Z",
+              "completedAt": "2026-05-12T04:33:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:33:10Z",
+              "completedAt": "2026-05-12T04:33:12Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:33:12Z",
+              "completedAt": "2026-05-12T04:33:33Z",
+              "durationSeconds": 21
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:33:33Z",
+              "completedAt": "2026-05-12T04:34:09Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:09Z",
+              "completedAt": "2026-05-12T04:34:51Z",
+              "durationSeconds": 42
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:51Z",
+              "completedAt": "2026-05-12T04:34:53Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:53Z",
+              "completedAt": "2026-05-12T04:34:54Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:54Z",
+              "completedAt": "2026-05-12T04:34:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:54Z",
+              "completedAt": "2026-05-12T04:34:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:54Z",
+              "completedAt": "2026-05-12T04:34:55Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:55Z",
+              "completedAt": "2026-05-12T04:34:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:55Z",
+              "completedAt": "2026-05-12T04:34:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:55Z",
+              "completedAt": "2026-05-12T04:34:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:34:55Z",
+              "completedAt": "2026-05-12T04:34:55Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25713455598/job/75498363491"
+        }
+      ]
+    },
+    {
+      "runId": 25713197457,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25713197457",
+      "displayTitle": "fix(monitor-bot): clarify ops UX",
+      "event": "push",
+      "branch": "v2.0.16",
+      "headSha": "0a3eec360250ba48323249bdd9156989718c43b8",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-12T04:22:48Z",
+      "updatedAt": "2026-05-12T04:27:18Z",
+      "durationSeconds": 270,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-12T04:22:57Z",
+          "completedAt": "2026-05-12T04:27:17Z",
+          "durationSeconds": 260,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:22:58Z",
+              "completedAt": "2026-05-12T04:23:02Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:23:02Z",
+              "completedAt": "2026-05-12T04:23:03Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:23:03Z",
+              "completedAt": "2026-05-12T04:23:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:23:03Z",
+              "completedAt": "2026-05-12T04:23:04Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:23:04Z",
+              "completedAt": "2026-05-12T04:23:05Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:23:05Z",
+              "completedAt": "2026-05-12T04:24:45Z",
+              "durationSeconds": 100
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:24:45Z",
+              "completedAt": "2026-05-12T04:25:16Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:25:16Z",
+              "completedAt": "2026-05-12T04:25:19Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:25:19Z",
+              "completedAt": "2026-05-12T04:25:20Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:25:20Z",
+              "completedAt": "2026-05-12T04:25:23Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:25:23Z",
+              "completedAt": "2026-05-12T04:25:49Z",
+              "durationSeconds": 26
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:25:49Z",
+              "completedAt": "2026-05-12T04:26:29Z",
+              "durationSeconds": 40
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:26:29Z",
+              "completedAt": "2026-05-12T04:27:12Z",
+              "durationSeconds": 43
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:12Z",
+              "completedAt": "2026-05-12T04:27:13Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:13Z",
+              "completedAt": "2026-05-12T04:27:14Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:14Z",
+              "completedAt": "2026-05-12T04:27:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:14Z",
+              "completedAt": "2026-05-12T04:27:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:14Z",
+              "completedAt": "2026-05-12T04:27:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:14Z",
+              "completedAt": "2026-05-12T04:27:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:14Z",
+              "completedAt": "2026-05-12T04:27:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:14Z",
+              "completedAt": "2026-05-12T04:27:15Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T04:27:15Z",
+              "completedAt": "2026-05-12T04:27:15Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25713197457/job/75497585330"
+        }
+      ]
+    },
+    {
+      "runId": 25711339580,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25711339580",
+      "displayTitle": "fix(monitor-bot): make discord command registration compatible",
+      "event": "push",
+      "branch": "v2.0.15",
+      "headSha": "d24683efee7e16650c69c834b6ed9348548f11f5",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-12T03:22:57Z",
+      "updatedAt": "2026-05-12T03:27:11Z",
+      "durationSeconds": 254,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-12T03:23:05Z",
+          "completedAt": "2026-05-12T03:27:11Z",
+          "durationSeconds": 246,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:23:06Z",
+              "completedAt": "2026-05-12T03:23:09Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:23:09Z",
+              "completedAt": "2026-05-12T03:23:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:23:10Z",
+              "completedAt": "2026-05-12T03:23:10Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:23:10Z",
+              "completedAt": "2026-05-12T03:23:10Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:23:10Z",
+              "completedAt": "2026-05-12T03:23:11Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:23:11Z",
+              "completedAt": "2026-05-12T03:24:44Z",
+              "durationSeconds": 93
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:24:44Z",
+              "completedAt": "2026-05-12T03:25:11Z",
+              "durationSeconds": 27
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:25:11Z",
+              "completedAt": "2026-05-12T03:25:14Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:25:14Z",
+              "completedAt": "2026-05-12T03:25:15Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:25:15Z",
+              "completedAt": "2026-05-12T03:25:18Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:25:18Z",
+              "completedAt": "2026-05-12T03:25:45Z",
+              "durationSeconds": 27
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:25:45Z",
+              "completedAt": "2026-05-12T03:26:23Z",
+              "durationSeconds": 38
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:26:23Z",
+              "completedAt": "2026-05-12T03:27:07Z",
+              "durationSeconds": 44
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:07Z",
+              "completedAt": "2026-05-12T03:27:07Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:07Z",
+              "completedAt": "2026-05-12T03:27:08Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:08Z",
+              "completedAt": "2026-05-12T03:27:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:08Z",
+              "completedAt": "2026-05-12T03:27:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:08Z",
+              "completedAt": "2026-05-12T03:27:09Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:09Z",
+              "completedAt": "2026-05-12T03:27:09Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:09Z",
+              "completedAt": "2026-05-12T03:27:09Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:09Z",
+              "completedAt": "2026-05-12T03:27:09Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:27:09Z",
+              "completedAt": "2026-05-12T03:27:09Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25711339580/job/75492043437"
+        }
+      ]
+    },
+    {
+      "runId": 25710582439,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25710582439",
+      "displayTitle": "fix(cd): reduce ssh script expressions",
+      "event": "push",
+      "branch": "v2.0.14",
+      "headSha": "f9cf5562846a7a7b1e19e14a5777254ce8bb0680",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-12T02:59:18Z",
+      "updatedAt": "2026-05-12T03:03:49Z",
+      "durationSeconds": 271,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-12T02:59:20Z",
+          "completedAt": "2026-05-12T03:03:49Z",
+          "durationSeconds": 269,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T02:59:21Z",
+              "completedAt": "2026-05-12T02:59:26Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T02:59:26Z",
+              "completedAt": "2026-05-12T02:59:27Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T02:59:27Z",
+              "completedAt": "2026-05-12T02:59:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T02:59:27Z",
+              "completedAt": "2026-05-12T02:59:28Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T02:59:28Z",
+              "completedAt": "2026-05-12T02:59:29Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T02:59:29Z",
+              "completedAt": "2026-05-12T03:01:12Z",
+              "durationSeconds": 103
+            },
+            {
+              "name": "Test monitor-bot",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:01:12Z",
+              "completedAt": "2026-05-12T03:01:42Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:01:42Z",
+              "completedAt": "2026-05-12T03:01:44Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:01:44Z",
+              "completedAt": "2026-05-12T03:01:45Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:01:45Z",
+              "completedAt": "2026-05-12T03:01:48Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:01:48Z",
+              "completedAt": "2026-05-12T03:02:13Z",
+              "durationSeconds": 25
+            },
+            {
+              "name": "Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:02:13Z",
+              "completedAt": "2026-05-12T03:02:52Z",
+              "durationSeconds": 39
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:02:52Z",
+              "completedAt": "2026-05-12T03:03:43Z",
+              "durationSeconds": 51
+            },
+            {
+              "name": "Post Build and push monitor-bot Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:43Z",
+              "completedAt": "2026-05-12T03:03:44Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:44Z",
+              "completedAt": "2026-05-12T03:03:45Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:45Z",
+              "completedAt": "2026-05-12T03:03:45Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:45Z",
+              "completedAt": "2026-05-12T03:03:46Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:46Z",
+              "completedAt": "2026-05-12T03:03:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:46Z",
+              "completedAt": "2026-05-12T03:03:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:46Z",
+              "completedAt": "2026-05-12T03:03:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:46Z",
+              "completedAt": "2026-05-12T03:03:46Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T03:03:46Z",
+              "completedAt": "2026-05-12T03:03:46Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25710582439/job/75489709604"
+        }
+      ]
+    },
+    {
+      "runId": 25273370646,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25273370646",
+      "displayTitle": "CD",
+      "event": "push",
+      "branch": "v2.0.13",
+      "headSha": "347d90aa27cc4b528a071b9e2ccb9d1abce388d8",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-03T07:42:04Z",
+      "updatedAt": "2026-05-12T01:34:03Z",
+      "durationSeconds": 755519,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-12T01:31:15Z",
+          "completedAt": "2026-05-12T01:34:02Z",
+          "durationSeconds": 167,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:31:16Z",
+              "completedAt": "2026-05-12T01:31:20Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:31:20Z",
+              "completedAt": "2026-05-12T01:31:21Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:31:21Z",
+              "completedAt": "2026-05-12T01:31:21Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:31:21Z",
+              "completedAt": "2026-05-12T01:31:22Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:31:22Z",
+              "completedAt": "2026-05-12T01:32:56Z",
+              "durationSeconds": 94
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:32:56Z",
+              "completedAt": "2026-05-12T01:32:59Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:32:59Z",
+              "completedAt": "2026-05-12T01:33:00Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:00Z",
+              "completedAt": "2026-05-12T01:33:02Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:02Z",
+              "completedAt": "2026-05-12T01:33:24Z",
+              "durationSeconds": 22
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:24Z",
+              "completedAt": "2026-05-12T01:33:55Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:55Z",
+              "completedAt": "2026-05-12T01:33:57Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:57Z",
+              "completedAt": "2026-05-12T01:33:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:57Z",
+              "completedAt": "2026-05-12T01:33:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:57Z",
+              "completedAt": "2026-05-12T01:33:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:57Z",
+              "completedAt": "2026-05-12T01:33:58Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:58Z",
+              "completedAt": "2026-05-12T01:33:58Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-12T01:33:58Z",
+              "completedAt": "2026-05-12T01:33:58Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25273370646/job/75481234000"
+        }
+      ]
+    },
+    {
+      "runId": 25214072683,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25214072683",
+      "displayTitle": "CD",
+      "event": "push",
+      "branch": "v2.0.12",
+      "headSha": "66a00fa174a6b0880f124b6894ed7002a1a31c25",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-01T12:21:17Z",
+      "updatedAt": "2026-05-01T12:24:33Z",
+      "durationSeconds": 196,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-05-01T12:21:20Z",
+          "completedAt": "2026-05-01T12:24:32Z",
+          "durationSeconds": 192,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:21:21Z",
+              "completedAt": "2026-05-01T12:21:29Z",
+              "durationSeconds": 8
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:21:29Z",
+              "completedAt": "2026-05-01T12:21:30Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:21:30Z",
+              "completedAt": "2026-05-01T12:21:30Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:21:30Z",
+              "completedAt": "2026-05-01T12:21:32Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:21:32Z",
+              "completedAt": "2026-05-01T12:23:12Z",
+              "durationSeconds": 100
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:23:12Z",
+              "completedAt": "2026-05-01T12:23:15Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:23:15Z",
+              "completedAt": "2026-05-01T12:23:16Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:23:16Z",
+              "completedAt": "2026-05-01T12:23:18Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:23:18Z",
+              "completedAt": "2026-05-01T12:23:41Z",
+              "durationSeconds": 23
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:23:41Z",
+              "completedAt": "2026-05-01T12:24:26Z",
+              "durationSeconds": 45
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:26Z",
+              "completedAt": "2026-05-01T12:24:27Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:27Z",
+              "completedAt": "2026-05-01T12:24:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:27Z",
+              "completedAt": "2026-05-01T12:24:27Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:27Z",
+              "completedAt": "2026-05-01T12:24:28Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:28Z",
+              "completedAt": "2026-05-01T12:24:28Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:28Z",
+              "completedAt": "2026-05-01T12:24:28Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-01T12:24:28Z",
+              "completedAt": "2026-05-01T12:24:28Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25214072683/job/73930514037"
+        }
+      ]
+    },
+    {
+      "runId": 24517628900,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24517628900",
+      "displayTitle": "fix: validate CORS origin in error responses against allowed patterns",
+      "event": "push",
+      "branch": "v2.0.10",
+      "headSha": "05b829ff4cb3a682aa3a79044f7650d11a4ed920",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-04-16T15:01:54Z",
+      "updatedAt": "2026-04-16T15:04:57Z",
+      "durationSeconds": 183,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-04-16T15:01:57Z",
+          "completedAt": "2026-04-16T15:04:56Z",
+          "durationSeconds": 179,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:01:58Z",
+              "completedAt": "2026-04-16T15:02:04Z",
+              "durationSeconds": 6
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:02:04Z",
+              "completedAt": "2026-04-16T15:02:05Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:02:05Z",
+              "completedAt": "2026-04-16T15:02:06Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:02:06Z",
+              "completedAt": "2026-04-16T15:02:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:02:07Z",
+              "completedAt": "2026-04-16T15:03:42Z",
+              "durationSeconds": 95
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:03:42Z",
+              "completedAt": "2026-04-16T15:03:44Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:03:44Z",
+              "completedAt": "2026-04-16T15:03:46Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:03:46Z",
+              "completedAt": "2026-04-16T15:03:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:03:48Z",
+              "completedAt": "2026-04-16T15:04:13Z",
+              "durationSeconds": 25
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:13Z",
+              "completedAt": "2026-04-16T15:04:49Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:49Z",
+              "completedAt": "2026-04-16T15:04:51Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:51Z",
+              "completedAt": "2026-04-16T15:04:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:51Z",
+              "completedAt": "2026-04-16T15:04:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:51Z",
+              "completedAt": "2026-04-16T15:04:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:51Z",
+              "completedAt": "2026-04-16T15:04:52Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:52Z",
+              "completedAt": "2026-04-16T15:04:52Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-04-16T15:04:52Z",
+              "completedAt": "2026-04-16T15:04:52Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24517628900/job/71666078013"
+        }
+      ]
+    },
+    {
+      "runId": 24462204917,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24462204917",
+      "displayTitle": "CD",
+      "event": "push",
+      "branch": "v2.0.9",
+      "headSha": "33c186941e42cb77743f1b5e4a5df4e809145a0b",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-04-15T15:07:45Z",
+      "updatedAt": "2026-04-15T15:10:54Z",
+      "durationSeconds": 189,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-04-15T15:07:48Z",
+          "completedAt": "2026-04-15T15:10:53Z",
+          "durationSeconds": 185,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:07:49Z",
+              "completedAt": "2026-04-15T15:07:57Z",
+              "durationSeconds": 8
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:07:57Z",
+              "completedAt": "2026-04-15T15:07:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:07:57Z",
+              "completedAt": "2026-04-15T15:07:58Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:07:58Z",
+              "completedAt": "2026-04-15T15:07:59Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:07:59Z",
+              "completedAt": "2026-04-15T15:09:45Z",
+              "durationSeconds": 106
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:09:45Z",
+              "completedAt": "2026-04-15T15:09:48Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:09:48Z",
+              "completedAt": "2026-04-15T15:09:51Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:09:51Z",
+              "completedAt": "2026-04-15T15:09:53Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:09:53Z",
+              "completedAt": "2026-04-15T15:10:15Z",
+              "durationSeconds": 22
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:15Z",
+              "completedAt": "2026-04-15T15:10:47Z",
+              "durationSeconds": 32
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:47Z",
+              "completedAt": "2026-04-15T15:10:48Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:48Z",
+              "completedAt": "2026-04-15T15:10:49Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:49Z",
+              "completedAt": "2026-04-15T15:10:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:49Z",
+              "completedAt": "2026-04-15T15:10:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:49Z",
+              "completedAt": "2026-04-15T15:10:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:49Z",
+              "completedAt": "2026-04-15T15:10:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T15:10:49Z",
+              "completedAt": "2026-04-15T15:10:49Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24462204917/job/71479267226"
+        }
+      ]
+    },
+    {
+      "runId": 24460643341,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24460643341",
+      "displayTitle": "CD",
+      "event": "push",
+      "branch": "v2.0.8",
+      "headSha": "160a6080c67a3280d3e8586ac33a7f1ea4ee404d",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-04-15T14:35:36Z",
+      "updatedAt": "2026-04-15T14:38:33Z",
+      "durationSeconds": 177,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-04-15T14:35:39Z",
+          "completedAt": "2026-04-15T14:38:32Z",
+          "durationSeconds": 173,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:35:40Z",
+              "completedAt": "2026-04-15T14:35:43Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:35:43Z",
+              "completedAt": "2026-04-15T14:35:44Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:35:44Z",
+              "completedAt": "2026-04-15T14:35:44Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:35:44Z",
+              "completedAt": "2026-04-15T14:35:45Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:35:45Z",
+              "completedAt": "2026-04-15T14:37:21Z",
+              "durationSeconds": 96
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:37:21Z",
+              "completedAt": "2026-04-15T14:37:24Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:37:24Z",
+              "completedAt": "2026-04-15T14:37:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:37:25Z",
+              "completedAt": "2026-04-15T14:37:28Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:37:28Z",
+              "completedAt": "2026-04-15T14:37:56Z",
+              "durationSeconds": 28
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:37:56Z",
+              "completedAt": "2026-04-15T14:38:28Z",
+              "durationSeconds": 32
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:28Z",
+              "completedAt": "2026-04-15T14:38:29Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:29Z",
+              "completedAt": "2026-04-15T14:38:29Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:29Z",
+              "completedAt": "2026-04-15T14:38:29Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:29Z",
+              "completedAt": "2026-04-15T14:38:29Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:29Z",
+              "completedAt": "2026-04-15T14:38:30Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:30Z",
+              "completedAt": "2026-04-15T14:38:30Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:38:30Z",
+              "completedAt": "2026-04-15T14:38:30Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24460643341/job/71473550940"
+        }
+      ]
+    },
+    {
+      "runId": 24460072731,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24460072731",
+      "displayTitle": "CD",
+      "event": "push",
+      "branch": "v2.0.7",
+      "headSha": "02bbce6f940044e8871ddb294654d5a6a581bad3",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-04-15T14:24:26Z",
+      "updatedAt": "2026-04-15T14:27:21Z",
+      "durationSeconds": 175,
+      "jobs": [
+        {
+          "name": "build-push-deploy",
+          "conclusion": "success",
+          "startedAt": "2026-04-15T14:24:29Z",
+          "completedAt": "2026-04-15T14:27:20Z",
+          "durationSeconds": 171,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:24:30Z",
+              "completedAt": "2026-04-15T14:24:34Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:24:34Z",
+              "completedAt": "2026-04-15T14:24:35Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:24:35Z",
+              "completedAt": "2026-04-15T14:24:35Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:24:35Z",
+              "completedAt": "2026-04-15T14:24:35Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:24:35Z",
+              "completedAt": "2026-04-15T14:26:07Z",
+              "durationSeconds": 92
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:26:07Z",
+              "completedAt": "2026-04-15T14:26:10Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:26:10Z",
+              "completedAt": "2026-04-15T14:26:11Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:26:11Z",
+              "completedAt": "2026-04-15T14:26:14Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:26:14Z",
+              "completedAt": "2026-04-15T14:26:39Z",
+              "durationSeconds": 25
+            },
+            {
+              "name": "Deploy to EC2 via SSH",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:26:39Z",
+              "completedAt": "2026-04-15T14:27:15Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Post Build and push Docker image",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:15Z",
+              "completedAt": "2026-04-15T14:27:16Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Login to Amazon ECR",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:16Z",
+              "completedAt": "2026-04-15T14:27:16Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Configure AWS credentials",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:16Z",
+              "completedAt": "2026-04-15T14:27:17Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:17Z",
+              "completedAt": "2026-04-15T14:27:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:17Z",
+              "completedAt": "2026-04-15T14:27:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:17Z",
+              "completedAt": "2026-04-15T14:27:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-04-15T14:27:17Z",
+              "completedAt": "2026-04-15T14:27:17Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/24460072731/job/71471461367"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2640 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-28T04:21:26.827137+00:00",
+  "repo": "Team-AnI/A-AND-I-GATEWAY-SERVER",
+  "workflow": "CI",
+  "branch": "main",
+  "limit": 20,
+  "completedRunCount": 20,
+  "successfulRunCount": 20,
+  "failureCount": 0,
+  "failureRate": 0.0,
+  "confidence": "확인 완료",
+  "resumeUse": "사용 가능",
+  "summary": {
+    "workflowDuration": {
+      "count": 20,
+      "medianSeconds": 147.5,
+      "averageSeconds": 149.3,
+      "min": 118,
+      "max": 189,
+      "confidence": "확인 완료"
+    },
+    "jobs": {
+      "build": {
+        "count": 20,
+        "medianSeconds": 143.5,
+        "averageSeconds": 144.8,
+        "min": 108,
+        "max": 186,
+        "confidence": "확인 완료"
+      }
+    },
+    "steps": {
+      "Build JAR": {
+        "count": 20,
+        "medianSeconds": 2.0,
+        "averageSeconds": 2.45,
+        "min": 2,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Checkout": {
+        "count": 20,
+        "medianSeconds": 1.0,
+        "averageSeconds": 1.1,
+        "min": 0,
+        "max": 2,
+        "confidence": "확인 완료"
+      },
+      "Complete job": {
+        "count": 20,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0,
+        "min": 0,
+        "max": 0,
+        "confidence": "확인 완료"
+      },
+      "Install k6": {
+        "count": 7,
+        "medianSeconds": 1,
+        "averageSeconds": 1,
+        "min": 1,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Checkout": {
+        "count": 20,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0.15,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Go": {
+        "count": 16,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0.125,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Gradle": {
+        "count": 20,
+        "medianSeconds": 3.5,
+        "averageSeconds": 3.5,
+        "min": 3,
+        "max": 4,
+        "confidence": "확인 완료"
+      },
+      "Post Setup Java 21": {
+        "count": 20,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0.15,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Run monitor-bot tests": {
+        "count": 16,
+        "medianSeconds": 30.0,
+        "averageSeconds": 30.625,
+        "min": 24,
+        "max": 38,
+        "confidence": "확인 완료"
+      },
+      "Run tests": {
+        "count": 20,
+        "medianSeconds": 101.5,
+        "averageSeconds": 102.75,
+        "min": 83,
+        "max": 126,
+        "confidence": "확인 완료"
+      },
+      "Set up job": {
+        "count": 20,
+        "medianSeconds": 3.0,
+        "averageSeconds": 3.15,
+        "min": 2,
+        "max": 5,
+        "confidence": "확인 완료"
+      },
+      "Setup Go": {
+        "count": 16,
+        "medianSeconds": 1.0,
+        "averageSeconds": 0.875,
+        "min": 0,
+        "max": 3,
+        "confidence": "확인 완료"
+      },
+      "Setup Gradle": {
+        "count": 20,
+        "medianSeconds": 2.0,
+        "averageSeconds": 1.7,
+        "min": 0,
+        "max": 6,
+        "confidence": "확인 완료"
+      },
+      "Setup Java 21": {
+        "count": 20,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0.15,
+        "min": 0,
+        "max": 1,
+        "confidence": "확인 완료"
+      },
+      "Upload test report": {
+        "count": 20,
+        "medianSeconds": 0.0,
+        "averageSeconds": 0,
+        "min": 0,
+        "max": 0,
+        "confidence": "확인 완료"
+      },
+      "Validate performance assets": {
+        "count": 7,
+        "medianSeconds": 2,
+        "averageSeconds": 2.7142857142857144,
+        "min": 1,
+        "max": 7,
+        "confidence": "확인 완료"
+      }
+    }
+  },
+  "runs": [
+    {
+      "runId": 27965838063,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965838063",
+      "displayTitle": "docs(readme): render sentence breaks",
+      "event": "push",
+      "branch": "main",
+      "headSha": "9c3bcf803fc653df84fd42b62ad8dda5d0967380",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-22T15:55:39Z",
+      "updatedAt": "2026-06-22T15:58:36Z",
+      "durationSeconds": 177,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-22T15:55:42Z",
+          "completedAt": "2026-06-22T15:58:35Z",
+          "durationSeconds": 173,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:43Z",
+              "completedAt": "2026-06-22T15:55:46Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:46Z",
+              "completedAt": "2026-06-22T15:55:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:47Z",
+              "completedAt": "2026-06-22T15:55:47Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:47Z",
+              "completedAt": "2026-06-22T15:55:49Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:49Z",
+              "completedAt": "2026-06-22T15:57:41Z",
+              "durationSeconds": 112
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:57:41Z",
+              "completedAt": "2026-06-22T15:57:42Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:57:42Z",
+              "completedAt": "2026-06-22T15:58:20Z",
+              "durationSeconds": 38
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:20Z",
+              "completedAt": "2026-06-22T15:58:23Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:23Z",
+              "completedAt": "2026-06-22T15:58:24Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:24Z",
+              "completedAt": "2026-06-22T15:58:28Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-22T15:58:28Z",
+              "completedAt": "2026-06-22T15:58:28Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:28Z",
+              "completedAt": "2026-06-22T15:58:28Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:28Z",
+              "completedAt": "2026-06-22T15:58:32Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:32Z",
+              "completedAt": "2026-06-22T15:58:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:32Z",
+              "completedAt": "2026-06-22T15:58:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:58:32Z",
+              "completedAt": "2026-06-22T15:58:32Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965838063/job/82759275656"
+        }
+      ]
+    },
+    {
+      "runId": 27965637091,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965637091",
+      "displayTitle": "docs(readme): improve sentence line breaks",
+      "event": "push",
+      "branch": "main",
+      "headSha": "0354c8e368dcac46b2173c7c4ada0a6c23ce757d",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-22T15:52:33Z",
+      "updatedAt": "2026-06-22T15:55:05Z",
+      "durationSeconds": 152,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-22T15:52:38Z",
+          "completedAt": "2026-06-22T15:55:04Z",
+          "durationSeconds": 146,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:52:39Z",
+              "completedAt": "2026-06-22T15:52:42Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:52:42Z",
+              "completedAt": "2026-06-22T15:52:43Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:52:43Z",
+              "completedAt": "2026-06-22T15:52:44Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:52:44Z",
+              "completedAt": "2026-06-22T15:52:44Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:52:44Z",
+              "completedAt": "2026-06-22T15:54:22Z",
+              "durationSeconds": 98
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:22Z",
+              "completedAt": "2026-06-22T15:54:23Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:23Z",
+              "completedAt": "2026-06-22T15:54:53Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:53Z",
+              "completedAt": "2026-06-22T15:54:55Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:55Z",
+              "completedAt": "2026-06-22T15:54:56Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:56Z",
+              "completedAt": "2026-06-22T15:54:57Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-22T15:54:57Z",
+              "completedAt": "2026-06-22T15:54:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:57Z",
+              "completedAt": "2026-06-22T15:54:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:54:57Z",
+              "completedAt": "2026-06-22T15:55:01Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:01Z",
+              "completedAt": "2026-06-22T15:55:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:01Z",
+              "completedAt": "2026-06-22T15:55:01Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:55:01Z",
+              "completedAt": "2026-06-22T15:55:01Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965637091/job/82758589554"
+        }
+      ]
+    },
+    {
+      "runId": 27965308872,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965308872",
+      "displayTitle": "docs(readme): finalize gateway architecture and performance assets",
+      "event": "push",
+      "branch": "main",
+      "headSha": "e75eedb7d1e2aea079840a9a1911772e0c9704f8",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-22T15:47:17Z",
+      "updatedAt": "2026-06-22T15:49:58Z",
+      "durationSeconds": 161,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-22T15:47:20Z",
+          "completedAt": "2026-06-22T15:49:57Z",
+          "durationSeconds": 157,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:47:21Z",
+              "completedAt": "2026-06-22T15:47:26Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:47:26Z",
+              "completedAt": "2026-06-22T15:47:28Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:47:28Z",
+              "completedAt": "2026-06-22T15:47:28Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:47:28Z",
+              "completedAt": "2026-06-22T15:47:29Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:47:29Z",
+              "completedAt": "2026-06-22T15:49:15Z",
+              "durationSeconds": 106
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:15Z",
+              "completedAt": "2026-06-22T15:49:15Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:15Z",
+              "completedAt": "2026-06-22T15:49:45Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:45Z",
+              "completedAt": "2026-06-22T15:49:47Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:47Z",
+              "completedAt": "2026-06-22T15:49:48Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:48Z",
+              "completedAt": "2026-06-22T15:49:49Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-22T15:49:49Z",
+              "completedAt": "2026-06-22T15:49:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:49Z",
+              "completedAt": "2026-06-22T15:49:50Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:50Z",
+              "completedAt": "2026-06-22T15:49:53Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:53Z",
+              "completedAt": "2026-06-22T15:49:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:53Z",
+              "completedAt": "2026-06-22T15:49:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T15:49:53Z",
+              "completedAt": "2026-06-22T15:49:53Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27965308872/job/82757434619"
+        }
+      ]
+    },
+    {
+      "runId": 27957870475,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27957870475",
+      "displayTitle": "Merge pull request #36 from stdiodh/docs/gateway-readme-sequence-flow",
+      "event": "push",
+      "branch": "main",
+      "headSha": "b03504ed30897f37e359b9c1a578197852fff040",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-22T13:53:34Z",
+      "updatedAt": "2026-06-22T13:56:01Z",
+      "durationSeconds": 147,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-22T13:53:37Z",
+          "completedAt": "2026-06-22T13:56:00Z",
+          "durationSeconds": 143,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:38Z",
+              "completedAt": "2026-06-22T13:53:40Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:40Z",
+              "completedAt": "2026-06-22T13:53:41Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:41Z",
+              "completedAt": "2026-06-22T13:53:41Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:41Z",
+              "completedAt": "2026-06-22T13:53:41Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:41Z",
+              "completedAt": "2026-06-22T13:55:20Z",
+              "durationSeconds": 99
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:20Z",
+              "completedAt": "2026-06-22T13:55:21Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:21Z",
+              "completedAt": "2026-06-22T13:55:50Z",
+              "durationSeconds": 29
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:50Z",
+              "completedAt": "2026-06-22T13:55:52Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:52Z",
+              "completedAt": "2026-06-22T13:55:53Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:53Z",
+              "completedAt": "2026-06-22T13:55:54Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-22T13:55:54Z",
+              "completedAt": "2026-06-22T13:55:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:54Z",
+              "completedAt": "2026-06-22T13:55:54Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:54Z",
+              "completedAt": "2026-06-22T13:55:58Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:58Z",
+              "completedAt": "2026-06-22T13:55:58Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:58Z",
+              "completedAt": "2026-06-22T13:55:58Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:58Z",
+              "completedAt": "2026-06-22T13:55:58Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27957870475/job/82730986601"
+        }
+      ]
+    },
+    {
+      "runId": 27957833133,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27957833133",
+      "displayTitle": "Merge pull request #37 from SangWook16074/feat/backend-availability-t…",
+      "event": "push",
+      "branch": "main",
+      "headSha": "b604cbd5e233403def2aa450514409b9c14cb97f",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-22T13:53:00Z",
+      "updatedAt": "2026-06-22T13:55:56Z",
+      "durationSeconds": 176,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-22T13:53:03Z",
+          "completedAt": "2026-06-22T13:55:55Z",
+          "durationSeconds": 172,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:04Z",
+              "completedAt": "2026-06-22T13:53:06Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:06Z",
+              "completedAt": "2026-06-22T13:53:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:07Z",
+              "completedAt": "2026-06-22T13:53:07Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:07Z",
+              "completedAt": "2026-06-22T13:53:09Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:53:09Z",
+              "completedAt": "2026-06-22T13:55:06Z",
+              "durationSeconds": 117
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:06Z",
+              "completedAt": "2026-06-22T13:55:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:07Z",
+              "completedAt": "2026-06-22T13:55:43Z",
+              "durationSeconds": 36
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:43Z",
+              "completedAt": "2026-06-22T13:55:46Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:46Z",
+              "completedAt": "2026-06-22T13:55:47Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:47Z",
+              "completedAt": "2026-06-22T13:55:49Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-22T13:55:49Z",
+              "completedAt": "2026-06-22T13:55:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:49Z",
+              "completedAt": "2026-06-22T13:55:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:49Z",
+              "completedAt": "2026-06-22T13:55:53Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:53Z",
+              "completedAt": "2026-06-22T13:55:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:53Z",
+              "completedAt": "2026-06-22T13:55:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-22T13:55:53Z",
+              "completedAt": "2026-06-22T13:55:53Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27957833133/job/82730858700"
+        }
+      ]
+    },
+    {
+      "runId": 27911431729,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27911431729",
+      "displayTitle": "docs(readme): simplify gateway documentation",
+      "event": "push",
+      "branch": "main",
+      "headSha": "f78b1c44e243b3c6e3c6dc3ae4a33fd87e1cefea",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-21T17:04:38Z",
+      "updatedAt": "2026-06-21T17:07:20Z",
+      "durationSeconds": 162,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-21T17:04:40Z",
+          "completedAt": "2026-06-21T17:07:19Z",
+          "durationSeconds": 159,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:04:41Z",
+              "completedAt": "2026-06-21T17:04:44Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:04:44Z",
+              "completedAt": "2026-06-21T17:04:45Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:04:45Z",
+              "completedAt": "2026-06-21T17:04:45Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:04:45Z",
+              "completedAt": "2026-06-21T17:04:47Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:04:47Z",
+              "completedAt": "2026-06-21T17:06:33Z",
+              "durationSeconds": 106
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:06:33Z",
+              "completedAt": "2026-06-21T17:06:34Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:06:34Z",
+              "completedAt": "2026-06-21T17:07:04Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:04Z",
+              "completedAt": "2026-06-21T17:07:06Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:06Z",
+              "completedAt": "2026-06-21T17:07:07Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:07Z",
+              "completedAt": "2026-06-21T17:07:14Z",
+              "durationSeconds": 7
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-21T17:07:14Z",
+              "completedAt": "2026-06-21T17:07:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:14Z",
+              "completedAt": "2026-06-21T17:07:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:14Z",
+              "completedAt": "2026-06-21T17:07:17Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:17Z",
+              "completedAt": "2026-06-21T17:07:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:17Z",
+              "completedAt": "2026-06-21T17:07:17Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T17:07:17Z",
+              "completedAt": "2026-06-21T17:07:17Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27911431729/job/82589126596"
+        }
+      ]
+    },
+    {
+      "runId": 27893124105,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27893124105",
+      "displayTitle": "docs(performance): record gateway k6 check",
+      "event": "push",
+      "branch": "main",
+      "headSha": "a6509f24ee91968ebada61ffcb05bd3ed71e9437",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-21T04:10:44Z",
+      "updatedAt": "2026-06-21T04:13:09Z",
+      "durationSeconds": 145,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-21T04:10:46Z",
+          "completedAt": "2026-06-21T04:13:08Z",
+          "durationSeconds": 142,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:10:47Z",
+              "completedAt": "2026-06-21T04:10:49Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:10:49Z",
+              "completedAt": "2026-06-21T04:10:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:10:49Z",
+              "completedAt": "2026-06-21T04:10:50Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:10:50Z",
+              "completedAt": "2026-06-21T04:10:51Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:10:51Z",
+              "completedAt": "2026-06-21T04:12:26Z",
+              "durationSeconds": 95
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:12:26Z",
+              "completedAt": "2026-06-21T04:12:27Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:12:27Z",
+              "completedAt": "2026-06-21T04:12:57Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:12:57Z",
+              "completedAt": "2026-06-21T04:12:59Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Install k6",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:12:59Z",
+              "completedAt": "2026-06-21T04:13:00Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Validate performance assets",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:13:00Z",
+              "completedAt": "2026-06-21T04:13:03Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-21T04:13:03Z",
+              "completedAt": "2026-06-21T04:13:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:13:03Z",
+              "completedAt": "2026-06-21T04:13:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:13:03Z",
+              "completedAt": "2026-06-21T04:13:07Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:13:07Z",
+              "completedAt": "2026-06-21T04:13:07Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:13:07Z",
+              "completedAt": "2026-06-21T04:13:07Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-21T04:13:07Z",
+              "completedAt": "2026-06-21T04:13:07Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27893124105/job/82540000066"
+        }
+      ]
+    },
+    {
+      "runId": 27489921331,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27489921331",
+      "displayTitle": "docs(readme): 자연스러운 표현으로 정리",
+      "event": "push",
+      "branch": "main",
+      "headSha": "c4fcbfa4ace70e8293f250b600e13984400f7dd3",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-14T05:51:03Z",
+      "updatedAt": "2026-06-14T05:53:43Z",
+      "durationSeconds": 160,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-14T05:51:06Z",
+          "completedAt": "2026-06-14T05:53:42Z",
+          "durationSeconds": 156,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:51:06Z",
+              "completedAt": "2026-06-14T05:51:10Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:51:10Z",
+              "completedAt": "2026-06-14T05:51:12Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:51:12Z",
+              "completedAt": "2026-06-14T05:51:12Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:51:12Z",
+              "completedAt": "2026-06-14T05:51:14Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:51:14Z",
+              "completedAt": "2026-06-14T05:53:02Z",
+              "durationSeconds": 108
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:02Z",
+              "completedAt": "2026-06-14T05:53:02Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:02Z",
+              "completedAt": "2026-06-14T05:53:33Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:33Z",
+              "completedAt": "2026-06-14T05:53:36Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-14T05:53:36Z",
+              "completedAt": "2026-06-14T05:53:36Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:36Z",
+              "completedAt": "2026-06-14T05:53:36Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:36Z",
+              "completedAt": "2026-06-14T05:53:39Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:39Z",
+              "completedAt": "2026-06-14T05:53:40Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:40Z",
+              "completedAt": "2026-06-14T05:53:40Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:53:40Z",
+              "completedAt": "2026-06-14T05:53:40Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27489921331/job/81252954413"
+        }
+      ]
+    },
+    {
+      "runId": 27489838624,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27489838624",
+      "displayTitle": "Merge pull request #33 from stdiodh/develop-portfolio-readme-clean",
+      "event": "push",
+      "branch": "main",
+      "headSha": "b6e917b0e3e602376fed714f31db6a2012fd2b55",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-06-14T05:46:51Z",
+      "updatedAt": "2026-06-14T05:50:00Z",
+      "durationSeconds": 189,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-06-14T05:46:53Z",
+          "completedAt": "2026-06-14T05:49:59Z",
+          "durationSeconds": 186,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:46:54Z",
+              "completedAt": "2026-06-14T05:46:58Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:46:58Z",
+              "completedAt": "2026-06-14T05:47:00Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:47:00Z",
+              "completedAt": "2026-06-14T05:47:00Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:47:00Z",
+              "completedAt": "2026-06-14T05:47:06Z",
+              "durationSeconds": 6
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:47:06Z",
+              "completedAt": "2026-06-14T05:49:12Z",
+              "durationSeconds": 126
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:12Z",
+              "completedAt": "2026-06-14T05:49:15Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:15Z",
+              "completedAt": "2026-06-14T05:49:50Z",
+              "durationSeconds": 35
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:50Z",
+              "completedAt": "2026-06-14T05:49:53Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-06-14T05:49:53Z",
+              "completedAt": "2026-06-14T05:49:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:53Z",
+              "completedAt": "2026-06-14T05:49:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:53Z",
+              "completedAt": "2026-06-14T05:49:56Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:56Z",
+              "completedAt": "2026-06-14T05:49:57Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:57Z",
+              "completedAt": "2026-06-14T05:49:57Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-06-14T05:49:57Z",
+              "completedAt": "2026-06-14T05:49:57Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/27489838624/job/81252729628"
+        }
+      ]
+    },
+    {
+      "runId": 26434162219,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26434162219",
+      "displayTitle": "chore(release): sync develop for v2.0.25",
+      "event": "push",
+      "branch": "main",
+      "headSha": "cf54279177ee1449aa3608e503b85a3681740fdf",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-26T05:29:26Z",
+      "updatedAt": "2026-05-26T05:32:11Z",
+      "durationSeconds": 165,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-26T05:29:29Z",
+          "completedAt": "2026-05-26T05:32:10Z",
+          "durationSeconds": 161,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:29Z",
+              "completedAt": "2026-05-26T05:29:33Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:33Z",
+              "completedAt": "2026-05-26T05:29:34Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:34Z",
+              "completedAt": "2026-05-26T05:29:35Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:35Z",
+              "completedAt": "2026-05-26T05:29:37Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:29:37Z",
+              "completedAt": "2026-05-26T05:31:30Z",
+              "durationSeconds": 113
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:31:30Z",
+              "completedAt": "2026-05-26T05:31:31Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:31:31Z",
+              "completedAt": "2026-05-26T05:32:02Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:02Z",
+              "completedAt": "2026-05-26T05:32:04Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-26T05:32:04Z",
+              "completedAt": "2026-05-26T05:32:04Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:04Z",
+              "completedAt": "2026-05-26T05:32:05Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:05Z",
+              "completedAt": "2026-05-26T05:32:08Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:08Z",
+              "completedAt": "2026-05-26T05:32:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:08Z",
+              "completedAt": "2026-05-26T05:32:08Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-26T05:32:08Z",
+              "completedAt": "2026-05-26T05:32:08Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26434162219/job/77813227949"
+        }
+      ]
+    },
+    {
+      "runId": 26225502378,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26225502378",
+      "displayTitle": "Merge pull request #30 from Team-AnI/develop",
+      "event": "push",
+      "branch": "main",
+      "headSha": "eb243ed831fe46a0a0838134bb426a0669f7ee1d",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-21T12:19:46Z",
+      "updatedAt": "2026-05-21T12:21:55Z",
+      "durationSeconds": 129,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-21T12:19:49Z",
+          "completedAt": "2026-05-21T12:21:54Z",
+          "durationSeconds": 125,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:19:50Z",
+              "completedAt": "2026-05-21T12:19:55Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:19:55Z",
+              "completedAt": "2026-05-21T12:19:56Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:19:56Z",
+              "completedAt": "2026-05-21T12:19:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:19:56Z",
+              "completedAt": "2026-05-21T12:19:58Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:19:58Z",
+              "completedAt": "2026-05-21T12:21:21Z",
+              "durationSeconds": 83
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:21Z",
+              "completedAt": "2026-05-21T12:21:22Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:22Z",
+              "completedAt": "2026-05-21T12:21:46Z",
+              "durationSeconds": 24
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:46Z",
+              "completedAt": "2026-05-21T12:21:48Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-21T12:21:48Z",
+              "completedAt": "2026-05-21T12:21:48Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:48Z",
+              "completedAt": "2026-05-21T12:21:48Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:48Z",
+              "completedAt": "2026-05-21T12:21:51Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:51Z",
+              "completedAt": "2026-05-21T12:21:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:51Z",
+              "completedAt": "2026-05-21T12:21:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T12:21:51Z",
+              "completedAt": "2026-05-21T12:21:51Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26225502378/job/77171322746"
+        }
+      ]
+    },
+    {
+      "runId": 26220621262,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26220621262",
+      "displayTitle": "Merge pull request #27 from stdiodh/develop-docs-placeholder-polish",
+      "event": "push",
+      "branch": "main",
+      "headSha": "c6beb0f1c2e3eb9128d277f7c39be79c9bbdcdcf",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-21T10:32:11Z",
+      "updatedAt": "2026-05-21T10:34:39Z",
+      "durationSeconds": 148,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-21T10:32:15Z",
+          "completedAt": "2026-05-21T10:34:39Z",
+          "durationSeconds": 144,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:32:16Z",
+              "completedAt": "2026-05-21T10:32:19Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:32:19Z",
+              "completedAt": "2026-05-21T10:32:20Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:32:20Z",
+              "completedAt": "2026-05-21T10:32:20Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:32:20Z",
+              "completedAt": "2026-05-21T10:32:23Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:32:23Z",
+              "completedAt": "2026-05-21T10:33:58Z",
+              "durationSeconds": 95
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:33:58Z",
+              "completedAt": "2026-05-21T10:33:59Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:33:59Z",
+              "completedAt": "2026-05-21T10:34:29Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:34:29Z",
+              "completedAt": "2026-05-21T10:34:32Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-21T10:34:32Z",
+              "completedAt": "2026-05-21T10:34:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:34:32Z",
+              "completedAt": "2026-05-21T10:34:32Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:34:32Z",
+              "completedAt": "2026-05-21T10:34:35Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:34:35Z",
+              "completedAt": "2026-05-21T10:34:35Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:34:35Z",
+              "completedAt": "2026-05-21T10:34:36Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:34:36Z",
+              "completedAt": "2026-05-21T10:34:36Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26220621262/job/77154349062"
+        }
+      ]
+    },
+    {
+      "runId": 26219927701,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26219927701",
+      "displayTitle": "Merge pull request #26 from stdiodh/develop-dashboard-recent-grouping",
+      "event": "push",
+      "branch": "main",
+      "headSha": "829d3f14741e3dd23867896e5778638b14a6632a",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-21T10:17:06Z",
+      "updatedAt": "2026-05-21T10:19:30Z",
+      "durationSeconds": 144,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-21T10:17:09Z",
+          "completedAt": "2026-05-21T10:19:29Z",
+          "durationSeconds": 140,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:17:10Z",
+              "completedAt": "2026-05-21T10:17:13Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:17:13Z",
+              "completedAt": "2026-05-21T10:17:14Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:17:14Z",
+              "completedAt": "2026-05-21T10:17:14Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:17:14Z",
+              "completedAt": "2026-05-21T10:17:16Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:17:16Z",
+              "completedAt": "2026-05-21T10:18:53Z",
+              "durationSeconds": 97
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:18:53Z",
+              "completedAt": "2026-05-21T10:18:53Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:18:53Z",
+              "completedAt": "2026-05-21T10:19:20Z",
+              "durationSeconds": 27
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:19:20Z",
+              "completedAt": "2026-05-21T10:19:22Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-21T10:19:22Z",
+              "completedAt": "2026-05-21T10:19:22Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:19:22Z",
+              "completedAt": "2026-05-21T10:19:22Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:19:22Z",
+              "completedAt": "2026-05-21T10:19:26Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:19:26Z",
+              "completedAt": "2026-05-21T10:19:26Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:19:26Z",
+              "completedAt": "2026-05-21T10:19:26Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-21T10:19:26Z",
+              "completedAt": "2026-05-21T10:19:26Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26219927701/job/77151973806"
+        }
+      ]
+    },
+    {
+      "runId": 26144986481,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26144986481",
+      "displayTitle": "fix(monitor-bot): clarify ops help",
+      "event": "push",
+      "branch": "main",
+      "headSha": "e5d9df83ef21a281dcd0069e5e9941bdf82ff28b",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-20T06:14:37Z",
+      "updatedAt": "2026-05-20T06:16:57Z",
+      "durationSeconds": 140,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-20T06:14:39Z",
+          "completedAt": "2026-05-20T06:16:56Z",
+          "durationSeconds": 137,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:14:39Z",
+              "completedAt": "2026-05-20T06:14:41Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:14:41Z",
+              "completedAt": "2026-05-20T06:14:42Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:14:42Z",
+              "completedAt": "2026-05-20T06:14:42Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:14:42Z",
+              "completedAt": "2026-05-20T06:14:43Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:14:43Z",
+              "completedAt": "2026-05-20T06:16:18Z",
+              "durationSeconds": 95
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:18Z",
+              "completedAt": "2026-05-20T06:16:19Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:19Z",
+              "completedAt": "2026-05-20T06:16:49Z",
+              "durationSeconds": 30
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:49Z",
+              "completedAt": "2026-05-20T06:16:51Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-20T06:16:51Z",
+              "completedAt": "2026-05-20T06:16:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:51Z",
+              "completedAt": "2026-05-20T06:16:51Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:51Z",
+              "completedAt": "2026-05-20T06:16:55Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:55Z",
+              "completedAt": "2026-05-20T06:16:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:55Z",
+              "completedAt": "2026-05-20T06:16:55Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-20T06:16:55Z",
+              "completedAt": "2026-05-20T06:16:55Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26144986481/job/76898349195"
+        }
+      ]
+    },
+    {
+      "runId": 26105083529,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26105083529",
+      "displayTitle": "fix(monitor-bot): accept ok health status (#24)",
+      "event": "push",
+      "branch": "main",
+      "headSha": "f162fbaafc73643be48064e1daf7f09bda2dd30b",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-19T14:50:29Z",
+      "updatedAt": "2026-05-19T14:52:54Z",
+      "durationSeconds": 145,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-19T14:50:34Z",
+          "completedAt": "2026-05-19T14:52:54Z",
+          "durationSeconds": 140,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:50:35Z",
+              "completedAt": "2026-05-19T14:50:37Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:50:37Z",
+              "completedAt": "2026-05-19T14:50:38Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:50:38Z",
+              "completedAt": "2026-05-19T14:50:38Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:50:38Z",
+              "completedAt": "2026-05-19T14:50:40Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:50:40Z",
+              "completedAt": "2026-05-19T14:52:17Z",
+              "durationSeconds": 97
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:17Z",
+              "completedAt": "2026-05-19T14:52:18Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:18Z",
+              "completedAt": "2026-05-19T14:52:46Z",
+              "durationSeconds": 28
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:46Z",
+              "completedAt": "2026-05-19T14:52:49Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-19T14:52:49Z",
+              "completedAt": "2026-05-19T14:52:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:49Z",
+              "completedAt": "2026-05-19T14:52:49Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:49Z",
+              "completedAt": "2026-05-19T14:52:52Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:52Z",
+              "completedAt": "2026-05-19T14:52:52Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:52Z",
+              "completedAt": "2026-05-19T14:52:53Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:52:53Z",
+              "completedAt": "2026-05-19T14:52:53Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26105083529/job/76766534469"
+        }
+      ]
+    },
+    {
+      "runId": 26102871221,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26102871221",
+      "displayTitle": "Feat: Auth/Blog V2 ops 로그 연결 (#23)",
+      "event": "push",
+      "branch": "main",
+      "headSha": "a03bc451a9b5a532d10f0578b37b439d8a9ccc91",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-19T14:12:28Z",
+      "updatedAt": "2026-05-19T14:15:09Z",
+      "durationSeconds": 161,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-19T14:12:32Z",
+          "completedAt": "2026-05-19T14:15:06Z",
+          "durationSeconds": 154,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:12:33Z",
+              "completedAt": "2026-05-19T14:12:38Z",
+              "durationSeconds": 5
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:12:38Z",
+              "completedAt": "2026-05-19T14:12:39Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:12:39Z",
+              "completedAt": "2026-05-19T14:12:39Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:12:39Z",
+              "completedAt": "2026-05-19T14:12:40Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:12:40Z",
+              "completedAt": "2026-05-19T14:14:25Z",
+              "durationSeconds": 105
+            },
+            {
+              "name": "Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:14:25Z",
+              "completedAt": "2026-05-19T14:14:25Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Run monitor-bot tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:14:25Z",
+              "completedAt": "2026-05-19T14:14:56Z",
+              "durationSeconds": 31
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:14:56Z",
+              "completedAt": "2026-05-19T14:14:59Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-19T14:14:59Z",
+              "completedAt": "2026-05-19T14:14:59Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Go",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:14:59Z",
+              "completedAt": "2026-05-19T14:14:59Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:14:59Z",
+              "completedAt": "2026-05-19T14:15:03Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:15:03Z",
+              "completedAt": "2026-05-19T14:15:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:15:03Z",
+              "completedAt": "2026-05-19T14:15:03Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-19T14:15:03Z",
+              "completedAt": "2026-05-19T14:15:03Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/26102871221/job/76758476672"
+        }
+      ]
+    },
+    {
+      "runId": 25959432636,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25959432636",
+      "displayTitle": "feat(monitor-bot): connect auth v2 logs",
+      "event": "push",
+      "branch": "main",
+      "headSha": "3d6b6c29bc0938dc3263dbacd01efbdaff0fb86f",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-16T10:18:17Z",
+      "updatedAt": "2026-05-16T10:20:23Z",
+      "durationSeconds": 126,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-16T10:18:20Z",
+          "completedAt": "2026-05-16T10:20:22Z",
+          "durationSeconds": 122,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:18:20Z",
+              "completedAt": "2026-05-16T10:18:24Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:18:24Z",
+              "completedAt": "2026-05-16T10:18:25Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:18:25Z",
+              "completedAt": "2026-05-16T10:18:25Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:18:25Z",
+              "completedAt": "2026-05-16T10:18:27Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:18:27Z",
+              "completedAt": "2026-05-16T10:20:13Z",
+              "durationSeconds": 106
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:20:13Z",
+              "completedAt": "2026-05-16T10:20:15Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-16T10:20:15Z",
+              "completedAt": "2026-05-16T10:20:15Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:20:15Z",
+              "completedAt": "2026-05-16T10:20:19Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:20:19Z",
+              "completedAt": "2026-05-16T10:20:19Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:20:19Z",
+              "completedAt": "2026-05-16T10:20:19Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-16T10:20:19Z",
+              "completedAt": "2026-05-16T10:20:19Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25959432636/job/76312109968"
+        }
+      ]
+    },
+    {
+      "runId": 25795075365,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25795075365",
+      "displayTitle": "fix(monitor-bot): allow channel-targeted ops watches",
+      "event": "push",
+      "branch": "main",
+      "headSha": "86bd287755ccd80467f46dad118ba6d98d2af741",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-13T11:03:48Z",
+      "updatedAt": "2026-05-13T11:05:47Z",
+      "durationSeconds": 119,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-13T11:03:52Z",
+          "completedAt": "2026-05-13T11:05:47Z",
+          "durationSeconds": 115,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:03:52Z",
+              "completedAt": "2026-05-13T11:03:55Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:03:55Z",
+              "completedAt": "2026-05-13T11:03:56Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:03:56Z",
+              "completedAt": "2026-05-13T11:03:56Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:03:56Z",
+              "completedAt": "2026-05-13T11:03:57Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:03:57Z",
+              "completedAt": "2026-05-13T11:05:39Z",
+              "durationSeconds": 102
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:05:39Z",
+              "completedAt": "2026-05-13T11:05:41Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T11:05:41Z",
+              "completedAt": "2026-05-13T11:05:41Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:05:41Z",
+              "completedAt": "2026-05-13T11:05:44Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:05:44Z",
+              "completedAt": "2026-05-13T11:05:44Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:05:44Z",
+              "completedAt": "2026-05-13T11:05:45Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T11:05:45Z",
+              "completedAt": "2026-05-13T11:05:45Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25795075365/job/75770174829"
+        }
+      ]
+    },
+    {
+      "runId": 25793705147,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25793705147",
+      "displayTitle": "fix(cd): pass service URIs to monitor bot",
+      "event": "push",
+      "branch": "main",
+      "headSha": "37e0c509acafb411c007e2ec20fc83cc535bbfaf",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-13T10:34:15Z",
+      "updatedAt": "2026-05-13T10:36:13Z",
+      "durationSeconds": 118,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-13T10:34:24Z",
+          "completedAt": "2026-05-13T10:36:12Z",
+          "durationSeconds": 108,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:25Z",
+              "completedAt": "2026-05-13T10:34:27Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:27Z",
+              "completedAt": "2026-05-13T10:34:28Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:28Z",
+              "completedAt": "2026-05-13T10:34:28Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:28Z",
+              "completedAt": "2026-05-13T10:34:29Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:34:29Z",
+              "completedAt": "2026-05-13T10:36:03Z",
+              "durationSeconds": 94
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:36:03Z",
+              "completedAt": "2026-05-13T10:36:06Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:36:06Z",
+              "completedAt": "2026-05-13T10:36:06Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:36:06Z",
+              "completedAt": "2026-05-13T10:36:09Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:36:09Z",
+              "completedAt": "2026-05-13T10:36:10Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:36:10Z",
+              "completedAt": "2026-05-13T10:36:10Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:36:10Z",
+              "completedAt": "2026-05-13T10:36:10Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25793705147/job/75765465153"
+        }
+      ]
+    },
+    {
+      "runId": 25792619215,
+      "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25792619215",
+      "displayTitle": "feat(monitor-bot): automate ops dashboards",
+      "event": "push",
+      "branch": "main",
+      "headSha": "493b84f9afb82b5f45936a6497e45cf4de8d2511",
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-05-13T10:11:25Z",
+      "updatedAt": "2026-05-13T10:13:27Z",
+      "durationSeconds": 122,
+      "jobs": [
+        {
+          "name": "build",
+          "conclusion": "success",
+          "startedAt": "2026-05-13T10:11:30Z",
+          "completedAt": "2026-05-13T10:13:26Z",
+          "durationSeconds": 116,
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:31Z",
+              "completedAt": "2026-05-13T10:11:33Z",
+              "durationSeconds": 2
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:33Z",
+              "completedAt": "2026-05-13T10:11:34Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:34Z",
+              "completedAt": "2026-05-13T10:11:34Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:34Z",
+              "completedAt": "2026-05-13T10:11:35Z",
+              "durationSeconds": 1
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:11:35Z",
+              "completedAt": "2026-05-13T10:13:16Z",
+              "durationSeconds": 101
+            },
+            {
+              "name": "Build JAR",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:16Z",
+              "completedAt": "2026-05-13T10:13:19Z",
+              "durationSeconds": 3
+            },
+            {
+              "name": "Upload test report",
+              "conclusion": "skipped",
+              "startedAt": "2026-05-13T10:13:19Z",
+              "completedAt": "2026-05-13T10:13:19Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Setup Gradle",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:19Z",
+              "completedAt": "2026-05-13T10:13:23Z",
+              "durationSeconds": 4
+            },
+            {
+              "name": "Post Setup Java 21",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:23Z",
+              "completedAt": "2026-05-13T10:13:23Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:23Z",
+              "completedAt": "2026-05-13T10:13:23Z",
+              "durationSeconds": 0
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success",
+              "startedAt": "2026-05-13T10:13:23Z",
+              "completedAt": "2026-05-13T10:13:23Z",
+              "durationSeconds": 0
+            }
+          ],
+          "url": "https://github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/actions/runs/25792619215/job/75761802087"
+        }
+      ]
+    }
+  ]
+}
