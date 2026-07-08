@@ -38,3 +38,16 @@ The official remeasurement is completed with `measurement_profile=official`.
 | Image build warm cache | false | 확인 필요 | false | 확인 필요 | true | true |
 
 Cache hit evidence is recorded from the completed JSON. Cache hits are not treated as speedup claims unless the matching median improved. The CD and image rows are dry-run or build-only paths with no production deploy, ECR push, docker push, or SSH step.
+
+## Recent Run Reference
+
+Recent successful workflow runs were checked on `2026-07-08 KST` with `gh run list`, `gh api repos/:owner/:repo/actions/runs/<run-id>/jobs`, and `gh run view <run-id> --log`.
+
+| Workflow | Recent successful runs | Average duration | Median duration | Usage |
+| :--- | ---: | ---: | ---: | :--- |
+| CI | 10 | 58.9s | 46.0s | 참고용 |
+| CD | 10 | 297.2s | 261.5s | 참고용 |
+| CD Dry Run | 10 | 157.6s | 158.5s | 참고용, production deploy 아님 |
+| Measure Gateway CI/CD Same Scope | 1 | 181.0s | 181.0s | measurement workflow wall-clock only |
+
+Recent CI logs showed Gradle, Go, and k6 cache hits on 9 of the 10 checked runs. The 9 runs with all three cache hits had median workflow wall-clock `40.0s`; the remaining run was `118.0s`. These recent values are branch-mixed observations and are not used as before/after improvement metrics.

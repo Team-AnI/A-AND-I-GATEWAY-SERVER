@@ -93,6 +93,54 @@ BuildKit cache was configured and hit evidence is `true` for the CD dry-run and 
 
 The measurement workflow uses `measurement_profile=official` for the 5-run gate. Cancelled, skipped, failed, blocked, and superseded attempts are not included as successful samples.
 
+### Recent Run History Check
+
+Recent run history was checked on `2026-07-08 KST` with the GitHub CLI:
+
+```bash
+gh run list --workflow <workflow-name> --status success --limit 10 --json databaseId,workflowName,displayTitle,event,headBranch,headSha,createdAt,updatedAt,url
+gh api repos/:owner/:repo/actions/runs/<run-id>/jobs
+gh run view <run-id> --log
+```
+
+These values are recent workflow observations only. They are not used as before/after evidence because the runs include different branches, events, tags, and workflow scopes.
+
+| Workflow | Successful runs | Average duration | Median duration | Scope note |
+| :--- | ---: | ---: | ---: | :--- |
+| CI | 10 | 58.9s | 46.0s | Branch-mixed CI workflow wall-clock |
+| CD | 10 | 297.2s | 261.5s | Tag/dispatch production CD workflow wall-clock |
+| CD Dry Run | 10 | 157.6s | 158.5s | Dry-run workflow on `develop-cicd-parallelization-metrics`; no push or deploy |
+| Measure Gateway CI/CD Same Scope | 1 | 181.0s | 181.0s | Measurement workflow wall-clock, separate from per-scope medians |
+
+Selected recent step medians:
+
+| Workflow | Step or job | Median |
+| :--- | :--- | ---: |
+| CI | `backend-test-and-jar` job | 29.5s |
+| CI | `monitor-bot-test` job | 11.5s |
+| CI | `performance-assets` job | 9.5s |
+| CD | `Run tests` | 97.5s |
+| CD | `Test monitor-bot` | 30.0s |
+| CD | `Build and push Docker image` | 24.5s |
+| CD | `Build and push monitor-bot Docker image` | 38.0s |
+| CD | `Deploy to EC2 via SSH` | 44.5s |
+| CD Dry Run | `Gateway image dry-run build` | 5.5s |
+| CD Dry Run | `Monitor Bot image dry-run build` | 31.0s |
+
+Recent CI cache logs showed Gradle, Go, and k6 cache hits on 9 of the 10 checked CI runs. The remaining run recorded Gradle and Go cache misses and did not expose a normalized k6 hit value. The 9 runs with all three cache hits had median workflow wall-clock `40.0s`; the remaining run was `118.0s`. This is reference-only cache observation, not a resume-safe speedup claim.
+
+### Resolved Check Items
+
+| Item | Status | Evidence | Resume use |
+| :--- | :--- | :--- | :--- |
+| Gradle cache | 확인됨, 참고용 | Recent CI logs on `2026-07-08 KST`: 9/10 runs had `setup-java` Gradle cache hit; CI workflow uses `cache: gradle` and `--build-cache` | Do not use as an isolated improvement claim |
+| Go cache | 확인됨, 참고용 | Recent CI logs: 9/10 runs printed `setup-go-cache-hit=true`; official JSON also records Go cache hit for the Monitor Bot test and dry-run rows | Do not claim Monitor Bot test improvement because its median worsened |
+| k6 cache | 확인됨, 참고용 | Recent CI logs: 9/10 runs printed `k6-cache-hit=true`; official JSON records k6 hit for `performance_assets` | Safe only as supporting evidence for the same-scope `performance_assets` metric |
+| Docker BuildKit cache | 확인됨, 이력서 제외 | Official JSON records BuildKit hit evidence as `true` for dry-run/image rows | Do not claim Docker cache speedup because image medians worsened |
+| Docker build/push duration | 참고용 | Recent CD step medians: Gateway build/push `24.5s`, Monitor Bot build/push `38.0s` | No same-scope before/after comparison; exclude from resume |
+| Deploy duration | 참고용 | Recent CD deploy step median `44.5s` | No production deploy before/after comparison; exclude from resume |
+| CD Dry Run vs CD | 비교 금지 | Dry-run has no push, AWS credentials, ECR login, EC2 SSH, or production URL access | Do not compare with production CD |
+
 ### Resume Usage
 
 Usable resume candidates:
