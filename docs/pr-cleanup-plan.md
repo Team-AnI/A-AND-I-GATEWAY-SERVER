@@ -27,9 +27,25 @@ Open PR diff review confirmed these retained PRs do not duplicate the #44 CI/CD 
 - No `docs/metrics/archive/` directory is required in #44 because there are no stale Gateway CI/CD measurement JSON files to preserve outside the completed source of truth.
 - If an archived measurement artifact is added later, mark it as superseded by `docs/metrics/gateway-cicd-remeasure.json`.
 
+## Legacy Files Not Carried Forward
+
+The following files existed in earlier CI/CD timing branches and are intentionally not carried forward because they are replaced by `docs/metrics/gateway-cicd-remeasure.json` and the same-scope audit docs:
+
+- `docs/metrics/gateway-ci-before.json`
+- `docs/metrics/gateway-ci-after.json`
+- `docs/metrics/gateway-cd-before.json`
+- `docs/metrics/gateway-cd-dry-run-after.json`
+- `docs/metrics/gateway-cicd-before-after.json`
+- `docs/metrics/gateway-cicd-before-after.example.json`
+- `scripts/ci/collect_github_actions_metrics.py`
+- `scripts/ci/compare_cicd_before_after.py`
+
+Do not reintroduce those files as active evidence. If they are needed for historical context later, put them under an archive path and mark them superseded by the completed remeasurement JSON.
+
 ## Notes
 
 - Closed PRs were not merged.
 - No branch deletion was performed.
 - #44 contains the completed metrics source of truth.
 - No production deploy, AWS, ECR, SSH, docker push, or operating workflow was executed for this cleanup.
+- README was not regenerated; only small additive references should be made when linking these docs.
