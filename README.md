@@ -174,5 +174,4 @@ cd monitor-bot && go test ./...
 - [CI/CD 최적화 측정](./docs/cicd-optimization.md)
 - [CI/CD 측정 감사](./docs/cicd-measurement-audit.md)
 - [이력서 지표 후보](./docs/resume-metrics.md)
-- [PR 정리 계획](./docs/pr-cleanup-plan.md)
 - [Discord Monitor Bot 실행과 운영](./monitor-bot/README.md)
