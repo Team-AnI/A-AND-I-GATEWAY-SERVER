@@ -70,10 +70,44 @@ Purpose: create a safe validation-path metric without production deployment.
 
 Tasks:
 
+- Use `.github/workflows/measure-cd-dry-run.yml` after the workflow exists on the default branch.
 - Keep build/test/image dry-run scope separate from production CD.
 - Measure before/after with 5 or more successful samples per side.
 - Record `production_deploy_executed=false`, `docker_push_executed=false`, and `aws_ecr_ssh_executed=false`.
 - Reject the metric if after median does not improve.
+
+Smoke command after merge:
+
+```bash
+gh workflow run measure-cd-dry-run.yml \
+  --ref main \
+  -f baseline_ref=main \
+  -f candidate_ref=main \
+  -f iterations=1 \
+  -f measurement_profile=smoke
+```
+
+Official command after there is a candidate branch to measure:
+
+```bash
+gh workflow run measure-cd-dry-run.yml \
+  --ref main \
+  -f baseline_ref=main \
+  -f candidate_ref=<candidate-branch> \
+  -f iterations=5 \
+  -f measurement_profile=official
+```
+
+Expected final artifact:
+
+- `gateway-cd-dry-run-remeasure-<run-id>`
+- contained file: `docs/metrics/gateway-cd-dry-run-remeasure.json`
+
+Validation:
+
+```bash
+python3 scripts/ci/validate_cd_dry_run_measurement.py docs/metrics/gateway-cd-dry-run-remeasure.json
+```
 
 Resume wording allowed only if successful:
 
