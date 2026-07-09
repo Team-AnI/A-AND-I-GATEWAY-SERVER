@@ -51,3 +51,5 @@ Recent successful workflow runs were checked on `2026-07-08 KST` with `gh run li
 | Measure Gateway CI/CD Same Scope | 1 | 181.0s | 181.0s | measurement workflow wall-clock only |
 
 Recent CI logs showed Gradle, Go, and k6 cache hits on 9 of the 10 checked runs. The 9 runs with all three cache hits had median workflow wall-clock `40.0s`; the remaining run was `118.0s`. These recent values are branch-mixed observations and are not used as before/after improvement metrics.
+
+Next measurement steps are tracked in [`docs/cicd-next-measurement-plan.md`](./cicd-next-measurement-plan.md).
