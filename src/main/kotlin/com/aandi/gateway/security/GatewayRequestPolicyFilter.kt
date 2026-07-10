@@ -326,6 +326,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.DELETE, parser.parse("/v2/report/v3/api-docs/**"))
     )
 
+    internal val methodPathPolicy = MethodPathPolicyEvaluator(allowRules, denyRules)
+
     override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 20
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
@@ -371,25 +373,29 @@ class GatewayRequestPolicyFilter(
         }
 
         if (policy.enforceMethodPathAllowlist) {
-            if (denyRules.any { it.matches(request.method, path) }) {
-                log.warn(
-                    "Rejecting request due to explicit deny policy: method={}, path={}, host={}, remoteAddress={}",
-                    request.method,
-                    path.value(),
-                    request.headers.host?.hostString,
-                    request.remoteAddress?.address?.hostAddress
-                )
-                return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
-            }
-            if (allowRules.none { it.matches(request.method, path) }) {
-                log.warn(
-                    "Rejecting request due to allowlist policy: method={}, path={}, host={}, remoteAddress={}",
-                    request.method,
-                    path.value(),
-                    request.headers.host?.hostString,
-                    request.remoteAddress?.address?.hostAddress
-                )
-                return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+            when (methodPathPolicy.evaluate(request.method, path)) {
+                MethodPathDecision.ALLOW -> Unit
+                MethodPathDecision.EXPLICIT_DENY -> {
+                    log.warn(
+                        "Rejecting request due to explicit deny policy: method={}, path={}, host={}, remoteAddress={}",
+                        request.method,
+                        path.value(),
+                        request.headers.host?.hostString,
+                        request.remoteAddress?.address?.hostAddress
+                    )
+                    return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+                }
+
+                MethodPathDecision.NO_MATCH -> {
+                    log.warn(
+                        "Rejecting request due to allowlist policy: method={}, path={}, host={}, remoteAddress={}",
+                        request.method,
+                        path.value(),
+                        request.headers.host?.hostString,
+                        request.remoteAddress?.address?.hostAddress
+                    )
+                    return reject(exchange, GatewayErrorCode.ENDPOINT_NOT_ALLOWLISTED)
+                }
             }
         }
 
@@ -425,14 +431,6 @@ class GatewayRequestPolicyFilter(
         return responseWriter.writeError(exchange, errorCode)
     }
 
-    private data class AllowRule(
-        val method: HttpMethod,
-        val pathPattern: PathPattern
-    ) {
-        fun matches(requestMethod: HttpMethod?, requestPath: org.springframework.http.server.PathContainer): Boolean {
-            return requestMethod == method && pathPattern.matches(requestPath)
-        }
-    }
 }
 
 internal fun isLoopbackOrSiteLocalIpLiteral(host: String): Boolean {
