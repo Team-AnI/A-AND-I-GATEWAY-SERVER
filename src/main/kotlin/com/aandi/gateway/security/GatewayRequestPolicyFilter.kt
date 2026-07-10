@@ -310,7 +310,17 @@ class GatewayRequestPolicyFilter(
     private val denyRules: List<AllowRule> = listOf(
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
-        AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy"))
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/admin/courses/{courseSlug}/assignments/copy")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/post/courses")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/post/courses")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/report/v3/api-docs")),
+        AllowRule(HttpMethod.POST, parser.parse("/v2/report/v3/api-docs/**")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/report/v3/api-docs")),
+        AllowRule(HttpMethod.PUT, parser.parse("/v2/report/v3/api-docs/**")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/report/v3/api-docs")),
+        AllowRule(HttpMethod.PATCH, parser.parse("/v2/report/v3/api-docs/**")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/report/v3/api-docs")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/report/v3/api-docs/**"))
     )
 
     override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 20

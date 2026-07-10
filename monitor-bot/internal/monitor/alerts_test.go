@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,6 +13,110 @@ import (
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/opslog"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/state"
 )
+
+type selectiveAlertLogs struct {
+	calls    []string
+	failures map[string]error
+}
+
+func (f *selectiveAlertLogs) Query(_ context.Context, logGroups []string, _ string, _ time.Duration, _ int32) ([]map[string]string, error) {
+	logGroup := ""
+	if len(logGroups) > 0 {
+		logGroup = logGroups[0]
+	}
+	f.calls = append(f.calls, logGroup)
+	if err := f.failures[logGroup]; err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func TestPollAlertsDoesNotResolveServiceWhenCloudWatchQueryFails(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	gatewayAlert := makeV2Alert(map[string]string{
+		"service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "response.error.code": "18801", "trace.traceId": "trace-gateway",
+	})
+	authAlert := makeV2Alert(map[string]string{
+		"service.domain": "auth", "service.name": "auth-service", "logType": "API_ERROR", "http.statusCode": "500", "response.error.code": "21801", "trace.traceId": "trace-auth",
+	})
+	setActiveAlerts(t, store, gatewayAlert, authAlert)
+
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[:2]
+	logs := &selectiveAlertLogs{failures: map[string]error{"/auth": errors.New("cloudwatch unavailable")}}
+	service.logs = logs
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot := store.Snapshot()
+	if snapshot.Alerts[alertCooldownKey(gatewayAlert)].Active {
+		t.Fatal("successfully queried gateway alert should be resolved")
+	}
+	if !snapshot.Alerts[alertCooldownKey(authAlert)].Active {
+		t.Fatal("failed auth query must not resolve the existing auth alert")
+	}
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("only the observed gateway alert should emit a resolution, got %d sends", fakeDiscord.sends)
+	}
+}
+
+func TestPollAlertsDoesNotResolveServiceSkippedByQueryBudget(t *testing.T) {
+	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))
+	if err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	gatewayAlert := makeV2Alert(map[string]string{
+		"service.domain": "gateway", "service.name": "gateway", "logType": "API_ERROR", "http.statusCode": "500", "response.error.code": "18801", "trace.traceId": "trace-gateway",
+	})
+	authAlert := makeV2Alert(map[string]string{
+		"service.domain": "auth", "service.name": "auth-service", "logType": "API_ERROR", "http.statusCode": "500", "response.error.code": "21801", "trace.traceId": "trace-auth",
+	})
+	setActiveAlerts(t, store, gatewayAlert, authAlert)
+
+	service := newTestService(store, &fakeLogs{})
+	service.cfg.ServiceRegistry = service.cfg.ServiceRegistry[:2]
+	service.cfg.Dashboard.MaxCloudWatchQueries = 1
+	logs := &selectiveAlertLogs{}
+	service.logs = logs
+	fakeDiscord := &fakeDiscord{}
+	service.discord = fakeDiscord
+
+	if err := service.PollAlerts(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot := store.Snapshot()
+	if snapshot.Alerts[alertCooldownKey(gatewayAlert)].Active {
+		t.Fatal("successfully queried gateway alert should be resolved")
+	}
+	if !snapshot.Alerts[alertCooldownKey(authAlert)].Active {
+		t.Fatal("auth alert skipped by query budget must remain active")
+	}
+	if len(logs.calls) != 1 || logs.calls[0] != "/gateway" {
+		t.Fatalf("expected only the gateway query within budget, got %#v", logs.calls)
+	}
+	if fakeDiscord.sends != 1 {
+		t.Fatalf("only the observed gateway alert should emit a resolution, got %d sends", fakeDiscord.sends)
+	}
+}
+
+func setActiveAlerts(t *testing.T, store *state.Store, alerts ...Alert) {
+	t.Helper()
+	if err := store.Update(func(data *state.Data) {
+		for _, alert := range alerts {
+			data.Alerts[alertCooldownKey(alert)] = state.AlertState{Active: true, LastSentAt: time.Now().Add(-time.Hour)}
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestAlertFingerprintDedupeAndCooldown(t *testing.T) {
 	store := state.NewStore(filepath.Join(t.TempDir(), "state.json"))

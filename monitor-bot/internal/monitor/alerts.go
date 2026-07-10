@@ -74,7 +74,7 @@ func (s *Service) PollAlerts(ctx context.Context) error {
 		return nil
 	}
 	active := make(map[string]Alert)
-	alerts := s.collectAlerts(ctx)
+	alerts, observedServices := s.collectAlertsWithCoverage(ctx)
 	for _, alert := range alerts {
 		active[alertCooldownKey(alert)] = alert
 		if s.shouldSendAlert(alert, time.Now()) {
@@ -87,12 +87,18 @@ func (s *Service) PollAlerts(ctx context.Context) error {
 			_ = s.recordSuppressedAlertEvidence(alert)
 		}
 	}
-	s.sendResolvedAlerts(ctx, active)
+	s.sendResolvedAlerts(ctx, active, observedServices)
 	return nil
 }
 
 func (s *Service) collectAlerts(ctx context.Context) []Alert {
+	alerts, _ := s.collectAlertsWithCoverage(ctx)
+	return alerts
+}
+
+func (s *Service) collectAlertsWithCoverage(ctx context.Context) ([]Alert, map[string]struct{}) {
 	var alerts []Alert
+	observedServices := make(map[string]struct{})
 	registry := s.cfg.ServiceRegistry
 	if len(registry) == 0 {
 		registry = config.BuildServiceRegistry(s.cfg.LogGroups, s.cfg.HealthURLs)
@@ -113,6 +119,9 @@ func (s *Service) collectAlerts(ctx context.Context) []Alert {
 		if err != nil {
 			continue
 		}
+		if normalized, ok := security.NormalizeService(service.Name); ok {
+			observedServices[normalized] = struct{}{}
+		}
 		for _, row := range rows {
 			alert := makeV2Alert(row)
 			if alert.Fingerprint == "" {
@@ -121,7 +130,7 @@ func (s *Service) collectAlerts(ctx context.Context) []Alert {
 			alerts = append(alerts, alert)
 		}
 	}
-	return alerts
+	return alerts, observedServices
 }
 
 func makeV2Alert(row map[string]string) Alert {
@@ -202,7 +211,7 @@ func (s *Service) recordSuppressedAlertEvidence(alert Alert) error {
 	})
 }
 
-func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Alert) {
+func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Alert, observedServices map[string]struct{}) {
 	snapshot := s.store.Snapshot()
 	channelID := s.generalAlertChannelID()
 	if channelID == "" {
@@ -215,6 +224,11 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 		if _, ok := active[fingerprint]; ok {
 			continue
 		}
+		if service, ok := alertStateService(fingerprint); ok {
+			if _, observed := observedServices[service]; !observed {
+				continue
+			}
+		}
 		if isLegacyV2AlertFingerprint(fingerprint) {
 			_ = s.markAlertSent(Alert{Fingerprint: fingerprint, CooldownKey: fingerprint}, false)
 			continue
@@ -226,6 +240,18 @@ func (s *Service) sendResolvedAlerts(ctx context.Context, active map[string]Aler
 		}
 		_ = s.markAlertSent(Alert{Fingerprint: fingerprint, CooldownKey: fingerprint}, false)
 	}
+}
+
+func alertStateService(key string) (string, bool) {
+	parts := strings.Split(key, "\x00")
+	if len(parts) > 1 && parts[0] == "service-alert" {
+		return security.NormalizeService(parts[1])
+	}
+	parts = strings.SplitN(key, ":", 3)
+	if len(parts) > 2 && parts[0] == "prod" {
+		return security.NormalizeService(parts[1])
+	}
+	return "", false
 }
 
 func (s *Service) sendAlert(ctx context.Context, alert Alert) error {

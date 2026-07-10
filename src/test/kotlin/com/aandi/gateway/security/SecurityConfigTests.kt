@@ -26,7 +26,8 @@ import kotlin.test.assertTrue
         "ONLINE_JUDGE_SERVICE_URI=http://localhost:8080",
         "app.security.internal-event-token=test-internal-token",
         "security.jwt.secret=test-secret-key-with-32-bytes-minimum!",
-        "app.security.policy.enforce-https=false"
+        "app.security.policy.enforce-https=false",
+        "app.security.policy.max-request-body-size=1KB"
     ]
 )
 class SecurityConfigTests(
@@ -795,6 +796,44 @@ class SecurityConfigTests(
     }
 
     @Test
+    fun `report openapi routes take precedence over catch all and rewrite service paths`() {
+        val catchAllRoute = routeById("report-service-subpaths")
+        val openApiRootRoute = routeById("report-service-openapi-root")
+        val openApiSubpathRoute = routeById("report-service-openapi-subpaths")
+        val setPathFilter = openApiRootRoute.filters.firstOrNull { it.name == "SetPath" }
+        val rewriteFilter = openApiSubpathRoute.filters.firstOrNull { it.name == "RewritePath" }
+        val rewriteArgs = rewriteFilter?.args?.values.orEmpty()
+
+        assertTrue(openApiRootRoute.order < catchAllRoute.order)
+        assertTrue(openApiSubpathRoute.order < catchAllRoute.order)
+        assertNotNull(setPathFilter, "report openapi root route should set backend path")
+        assertEquals("/v3/api-docs", setPathFilter.args.values.firstOrNull())
+        assertNotNull(rewriteFilter, "report openapi subpath route should rewrite backend path")
+        assertTrue(rewriteArgs.any { it.contains("/v2/report/v3/api-docs/(?<segment>.*)") })
+        assertTrue(rewriteArgs.any { it.contains("/v3/api-docs/") })
+    }
+
+    @Test
+    fun `report openapi paths reject non get methods`() {
+        val paths = listOf("/v2/report/v3/api-docs", "/v2/report/v3/api-docs/v1")
+        val methods = listOf(HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)
+
+        paths.forEach { path ->
+            methods.forEach { method ->
+                webTestClient.method(method)
+                    .uri(path)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue("{}")
+                    .exchange()
+                    .expectStatus()
+                    .isNotFound
+                    .expectBody()
+                    .jsonPath("$.error.value").isEqualTo("ENDPOINT_NOT_ALLOWLISTED")
+            }
+        }
+    }
+
+    @Test
     fun `online judge openapi route rewrites to service docs path`() {
         val openApiRoute = routeById("online-judge-service-openapi-root")
         val setPathFilter = openApiRoute.filters.firstOrNull { it.name == "SetPath" }
@@ -830,6 +869,21 @@ class SecurityConfigTests(
             .exchange()
             .expectStatus()
             .isForbidden
+    }
+
+    @Test
+    fun `report course alias rejects post item mutation methods`() {
+        listOf(HttpMethod.PATCH, HttpMethod.DELETE).forEach { method ->
+            webTestClient.method(method)
+                .uri("/v2/post/courses")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{}")
+                .exchange()
+                .expectStatus()
+                .isNotFound
+                .expectBody()
+                .jsonPath("$.error.value").isEqualTo("ENDPOINT_NOT_ALLOWLISTED")
+        }
     }
 
     @Test
@@ -1153,6 +1207,24 @@ class SecurityConfigTests(
             .expectBody()
             .jsonPath("$.error.code").isEqualTo(13003)
             .jsonPath("$.error.value").isEqualTo("JSON_CONTENT_TYPE_REQUIRED")
+    }
+
+    @Test
+    fun `oversized auth request is rejected before buffering the full body`() {
+        val padding = "x".repeat(2 * 1024)
+
+        webTestClient.post()
+            .uri("/v1/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"username":"oversized-user","password":"demo","padding":"$padding"}""")
+            .exchange()
+            .expectStatus()
+            .isEqualTo(413)
+            .expectHeader()
+            .contentType(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.error.code").isEqualTo(13004)
+            .jsonPath("$.error.value").isEqualTo("REQUEST_BODY_TOO_LARGE")
     }
 
     @Test

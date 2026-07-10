@@ -138,6 +138,13 @@ enum class GatewayErrorCode(
         message = "요청 `Content-Type`은 `application/json` 또는 호환되는 `+json` 형식이어야 합니다.",
         alert = "요청 형식이 올바르지 않아요. 다시 시도해 주세요."
     ),
+    REQUEST_BODY_TOO_LARGE(
+        code = 13004,
+        httpStatus = HttpStatus.CONTENT_TOO_LARGE,
+        value = "REQUEST_BODY_TOO_LARGE",
+        message = "요청 본문이 게이트웨이에서 허용하는 최대 크기를 초과했습니다.",
+        alert = "요청 데이터가 너무 커요. 크기를 줄여 다시 시도해 주세요."
+    ),
     ENDPOINT_NOT_ALLOWLISTED(
         code = 15001,
         httpStatus = HttpStatus.NOT_FOUND,
