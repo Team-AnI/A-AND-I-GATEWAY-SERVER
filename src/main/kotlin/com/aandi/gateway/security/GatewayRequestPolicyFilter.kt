@@ -2,6 +2,8 @@ package com.aandi.gateway.security
 
 import com.aandi.gateway.common.response.GatewayErrorCode
 import com.aandi.gateway.common.response.GatewayResponseWriter
+import io.netty.util.NetUtil
+import org.slf4j.LoggerFactory
 import org.springframework.core.Ordered
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
@@ -13,7 +15,6 @@ import org.springframework.web.util.pattern.PathPattern
 import org.springframework.web.util.pattern.PathPatternParser
 import reactor.core.publisher.Mono
 import java.net.InetAddress
-import org.slf4j.LoggerFactory
 
 @Component
 class GatewayRequestPolicyFilter(
@@ -24,6 +25,8 @@ class GatewayRequestPolicyFilter(
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val parser = PathPatternParser.defaultInstance
+
+    private val normalizedAllowedHosts = policy.allowedHosts.map { it.lowercase() }.toSet()
 
     private val jsonContentTypeExemptions: List<PathPattern> = listOf(
         parser.parse("/v1/me"),
@@ -349,17 +352,17 @@ class GatewayRequestPolicyFilter(
             return reject(exchange, GatewayErrorCode.HTTPS_REQUIRED)
         }
 
-        if (policy.allowedHosts.isNotEmpty()) {
+        if (normalizedAllowedHosts.isNotEmpty()) {
             val host = request.headers.host?.hostString?.lowercase().orEmpty()
-            val allowedHosts = policy.allowedHosts.map { it.lowercase() }.toSet()
-            val hostAllowed = host in allowedHosts || (policy.allowPrivateIpHost && isPrivateIpHost(host))
+            val hostAllowed = host in normalizedAllowedHosts ||
+                (policy.allowPrivateIpHost && isLoopbackOrSiteLocalIpLiteral(host))
             if (host.isBlank() || !hostAllowed) {
                 log.warn(
                     "Rejecting request due to host policy: method={}, path={}, host={}, allowedHosts={}, allowPrivateIpHost={}, remoteAddress={}",
                     request.method,
                     path.value(),
                     request.headers.host?.hostString,
-                    allowedHosts,
+                    normalizedAllowedHosts,
                     policy.allowPrivateIpHost,
                     request.remoteAddress?.address?.hostAddress
                 )
@@ -422,13 +425,6 @@ class GatewayRequestPolicyFilter(
         return responseWriter.writeError(exchange, errorCode)
     }
 
-    private fun isPrivateIpHost(host: String): Boolean {
-        return runCatching {
-            val address = InetAddress.getByName(host)
-            address.isSiteLocalAddress || address.isLoopbackAddress
-        }.getOrDefault(false)
-    }
-
     private data class AllowRule(
         val method: HttpMethod,
         val pathPattern: PathPattern
@@ -437,4 +433,12 @@ class GatewayRequestPolicyFilter(
             return requestMethod == method && pathPattern.matches(requestPath)
         }
     }
+}
+
+internal fun isLoopbackOrSiteLocalIpLiteral(host: String): Boolean {
+    if ('%' in host) return false
+
+    val addressBytes = NetUtil.createByteArrayFromIpAddressString(host) ?: return false
+    val address = InetAddress.getByAddress(addressBytes)
+    return address.isLoopbackAddress || address.isSiteLocalAddress
 }
