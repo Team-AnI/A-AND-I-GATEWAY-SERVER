@@ -12,6 +12,7 @@ import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.util.pattern.PathPattern
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -182,7 +183,7 @@ class ApiLogFactory(
         }.getOrElse {
             ApiLogResponse(
                 success = statusCode < 400,
-                data = if (statusCode < 400) mapOf("raw" to rawBody) else null,
+                data = if (statusCode < 400) unparsedBodyMetadata(rawBody) else null,
                 error = if (statusCode < 400) null else (context.responseError ?: fallbackApiLogError(statusCode, context)),
                 timestamp = context.responseTimestamp ?: now()
             )
@@ -233,8 +234,18 @@ class ApiLogFactory(
             val root = objectMapper.readTree(rawBody)
             MaskingUtil.maskObject(jsonNodeToValue(root))
         }.getOrElse {
-            mapOf("raw" to rawBody)
+            unparsedBodyMetadata(rawBody)
         }
+    }
+
+    private fun unparsedBodyMetadata(rawBody: String): Map<String, Any> {
+        if (rawBody == TRUNCATED_BODY_MARKER) {
+            return mapOf("truncated" to true)
+        }
+        return mapOf(
+            "unparsed" to true,
+            "length" to rawBody.toByteArray(StandardCharsets.UTF_8).size
+        )
     }
 
     private fun buildActor(authentication: Authentication?): ApiLogActor {

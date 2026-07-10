@@ -591,7 +591,7 @@ func TestMonitorBotDocsMatchCurrentUX(t *testing.T) {
 			t.Fatalf("root README missing %q", want)
 		}
 	}
-	for _, want := range []string{"## UX Contract", "/ops dashboard", "/ops logs", "/ops alert", "/ops assignment", "/ops help", "no ASSIGNMENT_OPS_CHANNEL_ID", "No tag/deploy", "Report V2 `EVENT`", "open issue"} {
+	for _, want := range []string{"## UX Contract", "/ops dashboard", "/ops logs", "/ops alert", "/ops assignment", "/ops help", "## Environment", "## Command Registration", "DISCORD_REGISTER_COMMANDS=false", "Report V2 `EVENT`", "open issue"} {
 		if !strings.Contains(contents["bot"], want) {
 			t.Fatalf("monitor-bot README missing %q", want)
 		}

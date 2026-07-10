@@ -533,22 +533,27 @@ spring:
                 - Method=GET
 
             - id: post-service-openapi-root
+              order: -2
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/v3/api-docs
+                - Method=GET
               filters:
                 - SetPath=/v3/api-docs
             - id: post-service-openapi-subpaths
+              order: -1
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/v3/api-docs/**
+                - Method=GET
               filters:
                 - RewritePath=/v2/post/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: report-service-openapi-root
-              order: -1
+              order: -2
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/v3/api-docs
+                - Method=GET
               filters:
                 - SetPath=/v3/api-docs
             - id: report-service-openapi-subpaths
@@ -556,30 +561,39 @@ spring:
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/report/v3/api-docs/**
+                - Method=GET
               filters:
                 - RewritePath=/v2/report/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: auth-service-openapi-root
+              order: -2
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/v3/api-docs
+                - Method=GET
               filters:
                 - SetPath=/v3/api-docs
             - id: auth-service-openapi-subpaths
+              order: -1
               uri: ${AUTH_SERVICE_URI:http://localhost:9000}
               predicates:
                 - Path=/v2/auth/v3/api-docs/**
+                - Method=GET
               filters:
                 - RewritePath=/v2/auth/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: online-judge-service-openapi-root
+              order: -2
               uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
               predicates:
                 - Path=/v2/online-judge/v3/api-docs
+                - Method=GET
               filters:
                 - SetPath=/v3/api-docs
             - id: online-judge-service-openapi-subpaths
+              order: -1
               uri: ${ONLINE_JUDGE_SERVICE_URI:https://localhost:8080}
               predicates:
                 - Path=/v2/online-judge/v3/api-docs/**
+                - Method=GET
               filters:
                 - RewritePath=/v2/online-judge/v3/api-docs/(?<segment>.*), /v3/api-docs/$\{segment}
             - id: post-service-images-root
@@ -752,18 +766,22 @@ spring:
                 - Path=/v2/lectures/*
                 - Method=DELETE
             - id: report-service-admin-courses-root
+              order: -2
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/admin/courses
             - id: report-service-admin-courses-subpaths
+              order: -1
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/admin/courses/**
             - id: report-service-courses-root
+              order: -2
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/courses
             - id: report-service-courses-subpaths
+              order: -1
               uri: ${REPORT_SERVICE_URI:http://localhost:8081}
               predicates:
                 - Path=/v2/post/courses/**
@@ -773,6 +791,7 @@ spring:
                 - Path=/v2/post/drafts/me
                 - Method=GET
             - id: post-service-posts-subpaths
+              order: 0
               uri: ${POST_SERVICE_URI:http://localhost:8084}
               predicates:
                 - Path=/v2/post/**
@@ -840,11 +859,13 @@ app:
       enforce-json-content-type: ${ENFORCE_JSON_CONTENT_TYPE:true}
       allow-private-ip-host: ${ALLOW_PRIVATE_IP_HOST:true}
       prevalidate-refresh-token-type: ${PREVALIDATE_REFRESH_TOKEN_TYPE:true}
+      max-request-body-size: ${MAX_REQUEST_BODY_SIZE:2MB}
       allowed-hosts: ${ALLOWED_HOSTS:}
     rate-limit:
       enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
       login-per-minute: ${AUTH_LOGIN_RATE_LIMIT_PER_MINUTE:10}
       refresh-per-minute: ${AUTH_REFRESH_RATE_LIMIT_PER_MINUTE:30}
       logout-per-minute: ${AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE:30}
+      counter-slots: ${AUTH_RATE_LIMIT_COUNTER_SLOTS:10000}
   token-cache:
     ttl: ${TOKEN_CACHE_TTL:24h}

@@ -5,15 +5,12 @@ import com.aandi.gateway.common.response.GatewayResponseWriter
 import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jwt.SignedJWT
 import org.springframework.core.Ordered
-import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpMethod
-import org.springframework.http.server.reactive.ServerHttpRequestDecorator
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import org.springframework.web.util.pattern.PathPatternParser
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.nio.charset.StandardCharsets
 
@@ -21,7 +18,8 @@ import java.nio.charset.StandardCharsets
 class AuthRequestValidationFilter(
     private val jwtPolicy: JwtPolicyProperties,
     private val policy: SecurityPolicyProperties,
-    private val responseWriter: GatewayResponseWriter
+    private val responseWriter: GatewayResponseWriter,
+    private val requestBodyCache: AuthRequestBodyCache
 ) : WebFilter, Ordered {
 
     private val parser = PathPatternParser.defaultInstance
@@ -53,19 +51,14 @@ class AuthRequestValidationFilter(
             else -> null
         } ?: return chain.filter(exchange)
 
-        return exchange.request.body
-            .collectList()
-            .flatMap { buffers ->
-                val totalBytes = buffers.sumOf { it.readableByteCount() }
-                val bytes = ByteArray(totalBytes)
-                var offset = 0
-                buffers.forEach { buffer ->
-                    val size = buffer.readableByteCount()
-                    buffer.read(bytes, offset, size)
-                    offset += size
-                    DataBufferUtils.release(buffer)
+        return requestBodyCache.read(exchange)
+            .flatMap { result ->
+                val bytes = when (result) {
+                    is AuthRequestBodyReadResult.Available -> result.bytes
+                    AuthRequestBodyReadResult.TooLarge -> {
+                        return@flatMap responseWriter.writeError(exchange, GatewayErrorCode.REQUEST_BODY_TOO_LARGE)
+                    }
                 }
-
                 val body = bytes.toString(StandardCharsets.UTF_8)
                 val validation = when (pathType) {
                     PathType.LOGIN -> validateLoginBody(body)
@@ -76,7 +69,7 @@ class AuthRequestValidationFilter(
                     return@flatMap responseWriter.writeError(exchange, validation)
                 }
 
-                val decorated = exchange.mutate().request(cachedRequest(exchange, bytes)).build()
+                val decorated = requestBodyCache.decorate(exchange, bytes)
                 chain.filter(decorated)
             }
     }
@@ -113,17 +106,6 @@ class AuthRequestValidationFilter(
     private fun extractJsonField(body: String, field: String): String {
         val regex = Regex("\"$field\"\\s*:\\s*\"([^\"]*)\"")
         return regex.find(body)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-    }
-
-    private fun cachedRequest(exchange: ServerWebExchange, body: ByteArray): ServerHttpRequestDecorator {
-        return object : ServerHttpRequestDecorator(exchange.request) {
-            override fun getBody(): Flux<org.springframework.core.io.buffer.DataBuffer> {
-                return Flux.defer {
-                    val dataBuffer = exchange.response.bufferFactory().wrap(body)
-                    Mono.just(dataBuffer)
-                }
-            }
-        }
     }
 
     private enum class PathType {

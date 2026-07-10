@@ -19,7 +19,7 @@ import java.util.Optional
 class GlobalExceptionHandler(
     private val responseWriter: GatewayResponseWriter,
     private val apiLogFactory: ApiLogFactory,
-    private val apiStructuredLogger: ApiStructuredLogger
+    private val apiStructuredLogger: ApiLogSink
 ) : ErrorWebExceptionHandler, Ordered {
 
     override fun getOrder(): Int = -2

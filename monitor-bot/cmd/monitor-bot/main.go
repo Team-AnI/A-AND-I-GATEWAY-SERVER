@@ -94,6 +94,7 @@ func main() {
 	readyInteractionHandler := discord.NewHandler(cfg, healthClient, logsClient, alarmClient)
 	readyInteractionHandler.SetOpsController(monitorService)
 	interactionHandler.Set(readyInteractionHandler)
+	status.SetInteractionReady(true)
 	monitorService.Start(context.Background())
 
 	waitForServer(serverErrors)
@@ -107,11 +108,12 @@ type runtimeStatus struct {
 func newRuntimeStatus(cfg config.Config) *runtimeStatus {
 	return &runtimeStatus{
 		status: health.ServerStatus{
-			OK:                       true,
-			DiscordPublicKeyProvided: cfg.DiscordPublicKey != "",
-			DashboardEnabled:         cfg.Dashboard.Enabled,
-			AlertEnabled:             cfg.Alert.Enabled,
-			Version:                  version,
+			DiscordApplicationIDProvided: cfg.DiscordApplicationID != "",
+			DiscordPublicKeyProvided:     cfg.DiscordPublicKey != "",
+			DiscordPublicKeyValid:        discord.ValidatePublicKey(cfg.DiscordPublicKey) == nil,
+			DashboardEnabled:             cfg.Dashboard.Enabled,
+			AlertEnabled:                 cfg.Alert.Enabled,
+			Version:                      version,
 		},
 	}
 }
@@ -134,6 +136,12 @@ func (s *runtimeStatus) SetAWSSDKConfigured(value bool) {
 	})
 }
 
+func (s *runtimeStatus) SetInteractionReady(value bool) {
+	s.update(func(status *health.ServerStatus) {
+		status.InteractionReady = value
+	})
+}
+
 func (s *runtimeStatus) SetDiscordRegistration(registered bool, err error) {
 	s.update(func(status *health.ServerStatus) {
 		status.DiscordCommandsRegistered = registered
@@ -149,6 +157,11 @@ func (s *runtimeStatus) update(updateFn func(*health.ServerStatus)) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	updateFn(&s.status)
+	s.status.OK = s.status.HTTPServer &&
+		s.status.AWSSDKConfigured &&
+		s.status.InteractionReady &&
+		s.status.DiscordApplicationIDProvided &&
+		s.status.DiscordPublicKeyValid
 }
 
 type safeHandler struct {

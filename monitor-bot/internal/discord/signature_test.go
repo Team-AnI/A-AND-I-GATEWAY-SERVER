@@ -46,3 +46,11 @@ func TestVerifySignatureRejectsReplayWindow(t *testing.T) {
 		t.Fatal("expired timestamp accepted")
 	}
 }
+
+func TestValidatePublicKeyRejectsMalformedKey(t *testing.T) {
+	for _, key := range []string{"not-hex", hex.EncodeToString(make([]byte, ed25519.PublicKeySize-1))} {
+		if err := ValidatePublicKey(key); err == nil {
+			t.Fatalf("malformed public key accepted: %q", key)
+		}
+	}
+}

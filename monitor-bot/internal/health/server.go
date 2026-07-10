@@ -9,7 +9,10 @@ type ServerStatus struct {
 	OK                              bool   `json:"ok"`
 	HTTPServer                      bool   `json:"httpServer"`
 	AWSSDKConfigured                bool   `json:"awsSdkConfigured"`
+	InteractionReady                bool   `json:"interactionReady"`
+	DiscordApplicationIDProvided    bool   `json:"discordApplicationIdProvided"`
 	DiscordPublicKeyProvided        bool   `json:"discordPublicKeyProvided"`
+	DiscordPublicKeyValid           bool   `json:"discordPublicKeyValid"`
 	DiscordCommandsRegistered       bool   `json:"discordCommandsRegistered"`
 	DiscordCommandRegistrationError string `json:"discordCommandRegistrationError,omitempty"`
 	DashboardEnabled                bool   `json:"dashboardEnabled"`
@@ -23,7 +26,11 @@ func Handler(status func() ServerStatus) http.HandlerFunc {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		currentStatus := status()
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(status())
+		if !currentStatus.OK {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+		_ = json.NewEncoder(w).Encode(currentStatus)
 	}
 }

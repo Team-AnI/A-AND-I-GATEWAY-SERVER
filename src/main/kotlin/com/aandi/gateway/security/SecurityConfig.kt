@@ -79,12 +79,12 @@ class SecurityConfig(
                 it.pathMatchers(HttpMethod.POST, "/v1/auth/**").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/v2/auth/login", "/v2/auth/refresh", "/v2/auth/logout", "/activate", "/v2/activate").permitAll()
                 it.pathMatchers(HttpMethod.POST, "/internal/v1/cache/invalidation").permitAll()
-                it.pathMatchers("/api/ping/**", "/v2/ping/**").permitAll()
-                it.pathMatchers("/", "/index.html").permitAll()
-                it.pathMatchers("/v3/api-docs", "/v3/api-docs/**").permitAll()
-                it.pathMatchers("/v2/*/v3/api-docs", "/v2/*/v3/api-docs/**").permitAll()
-                it.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**", "/v2/swagger-ui/index.html", "/v2/swagger-ui/**").permitAll()
-                it.pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                it.pathMatchers(HttpMethod.GET, "/api/ping/**", "/v2/ping/**").permitAll()
+                it.pathMatchers(HttpMethod.GET, "/", "/index.html").permitAll()
+                it.pathMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**").permitAll()
+                it.pathMatchers(HttpMethod.GET, "/v2/*/v3/api-docs", "/v2/*/v3/api-docs/**").permitAll()
+                it.pathMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v2/docs", "/v2/docs/**", "/v2/swagger-ui/index.html", "/v2/swagger-ui/**").permitAll()
+                it.pathMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
 
                 // Auth service role-based endpoints
                 it.pathMatchers(HttpMethod.GET, "/v1/me", "/v2/auth/me", "/v2/me").hasAnyRole("USER", "ORGANIZER", "ADMIN")

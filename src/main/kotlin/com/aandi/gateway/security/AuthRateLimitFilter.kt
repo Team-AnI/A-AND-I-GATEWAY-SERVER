@@ -2,25 +2,21 @@ package com.aandi.gateway.security
 import com.aandi.gateway.common.response.GatewayErrorCode
 import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.springframework.core.Ordered
-import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpMethod
-import org.springframework.http.server.reactive.ServerHttpRequestDecorator
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import org.springframework.web.util.pattern.PathPatternParser
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 
 @Component
 class AuthRateLimitFilter(
     private val properties: RateLimitProperties,
-    private val responseWriter: GatewayResponseWriter
+    private val responseWriter: GatewayResponseWriter,
+    private val requestBodyCache: AuthRequestBodyCache
 ) : WebFilter, Ordered {
 
     private val parser = PathPatternParser.defaultInstance
@@ -37,7 +33,7 @@ class AuthRateLimitFilter(
         parser.parse("/v2/auth/logout")
     )
 
-    private val counters = ConcurrentHashMap<String, Counter>()
+    private val rateLimiter = FixedWindowRateLimiter(properties.counterSlots)
 
     override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 30
 
@@ -54,19 +50,14 @@ class AuthRateLimitFilter(
             else -> null
         } ?: return chain.filter(exchange)
 
-        return exchange.request.body
-            .collectList()
-            .flatMap { buffers ->
-                val totalBytes = buffers.sumOf { it.readableByteCount() }
-                val bytes = ByteArray(totalBytes)
-                var offset = 0
-                buffers.forEach { buffer ->
-                    val size = buffer.readableByteCount()
-                    buffer.read(bytes, offset, size)
-                    offset += size
-                    DataBufferUtils.release(buffer)
+        return requestBodyCache.read(exchange)
+            .flatMap { result ->
+                val bytes = when (result) {
+                    is AuthRequestBodyReadResult.Available -> result.bytes
+                    AuthRequestBodyReadResult.TooLarge -> {
+                        return@flatMap responseWriter.writeError(exchange, GatewayErrorCode.REQUEST_BODY_TOO_LARGE)
+                    }
                 }
-
                 val body = bytes.toString(StandardCharsets.UTF_8)
                 val key = buildKey(exchange, pathType, body)
                 val limit = when (pathType) {
@@ -75,7 +66,7 @@ class AuthRateLimitFilter(
                     PathType.LOGOUT -> properties.logoutPerMinute
                 }
 
-                if (!allow(key, limit)) {
+                if (!rateLimiter.allow(key, limit)) {
                     val errorCode = when (pathType) {
                         PathType.LOGIN -> GatewayErrorCode.LOGIN_RATE_LIMIT_EXCEEDED
                         PathType.REFRESH -> GatewayErrorCode.REFRESH_RATE_LIMIT_EXCEEDED
@@ -84,7 +75,7 @@ class AuthRateLimitFilter(
                     return@flatMap responseWriter.writeError(exchange, errorCode)
                 }
 
-                val decorated = exchange.mutate().request(cachedRequest(exchange, bytes)).build()
+                val decorated = requestBodyCache.decorate(exchange, bytes)
                 chain.filter(decorated)
             }
     }
@@ -94,7 +85,7 @@ class AuthRateLimitFilter(
         return when (pathType) {
             PathType.LOGIN -> {
                 val username = extractJsonField(body, "username").ifBlank { "unknown-user" }
-                "login:$ip:$username"
+                "login:$ip:${sha256(username)}"
             }
             PathType.REFRESH, PathType.LOGOUT -> {
                 val refreshToken = extractJsonField(body, "refreshToken")
@@ -109,39 +100,10 @@ class AuthRateLimitFilter(
         return regex.find(body)?.groupValues?.getOrNull(1)?.trim().orEmpty()
     }
 
-    private fun allow(key: String, limit: Int): Boolean {
-        if (limit <= 0) return false
-        val nowEpochMinute = Instant.now().epochSecond / 60
-        val next = counters.compute(key) { _, current ->
-            if (current == null || current.windowMinute != nowEpochMinute) {
-                Counter(nowEpochMinute, 1)
-            } else {
-                current.copy(count = current.count + 1)
-            }
-        } ?: Counter(nowEpochMinute, 1)
-        return next.count <= limit
-    }
-
-    private fun cachedRequest(exchange: ServerWebExchange, body: ByteArray): ServerHttpRequestDecorator {
-        return object : ServerHttpRequestDecorator(exchange.request) {
-            override fun getBody(): Flux<org.springframework.core.io.buffer.DataBuffer> {
-                return Flux.defer {
-                    val dataBuffer = exchange.response.bufferFactory().wrap(body)
-                    Mono.just(dataBuffer)
-                }
-            }
-        }
-    }
-
     private fun sha256(value: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) }
     }
-
-    private data class Counter(
-        val windowMinute: Long,
-        val count: Int
-    )
 
     private enum class PathType {
         LOGIN,

@@ -9,9 +9,9 @@ import (
 )
 
 func VerifySignature(publicKeyHex, timestamp string, body []byte, signatureHex string, now time.Time, replayWindow time.Duration) error {
-	publicKey, err := hex.DecodeString(publicKeyHex)
-	if err != nil || len(publicKey) != ed25519.PublicKeySize {
-		return fmt.Errorf("invalid discord public key")
+	publicKey, err := decodePublicKey(publicKeyHex)
+	if err != nil {
+		return err
 	}
 	signature, err := hex.DecodeString(signatureHex)
 	if err != nil || len(signature) != ed25519.SignatureSize {
@@ -30,4 +30,18 @@ func VerifySignature(publicKeyHex, timestamp string, body []byte, signatureHex s
 		return fmt.Errorf("discord signature verification failed")
 	}
 	return nil
+}
+
+// ValidatePublicKey validates the hex-encoded Discord Ed25519 public key.
+func ValidatePublicKey(publicKeyHex string) error {
+	_, err := decodePublicKey(publicKeyHex)
+	return err
+}
+
+func decodePublicKey(publicKeyHex string) (ed25519.PublicKey, error) {
+	publicKey, err := hex.DecodeString(publicKeyHex)
+	if err != nil || len(publicKey) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid discord public key")
+	}
+	return ed25519.PublicKey(publicKey), nil
 }

@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import tools.jackson.databind.ObjectMapper
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -26,6 +28,40 @@ class GatewayErrorCodeTests {
             assertEquals("Gateway", errorCode.service)
             assertEquals(1, errorCode.code.toString().first().digitToInt())
         }
+    }
+
+    @Test
+    fun `gateway error code documentation matches enum contract`() {
+        val document = Path.of(System.getProperty("user.dir"), "docs", "GATEWAY_ERROR_CODES.md")
+        assertTrue(Files.isRegularFile(document), "Gateway error code document not found: $document")
+
+        val documentedRows = Files.readAllLines(document).mapNotNull { line ->
+            val columns = line.trim()
+                .removePrefix("|")
+                .removeSuffix("|")
+                .split('|')
+                .map(String::trim)
+            val code = columns.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+            val httpStatus = columns.getOrNull(2)?.toIntOrNull() ?: return@mapNotNull null
+            val value = columns.getOrNull(3) ?: return@mapNotNull null
+            val message = columns.getOrNull(4) ?: return@mapNotNull null
+            val alert = columns.getOrNull(5) ?: return@mapNotNull null
+            code to DocumentedErrorContract(httpStatus, value, message, alert)
+        }
+        val documented = documentedRows.toMap()
+        val expectedRows = GatewayErrorCode.entries.map { errorCode ->
+            errorCode.code to DocumentedErrorContract(
+                httpStatus = errorCode.httpStatus.value(),
+                value = errorCode.value,
+                message = errorCode.message,
+                alert = errorCode.alert
+            )
+        }
+        val expected = expectedRows.toMap()
+
+        assertEquals(documentedRows.size, documented.size, "Gateway error code document contains duplicate codes")
+        assertEquals(expectedRows.size, expected.size, "GatewayErrorCode contains duplicate codes")
+        assertEquals(expected, documented, "Gateway error code document is out of sync with GatewayErrorCode")
     }
 
     @Test
@@ -96,4 +132,11 @@ class GatewayErrorCodeTests {
         assertTrue(body.contains("\"code\":15001"))
         assertTrue(body.contains("\"value\":\"ENDPOINT_NOT_ALLOWLISTED\""))
     }
+
+    private data class DocumentedErrorContract(
+        val httpStatus: Int,
+        val value: String,
+        val message: String,
+        val alert: String
+    )
 }

@@ -4,6 +4,7 @@ import com.aandi.gateway.common.response.GatewayErrorCode
 import com.aandi.gateway.common.response.GatewayResponseWriter
 import org.junit.jupiter.api.Test
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils
+import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
@@ -13,7 +14,9 @@ import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Mono
 import tools.jackson.databind.ObjectMapper
 import java.net.ConnectException
+import java.nio.charset.StandardCharsets
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -284,6 +287,87 @@ class ApiLoggingContractTests {
     }
 
     @Test
+    fun `large request body is forwarded unchanged and log capture is bounded`() {
+        val secret = "request-secret-must-not-be-logged"
+        val body = """{"username":"oversized-user","password":"$secret","padding":"${"a".repeat(70 * 1024)}"}"""
+        val exchange = MockServerWebExchange.from(
+            MockServerHttpRequest.post("/v2/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+        )
+        val logger = CapturingApiLogSink()
+        val filter = RequestResponseLoggingFilter(factory, logger)
+        var forwardedBody = ""
+        val chain = WebFilterChain { chainExchange ->
+            DataBufferUtils.join(chainExchange.request.body)
+                .flatMap { buffer ->
+                    val bytes = ByteArray(buffer.readableByteCount())
+                    buffer.read(bytes)
+                    DataBufferUtils.release(buffer)
+                    forwardedBody = bytes.toString(StandardCharsets.UTF_8)
+                    chainExchange.response.setComplete()
+                }
+        }
+
+        filter.filter(exchange, chain).block()
+
+        assertEquals(body, forwardedBody)
+        val capturedBody = ApiLogContext.get(exchange).requestBody
+        assertTrue(capturedBody.length < body.length)
+        assertTrue(capturedBody.contains("[truncated]"))
+        val loggedBody = captureLog(logger).request.body.toString()
+        assertTrue(loggedBody.contains("truncated"))
+        assertFalse(loggedBody.contains(secret))
+    }
+
+    @Test
+    fun `large response body is forwarded unchanged and log capture is bounded`() {
+        val secret = "response-secret-must-not-be-logged"
+        val body = """{"success":true,"data":{"accessToken":"$secret","padding":"${"a".repeat(70 * 1024)}"}}"""
+        val exchange = exchange("/v2/test")
+        val logger = CapturingApiLogSink()
+        val filter = RequestResponseLoggingFilter(factory, logger)
+        val chain = WebFilterChain { chainExchange ->
+            chainExchange.response.headers.contentType = MediaType.APPLICATION_JSON
+            chainExchange.response.writeWith(
+                Mono.just(chainExchange.response.bufferFactory().wrap(body.toByteArray()))
+            )
+        }
+
+        filter.filter(exchange, chain).block()
+
+        assertEquals(body, exchange.response.bodyAsString.block())
+        val capturedBody = ApiLogContext.get(exchange).responseBody
+        assertTrue(capturedBody.length < body.length)
+        assertTrue(capturedBody.contains("[truncated]"))
+        val loggedData = captureLog(logger).response.data.toString()
+        assertTrue(loggedData.contains("truncated"))
+        assertFalse(loggedData.contains(secret))
+    }
+
+    @Test
+    fun `unparseable bodies are represented as metadata without raw secrets`() {
+        val requestSecret = "request-raw-secret"
+        val responseSecret = "response-raw-secret"
+        val invalidRequestBody = "{\"password\":\"$requestSecret"
+        val exchange = MockServerWebExchange.from(
+            MockServerHttpRequest.post("/v2/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(invalidRequestBody)
+        )
+        val context = ApiLogContext.initialize(exchange)
+        context.requestBody = invalidRequestBody
+        context.responseBody = "{\"accessToken\":\"$responseSecret"
+
+        val log = factory.create(exchange, context, null)
+
+        assertFalse(log.request.body.toString().contains(requestSecret))
+        assertFalse(log.response.data.toString().contains(responseSecret))
+        assertTrue(log.request.body.toString().contains("unparsed"))
+        assertTrue(log.response.data.toString().contains("unparsed"))
+    }
+
+    @Test
     fun `downstream connection failure maps to gateway 17801`() {
         val exchange = exchange("/v2/auth/me")
         val handler = GlobalExceptionHandler(
@@ -428,6 +512,18 @@ class ApiLoggingContractTests {
         if (errorCode != GatewayErrorCode.INTERNAL_SERVER_ERROR) {
             assertTrue(error.code != GatewayErrorCode.INTERNAL_SERVER_ERROR.code)
             assertTrue(error.value != GatewayErrorCode.INTERNAL_SERVER_ERROR.value)
+        }
+    }
+
+    private fun captureLog(logger: CapturingApiLogSink): ApiStructuredLog {
+        return assertNotNull(logger.payload)
+    }
+
+    private class CapturingApiLogSink : ApiLogSink {
+        var payload: ApiStructuredLog? = null
+
+        override fun log(payload: ApiStructuredLog) {
+            this.payload = payload
         }
     }
 }

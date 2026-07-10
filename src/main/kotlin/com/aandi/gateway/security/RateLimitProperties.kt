@@ -7,5 +7,6 @@ data class RateLimitProperties(
     val enabled: Boolean = true,
     val loginPerMinute: Int = 10,
     val refreshPerMinute: Int = 30,
-    val logoutPerMinute: Int = 30
+    val logoutPerMinute: Int = 30,
+    val counterSlots: Int = 10_000
 )
