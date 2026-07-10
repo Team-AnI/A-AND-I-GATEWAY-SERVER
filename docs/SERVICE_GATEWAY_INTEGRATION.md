@@ -51,7 +51,7 @@ POST /v2/online-judge/submissions
 
 - `OPTIONS /**`는 정책 필터와 보안 필터에서 허용한다.
 - `ENFORCE_HTTPS=true`면 TLS 연결이거나 `X-Forwarded-Proto: https`인 요청만 허용한다.
-- `ALLOWED_HOSTS`가 비어 있지 않으면 허용된 host만 받는다. `ALLOW_PRIVATE_IP_HOST=true`면 loopback/private IP host도 허용한다.
+- `ALLOWED_HOSTS`가 비어 있지 않으면 허용된 host만 받는다. `ALLOW_PRIVATE_IP_HOST=true`면 DNS 조회 없이 loopback/private IP literal만 추가로 허용하며, hostname은 `ALLOWED_HOSTS`에 명시해야 한다.
 - `POST`, `PUT`, `PATCH`는 기본적으로 `application/json` 또는 `+json` Content-Type이 필요하다.
 - JSON Content-Type 검사 예외는 `/v1/me`, `/v1/posts...`, `/v2/me`, `/v2/post...`, `/v2/posts...`, `/v2/blogs...`, `/v2/lectures...` 중 코드에 명시된 root/item/image 경로다. 멀티파트 등을 받는 서비스는 해당 예외 경로인지 확인해야 한다.
 - 요청 본문 크기는 기본 2 MiB로 제한되며 `MAX_REQUEST_BODY_SIZE`로 변경한다.
