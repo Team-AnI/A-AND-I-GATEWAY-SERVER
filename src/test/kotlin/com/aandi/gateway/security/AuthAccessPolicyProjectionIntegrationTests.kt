@@ -19,19 +19,19 @@ import kotlin.test.assertEquals
         "app.security.policy.enforce-https=false"
     ]
 )
-class AuthAccessPolicyCatalogIntegrationTests(
+class AuthAccessPolicyProjectionIntegrationTests(
     @Autowired private val springSecurity: WebFilterChainProxy
 ) {
     private val securityProbe = SecurityChainProbe(springSecurity)
 
     @Test
-    fun `auth access catalog matches the live security chain for all endpoint policies`() {
+    fun `global access catalog projection matches the live security chain for all auth endpoint policies`() {
         val endpoints = AuthEndpointPolicyCatalog.allowRules
 
         assertEquals(73, endpoints.size)
         endpoints.forEach { endpoint ->
             val path = endpoint.witnessPath()
-            val requirement = AuthAccessPolicyCatalog.evaluate(endpoint.method, path)
+            val requirement = GlobalAccessPolicyCatalog.evaluate(endpoint.method, path).requirement
 
             securityProbe.assertAccess(endpoint.method, path, requirement)
         }
@@ -51,7 +51,7 @@ class AuthAccessPolicyCatalogIntegrationTests(
     }
 
     @Test
-    fun `auth access catalog matches live wildcard and fallback boundaries`() {
+    fun `global access catalog matches live auth wildcard and fallback boundaries`() {
         val admin = AccessRequirement.AnyRole(setOf(UserRole.ADMIN))
         val cases = listOf(
             BoundaryCase(HttpMethod.POST, "/v1/auth/future/deep", AccessRequirement.PermitAll),
@@ -77,7 +77,7 @@ class AuthAccessPolicyCatalogIntegrationTests(
         cases.forEach { case ->
             assertEquals(
                 case.requirement,
-                AuthAccessPolicyCatalog.evaluate(case.method, case.path),
+                GlobalAccessPolicyCatalog.evaluate(case.method, case.path).requirement,
                 "${case.method} ${case.path} catalog"
             )
             securityProbe.assertAccess(case.method, case.path, case.requirement)

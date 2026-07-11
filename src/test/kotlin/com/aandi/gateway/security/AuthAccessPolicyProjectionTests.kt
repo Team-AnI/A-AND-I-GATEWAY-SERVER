@@ -11,46 +11,7 @@ import java.util.HexFormat
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class AuthAccessPolicyCatalogTests {
-
-    @Test
-    fun `auth access catalog preserves ordered matcher inventory`() {
-        val contracts = AuthAccessPolicyCatalog.contracts
-
-        assertEquals(13, contracts.size)
-        assertEquals(26, contracts.sumOf { it.paths.size })
-        assertEquals(
-            listOf(
-                HttpMethod.OPTIONS,
-                HttpMethod.POST,
-                HttpMethod.POST,
-                HttpMethod.GET,
-                HttpMethod.GET,
-                HttpMethod.GET,
-                HttpMethod.POST,
-                HttpMethod.PATCH,
-                HttpMethod.POST,
-                HttpMethod.POST,
-                HttpMethod.PATCH,
-                HttpMethod.GET,
-                null
-            ),
-            contracts.map { it.method }
-        )
-        assertEquals(AccessRequirement.Authenticated, AuthAccessPolicyCatalog.fallback)
-
-        val orderedKeys = contracts.flatMap { contract ->
-            contract.paths.map { path ->
-                "${contract.method?.name() ?: "*"} $path ${contract.requirement.canonicalName()}"
-            }
-        } + "* /** ${AuthAccessPolicyCatalog.fallback.canonicalName()}"
-        assertEquals(27, orderedKeys.size)
-        assertEquals(
-            "93394a0ddddc719a921d4e6f298585fe5636a1582e37a83e4f4051b1ab5e698c",
-            sha256(orderedKeys.joinToString("\n"))
-        )
-    }
-
+class AuthAccessPolicyProjectionTests {
     @Test
     fun `auth access projection contains only routed endpoints and keeps methodless routes explicit`() {
         val routes = AuthGatewayRouteCatalog.catalog.routes
@@ -90,7 +51,7 @@ class AuthAccessPolicyCatalogTests {
             EndpointAccess(
                 method = endpoint.method,
                 path = endpoint.path,
-                requirement = AuthAccessPolicyCatalog.evaluate(endpoint.method, endpoint.witnessPath())
+                requirement = GlobalAccessPolicyCatalog.evaluate(endpoint.method, endpoint.witnessPath()).requirement
             )
         }
         val requirements = endpointAccess.map { it.requirement }
@@ -115,35 +76,58 @@ class AuthAccessPolicyCatalogTests {
     @Test
     fun `first match access decisions preserve global and fallback exceptions`() {
         val cases = listOf(
-            AccessCase(HttpMethod.OPTIONS, "/v2/auth/admin/users/value", AccessRequirement.PermitAll),
-            AccessCase(HttpMethod.POST, "/v1/auth/future", AccessRequirement.PermitAll),
-            AccessCase(HttpMethod.GET, "/v2/ping", AccessRequirement.PermitAll),
-            AccessCase(HttpMethod.GET, "/v2/ping/deep", AccessRequirement.PermitAll),
-            AccessCase(HttpMethod.GET, "/v2/auth/v3/api-docs/v1", AccessRequirement.PermitAll),
+            AccessCase(
+                HttpMethod.OPTIONS,
+                "/v2/auth/admin/users/value",
+                "preflight-options",
+                AccessRequirement.PermitAll
+            ),
+            AccessCase(HttpMethod.POST, "/v1/auth/future", "public-v1-auth-post", AccessRequirement.PermitAll),
+            AccessCase(HttpMethod.GET, "/v2/ping", "public-ping-get", AccessRequirement.PermitAll),
+            AccessCase(HttpMethod.GET, "/v2/ping/deep", "public-ping-get", AccessRequirement.PermitAll),
+            AccessCase(
+                HttpMethod.GET,
+                "/v2/auth/v3/api-docs/v1",
+                "public-service-openapi-get",
+                AccessRequirement.PermitAll
+            ),
             AccessCase(
                 HttpMethod.POST,
                 "/v2/auth/me/password",
+                "fallback-authenticated",
                 AccessRequirement.Authenticated
             ),
             AccessCase(
                 HttpMethod.POST,
                 "/v2/auth/me",
+                "auth-me-post",
                 roles(UserRole.USER, UserRole.ORGANIZER, UserRole.ADMIN)
             ),
             AccessCase(
                 HttpMethod.GET,
                 "/v2/users/lookup",
+                "organizer-v2-user-lookup-get",
                 roles(UserRole.ORGANIZER, UserRole.ADMIN)
             ),
-            AccessCase(HttpMethod.GET, "/v1/admin/ping", roles(UserRole.ADMIN)),
-            AccessCase(HttpMethod.GET, "/v1/users/value", AccessRequirement.Authenticated),
-            AccessCase(HttpMethod.GET, "/v2/auth/login", AccessRequirement.Authenticated)
+            AccessCase(HttpMethod.GET, "/v1/admin/ping", "admin-service-any", roles(UserRole.ADMIN)),
+            AccessCase(
+                HttpMethod.GET,
+                "/v1/users/value",
+                "fallback-authenticated",
+                AccessRequirement.Authenticated
+            ),
+            AccessCase(
+                HttpMethod.GET,
+                "/v2/auth/login",
+                "fallback-authenticated",
+                AccessRequirement.Authenticated
+            )
         )
 
         cases.forEach { case ->
             assertEquals(
-                case.requirement,
-                AuthAccessPolicyCatalog.evaluate(case.method, case.path),
+                AccessDecision(case.ruleId, case.requirement),
+                GlobalAccessPolicyCatalog.evaluate(case.method, case.path),
                 "${case.method} ${case.path}"
             )
         }
@@ -187,6 +171,7 @@ class AuthAccessPolicyCatalogTests {
     private data class AccessCase(
         val method: HttpMethod,
         val path: String,
+        val ruleId: String,
         val requirement: AccessRequirement
     )
 }
