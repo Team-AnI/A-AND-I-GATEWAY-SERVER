@@ -5,18 +5,6 @@ import org.springframework.http.server.PathContainer
 import org.springframework.web.util.pattern.PathPattern
 import org.springframework.web.util.pattern.PathPatternParser
 
-internal sealed interface AccessRequirement {
-    data object PermitAll : AccessRequirement
-
-    data object Authenticated : AccessRequirement
-
-    data class AnyRole(val roles: Set<UserRole>) : AccessRequirement {
-        init {
-            require(roles.isNotEmpty()) { "Access roles must not be empty" }
-        }
-    }
-}
-
 internal data class AccessContract(
     val method: HttpMethod?,
     val paths: List<String>,
