@@ -1,8 +1,6 @@
 package com.aandi.gateway.security
 
 import org.springframework.http.HttpMethod
-import org.springframework.http.server.PathContainer
-import org.springframework.web.util.pattern.PathPattern
 import org.springframework.web.util.pattern.PathPatternParser
 
 internal sealed interface AccessRequirement {
@@ -18,28 +16,18 @@ internal sealed interface AccessRequirement {
 }
 
 internal sealed interface AccessMatcherContract {
-    fun matches(method: HttpMethod?, path: PathContainer): Boolean
-
     data class Paths(
         val method: HttpMethod?,
         val paths: List<String>
     ) : AccessMatcherContract {
-        private val pathPatterns: List<PathPattern> = paths.map(PathPatternParser.defaultInstance::parse)
-
         init {
             require(paths.isNotEmpty()) { "Access paths must not be empty" }
             require(paths.none(String::isBlank)) { "Access paths must not be blank" }
             require(paths.size == paths.toSet().size) { "Access paths must not contain duplicates" }
         }
-
-        override fun matches(method: HttpMethod?, path: PathContainer): Boolean {
-            return (this.method == null || this.method == method) && pathPatterns.any { it.matches(path) }
-        }
     }
 
-    data object AnyExchange : AccessMatcherContract {
-        override fun matches(method: HttpMethod?, path: PathContainer): Boolean = true
-    }
+    data object AnyExchange : AccessMatcherContract
 }
 
 internal data class AccessRuleContract(
@@ -48,11 +36,7 @@ internal data class AccessRuleContract(
     val requirement: AccessRequirement
 )
 
-internal data class AccessDecision(
-    val winningRuleId: String,
-    val requirement: AccessRequirement
-)
-
+/** Ordered source of truth for the authenticated Spring Security chain. */
 internal object GlobalAccessPolicyCatalog {
     private val userOrganizerAdmin = AccessRequirement.AnyRole(
         setOf(UserRole.USER, UserRole.ORGANIZER, UserRole.ADMIN)
@@ -299,23 +283,19 @@ internal object GlobalAccessPolicyCatalog {
             "Any-exchange rule must require authentication"
         }
 
+        val parser = PathPatternParser.defaultInstance
         val methodPathKeys = rules.flatMap { rule ->
             when (val matcher = rule.matcher) {
                 AccessMatcherContract.AnyExchange -> emptyList()
-                is AccessMatcherContract.Paths -> matcher.paths.map { matcher.method to it }
+                is AccessMatcherContract.Paths -> matcher.paths.map { path ->
+                    parser.parse(path)
+                    matcher.method to path
+                }
             }
         }
         require(methodPathKeys.size == methodPathKeys.toSet().size) {
             "Access method/path declarations must be unique"
         }
-    }
-
-    fun evaluate(method: HttpMethod?, path: String): AccessDecision {
-        val pathContainer = PathContainer.parsePath(path)
-        val rule = requireNotNull(rules.firstOrNull { it.matcher.matches(method, pathContainer) }) {
-            "Access catalog must end with an any-exchange rule"
-        }
-        return AccessDecision(rule.id, rule.requirement)
     }
 
     private fun paths(
