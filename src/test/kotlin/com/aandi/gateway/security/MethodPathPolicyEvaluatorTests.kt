@@ -218,6 +218,28 @@ class MethodPathPolicyEvaluatorTests {
     }
 
     @Test
+    fun `online judge endpoint policy catalog preserves the ordered allow inventory partition`() {
+        val allowKeys = filter().methodPathPolicy.allowRules.map { it.method to it.path }
+        val onlineJudgeKeys = OnlineJudgeEndpointPolicyCatalog.allowRules.map { it.method to it.path }
+        val onlineJudgeKeySet = onlineJudgeKeys.toSet()
+
+        assertEquals(6, OnlineJudgeEndpointPolicyCatalog.legacyRules.size)
+        assertEquals(2, OnlineJudgeEndpointPolicyCatalog.openApiRules.size)
+        assertEquals(12, OnlineJudgeEndpointPolicyCatalog.v2Rules.size)
+        assertEquals(20, onlineJudgeKeys.size)
+        assertEquals(20, onlineJudgeKeySet.size)
+        assertEquals(onlineJudgeKeys, allowKeys.filter(onlineJudgeKeySet::contains))
+        assertEquals(
+            mapOf(HttpMethod.GET to 17, HttpMethod.POST to 3),
+            OnlineJudgeEndpointPolicyCatalog.allowRules.groupingBy { it.method }.eachCount()
+        )
+        assertEquals(
+            "3faa56cb0e6d163e35b5944f296c8bd9ea99f6346c30ac4abd4f3701dda469db",
+            fingerprint(allowKeys)
+        )
+    }
+
+    @Test
     fun `filter maps evaluator decisions without changing endpoint error contract`() {
         val filter = filter()
 
