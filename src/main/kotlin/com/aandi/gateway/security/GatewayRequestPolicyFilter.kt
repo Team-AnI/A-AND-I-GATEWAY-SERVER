@@ -84,13 +84,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.POST, parser.parse("/v1/courses/{courseSlug}/assignments/{assignmentId}/submissions")),
         AllowRule(HttpMethod.GET, parser.parse("/v1/courses/{courseSlug}/assignments/{assignmentId}/submissions/{submissionId}")),
         AllowRule(HttpMethod.GET, parser.parse("/v1/courses/{courseSlug}/assignments/{assignmentId}/submissions/{submissionId}/stream")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/courses/assignments/{assignmentId}/course")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/problems/{problemId}/submissions/me")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/admin/submissions")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/admin/testcases")),
-        AllowRule(HttpMethod.POST, parser.parse("/v1/submissions")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/submissions/{submissionId}")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/submissions/{submissionId}/stream")),
+        AllowRule(HttpMethod.GET, parser.parse("/v1/courses/assignments/{assignmentId}/course"))
+    ) + OnlineJudgeEndpointPolicyCatalog.legacyAllowRules + listOf(
         AllowRule(HttpMethod.POST, parser.parse("/v1/posts/images")),
         AllowRule(HttpMethod.GET, parser.parse("/api/ping/**"))
     ) + AuthEndpointPolicyCatalog.pingAllowRules + listOf(
@@ -106,9 +101,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/swagger-ui/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs/**"))
-    ) + ReportEndpointPolicyCatalog.openApiAllowRules + AuthEndpointPolicyCatalog.openApiAllowRules + listOf(
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/v3/api-docs")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/v3/api-docs/**")),
+    ) + ReportEndpointPolicyCatalog.openApiAllowRules + AuthEndpointPolicyCatalog.openApiAllowRules +
+        OnlineJudgeEndpointPolicyCatalog.openApiAllowRules + listOf(
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health/**")),
         AllowRule(HttpMethod.POST, parser.parse("/internal/v1/cache/invalidation"))
@@ -207,19 +201,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/drafts/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/lectures/{lectureId}")),
         AllowRule(HttpMethod.PATCH, parser.parse("/v2/lectures/{lectureId}")),
-        AllowRule(HttpMethod.DELETE, parser.parse("/v2/lectures/{lectureId}")),
-        AllowRule(HttpMethod.POST, parser.parse("/v2/online-judge/submissions")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/problems/{problemId}/submissions/me")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/admin/submissions")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/admin/testcases")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/submissions/{submissionId}")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/submissions/{submissionId}/stream")),
-        AllowRule(HttpMethod.POST, parser.parse("/v2/submissions")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/problems/{problemId}/submissions/me")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/submissions")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/admin/testcases")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/submissions/{submissionId}/stream")),
+        AllowRule(HttpMethod.DELETE, parser.parse("/v2/lectures/{lectureId}"))
+    ) + OnlineJudgeEndpointPolicyCatalog.v2AllowRules + listOf(
         AllowRule(HttpMethod.GET, parser.parse("/v2/admin/service-availability")),
         AllowRule(HttpMethod.PUT, parser.parse("/v2/admin/service-availability/{service}"))
     )
