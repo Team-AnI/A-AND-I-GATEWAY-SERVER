@@ -32,6 +32,7 @@ services:
       - AUTH_LOGIN_RATE_LIMIT_PER_MINUTE=${AUTH_LOGIN_RATE_LIMIT_PER_MINUTE:-10}
       - AUTH_REFRESH_RATE_LIMIT_PER_MINUTE=${AUTH_REFRESH_RATE_LIMIT_PER_MINUTE:-30}
       - AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE=${AUTH_LOGOUT_RATE_LIMIT_PER_MINUTE:-30}
+      - AUTH_RATE_LIMIT_COUNTER_SLOTS=${AUTH_RATE_LIMIT_COUNTER_SLOTS:-10000}
       - MAX_REQUEST_BODY_SIZE=${MAX_REQUEST_BODY_SIZE:-2MB}
       - MAX_REQUEST_HEADER_SIZE=${MAX_REQUEST_HEADER_SIZE:-16KB}
       - REDIS_HOST=${REDIS_HOST:-redis}
@@ -47,8 +48,21 @@ services:
 
   redis:
     image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: >
+      sh -c 'if [ -n "$${REDIS_PASSWORD}" ]; then
+      exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}";
+      else
+      exec redis-server --appendonly yes;
+      fi'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
+
+volumes:
+  redis-data:
