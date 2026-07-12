@@ -25,6 +25,9 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Validate environment contract
+        run: python3 scripts/validate-env-contract.py
+
       - name: Run backend tests and build Gateway JAR
         run: ./gradlew test bootJar --build-cache --no-daemon
 
