@@ -71,6 +71,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate CI/CD metrics documents
+        run: |
+          python3 scripts/validate-gateway-cicd-metrics.py docs/metrics/gateway-cicd-remeasure.json
+          python3 scripts/validate-doc-metrics-consistency.py \
+            --metrics docs/metrics/gateway-cicd-remeasure.json \
+            --docs docs/cicd-optimization.md docs/resume-metrics.md docs/cicd-measurement-audit.md
+
       - name: Read k6 version
         id: k6-version
         run: |
