@@ -105,10 +105,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/swagger-ui/index.html")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/swagger-ui/**")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs/**")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/report/v3/api-docs")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/report/v3/api-docs/**"))
-    ) + AuthEndpointPolicyCatalog.openApiAllowRules + listOf(
+        AllowRule(HttpMethod.GET, parser.parse("/v2/post/v3/api-docs/**"))
+    ) + ReportEndpointPolicyCatalog.openApiAllowRules + AuthEndpointPolicyCatalog.openApiAllowRules + listOf(
         AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/v3/api-docs")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/online-judge/v3/api-docs/**")),
         AllowRule(HttpMethod.GET, parser.parse("/actuator/health")),
@@ -169,21 +167,8 @@ class GatewayRequestPolicyFilter(
         AllowRule(HttpMethod.GET, parser.parse("/v2/courses/{courseSlug}/weeks/{weekNo}/assignments")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/courses/{courseSlug}/assignments")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/courses/{courseSlug}/assignments/{assignmentId}")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/assignments/{assignmentId}/course")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/report")),
-        AllowRule(HttpMethod.GET, parser.parse("/v1/report/**")),
-        AllowRule(HttpMethod.POST, parser.parse("/v1/report")),
-        AllowRule(HttpMethod.POST, parser.parse("/v1/report/**")),
-        AllowRule(HttpMethod.PUT, parser.parse("/v1/report/**")),
-        AllowRule(HttpMethod.PATCH, parser.parse("/v1/report/**")),
-        AllowRule(HttpMethod.DELETE, parser.parse("/v1/report/**")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/report")),
-        AllowRule(HttpMethod.GET, parser.parse("/v2/report/**")),
-        AllowRule(HttpMethod.POST, parser.parse("/v2/report")),
-        AllowRule(HttpMethod.POST, parser.parse("/v2/report/**")),
-        AllowRule(HttpMethod.PUT, parser.parse("/v2/report/**")),
-        AllowRule(HttpMethod.PATCH, parser.parse("/v2/report/**")),
-        AllowRule(HttpMethod.DELETE, parser.parse("/v2/report/**")),
+        AllowRule(HttpMethod.GET, parser.parse("/v2/assignments/{assignmentId}/course"))
+    ) + ReportEndpointPolicyCatalog.serviceAllowRules + listOf(
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/images")),
         AllowRule(HttpMethod.GET, parser.parse("/v2/post/images/**")),
         AllowRule(HttpMethod.POST, parser.parse("/v2/post/images")),
