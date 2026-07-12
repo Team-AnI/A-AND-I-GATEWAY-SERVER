@@ -16,7 +16,6 @@ import (
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/formatting"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/health"
 	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/reportadmin"
-	"github.com/Team-AnI/A-AND-I-GATEWAY-SERVER/monitor-bot/internal/security"
 )
 
 const (
@@ -253,121 +252,6 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 	}
 }
 
-func (h *Handler) opsAlarmsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	state := optionStringFromOptions(subcommand.Options, "state")
-	if state == "" {
-		state = "ALARM"
-	}
-	names, err := h.alarms.AlarmNamesByState(ctx, state)
-	if err != nil {
-		return "CloudWatch alarm 조회 실패: " + security.SanitizeText(err.Error())
-	}
-	service := optionStringFromOptions(subcommand.Options, "service")
-	if service != "" {
-		normalized, ok := security.NormalizeService(service)
-		if !ok {
-			return "지원하지 않는 service입니다."
-		}
-		names = filterAlarmNames(normalized, names)
-	}
-	return formatting.FormatAlarms(names)
-}
-
-func (h *Handler) countCommand(ctx context.Context, interaction Interaction) string {
-	service, ok := security.NormalizeServiceOrAll(optionString(interaction, "service"))
-	if !ok {
-		return "지원하지 않는 service입니다."
-	}
-	sinceLabel := optionString(interaction, "since")
-	since, ok := security.ParseSince(sinceLabel)
-	if !ok {
-		return "지원하지 않는 since 값입니다."
-	}
-	countType, ok := security.NormalizeCountType(optionString(interaction, "type"))
-	if !ok {
-		return "지원하지 않는 type 값입니다."
-	}
-	if service == "all" {
-		return allServiceGuardMessage()
-	}
-	groups, err := cw.LogGroupsForOptionalService(h.cfg.LogGroups, service, h.cfg.CloudWatchMaxLogGroups)
-	if err != nil {
-		return security.SanitizeText(err.Error())
-	}
-	query, err := cw.BuildCountQuery(service, countType)
-	if err != nil {
-		return security.SanitizeText(err.Error())
-	}
-	rows, err := h.logs.Query(ctx, groups, query, since, 50)
-	if err != nil {
-		return "CloudWatch count 조회 실패: " + security.SanitizeText(err.Error())
-	}
-	return formatting.FormatCountSummary(service, sinceLabel, countType, rows)
-}
-
-func (h *Handler) assignmentEventsCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	_ = ctx
-	courseSlug := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "course"))
-	assignmentID := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "id"))
-	if !security.ValidateCourseSlug(courseSlug) {
-		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
-	}
-	if !security.ValidateAssignmentID(assignmentID) {
-		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
-	}
-	if h.ops == nil {
-		return "Service Ops controller is not ready."
-	}
-	return h.ops.AssignmentIssueHistory(courseSlug, assignmentID)
-}
-
-func (h *Handler) assignmentAckCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	_ = ctx
-	courseSlug := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "course"))
-	assignmentID := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "id"))
-	if !security.ValidateCourseSlug(courseSlug) {
-		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
-	}
-	if !security.ValidateAssignmentID(assignmentID) {
-		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
-	}
-	if h.ops == nil {
-		return "Service Ops controller is not ready."
-	}
-	result, err := h.ops.AcknowledgeAssignmentIssue(
-		courseSlug,
-		assignmentID,
-		optionStringFromOptions(subcommand.Options, "event"),
-		optionStringFromOptions(subcommand.Options, "until"),
-		optionStringFromOptions(subcommand.Options, "reason"),
-		"discord",
-	)
-	if err != nil {
-		return security.SanitizeText(err.Error())
-	}
-	return result
-}
-
-func (h *Handler) assignmentUnackCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	_ = ctx
-	courseSlug := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "course"))
-	assignmentID := strings.TrimSpace(optionStringFromOptions(subcommand.Options, "id"))
-	if !security.ValidateCourseSlug(courseSlug) {
-		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 courseSlug입니다.")
-	}
-	if !security.ValidateAssignmentID(assignmentID) {
-		return formatting.FormatAdminError(reportadmin.StatusError, courseSlug, assignmentID, "올바르지 않은 assignmentId입니다.")
-	}
-	if h.ops == nil {
-		return "Service Ops controller is not ready."
-	}
-	result, err := h.ops.UnacknowledgeAssignmentIssue(courseSlug, assignmentID, optionStringFromOptions(subcommand.Options, "event"))
-	if err != nil {
-		return security.SanitizeText(err.Error())
-	}
-	return result
-}
-
 func isOpsV2Service(service string) bool {
 	return service == "gateway" || service == "auth" || service == "report" || service == "post"
 }
@@ -377,22 +261,6 @@ func opsDisplayServiceName(service string) string {
 		return "blog"
 	}
 	return service
-}
-
-func (h *Handler) retentionCommand(ctx context.Context, title string) string {
-	groups, err := h.logs.DescribeGroups(ctx, cw.RetentionTargetLogGroups(h.cfg.LogGroups))
-	if err != nil {
-		return "CloudWatch log group 조회 실패: " + security.SanitizeText(err.Error())
-	}
-	rows := make([]formatting.LogGroupRetention, 0, len(groups))
-	for _, group := range groups {
-		rows = append(rows, formatting.LogGroupRetention{
-			Name:          group.Name,
-			RetentionDays: group.RetentionDays,
-			StoredBytes:   group.StoredBytes,
-		})
-	}
-	return formatting.FormatRetention(title, rows)
 }
 
 func (h *Handler) commandTimeout(command string) time.Duration {
@@ -537,16 +405,6 @@ func serviceHasAlarm(service string, alarmNames []string) bool {
 		}
 	}
 	return false
-}
-
-func filterAlarmNames(service string, alarmNames []string) []string {
-	filtered := make([]string, 0, len(alarmNames))
-	for _, name := range alarmNames {
-		if serviceHasAlarm(service, []string{name}) {
-			filtered = append(filtered, name)
-		}
-	}
-	return filtered
 }
 
 func optionString(interaction Interaction, name string) string {
