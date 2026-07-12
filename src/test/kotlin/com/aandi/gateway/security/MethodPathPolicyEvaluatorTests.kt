@@ -191,6 +191,33 @@ class MethodPathPolicyEvaluatorTests {
     }
 
     @Test
+    fun `report endpoint policy catalog preserves the ordered allow inventory partition`() {
+        val allowKeys = filter().methodPathPolicy.allowRules.map { it.method to it.path }
+        val reportKeys = ReportEndpointPolicyCatalog.allowRules.map { it.method to it.path }
+        val reportKeySet = reportKeys.toSet()
+
+        assertEquals(2, ReportEndpointPolicyCatalog.openApiRules.size)
+        assertEquals(14, ReportEndpointPolicyCatalog.serviceRules.size)
+        assertEquals(16, reportKeys.size)
+        assertEquals(16, reportKeySet.size)
+        assertEquals(reportKeys, allowKeys.filter(reportKeySet::contains))
+        assertEquals(
+            mapOf(
+                HttpMethod.GET to 6,
+                HttpMethod.POST to 4,
+                HttpMethod.PUT to 2,
+                HttpMethod.PATCH to 2,
+                HttpMethod.DELETE to 2
+            ),
+            ReportEndpointPolicyCatalog.allowRules.groupingBy { it.method }.eachCount()
+        )
+        assertEquals(
+            "3faa56cb0e6d163e35b5944f296c8bd9ea99f6346c30ac4abd4f3701dda469db",
+            fingerprint(allowKeys)
+        )
+    }
+
+    @Test
     fun `filter maps evaluator decisions without changing endpoint error contract`() {
         val filter = filter()
 
