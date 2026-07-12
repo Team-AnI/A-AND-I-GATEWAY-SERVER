@@ -253,32 +253,6 @@ func (h *Handler) opsCommand(ctx context.Context, interaction Interaction) strin
 	}
 }
 
-func (h *Handler) opsServiceCommand(ctx context.Context, subcommand ApplicationCommandOpt) string {
-	service, ok := security.NormalizeService(optionStringFromOptions(subcommand.Options, "service"))
-	if !ok {
-		return "지원하지 않는 service입니다."
-	}
-	if !isOpsV2Service(service) {
-		return "status: NO_V2_LOG\nservice: " + opsDisplayServiceName(service) + "\nkey findings: V2 로그 연동 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops dashboard since:30m`"
-	}
-	view := optionStringFromOptions(subcommand.Options, "view")
-	if view == "" {
-		view = "summary"
-	}
-	since := optionStringFromOptions(subcommand.Options, "since")
-	if since == "" {
-		since = "30m"
-	}
-	switch view {
-	case "summary":
-		return h.serviceCommand(ctx, interactionForCommand("service", withDefaultOptions(subcommand.Options, map[string]string{"since": since})))
-	case "health":
-		return withNext(formatting.FormatStatus([]formatting.ServiceStatus{h.health.Check(ctx, service)}), "/ops logs service:"+opsDisplayServiceName(service)+" mode:errors")
-	default:
-		return "지원하지 않는 dashboard service view입니다. 상태는 `/ops dashboard service:<service>`, 로그 분석은 `/ops logs`를 사용하세요."
-	}
-}
-
 func (h *Handler) opsLogsCommand(ctx context.Context, interaction Interaction, subcommand ApplicationCommandOpt) string {
 	action := optionStringFromOptions(subcommand.Options, "action")
 	if action == "" {
