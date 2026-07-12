@@ -121,6 +121,23 @@ class ApiLoggingContractTests {
     }
 
     @Test
+    fun `json scalar data and timestamp are preserved in api log`() {
+        val timestamp = "2026-07-13T00:00:00+09:00"
+        val log = logForResponse(
+            HttpStatus.OK,
+            """{"success":true,"data":{"text":"value","number":12,"flag":true,"missing":null},"timestamp":"$timestamp"}"""
+        )
+
+        val data = log.response.data as Map<*, *>
+        assertEquals("value", data["text"])
+        assertEquals(12, (data["number"] as Number).toInt())
+        assertEquals(true, data["flag"])
+        assertTrue(data.containsKey("missing"))
+        assertEquals(null, data["missing"])
+        assertEquals(timestamp, log.response.timestamp)
+    }
+
+    @Test
     fun `blank 401 403 and 404 response bodies use status aware fallback`() {
         assertGatewayError(
             logForResponse(HttpStatus.UNAUTHORIZED),
