@@ -117,6 +117,60 @@ func TestOpsDashboardServiceViewUsesThirtyMinuteWindow(t *testing.T) {
 	}
 }
 
+func TestOpsServiceCommandPreservesValidationAndCompatibilityResponses(t *testing.T) {
+	h := &Handler{}
+
+	cases := []struct {
+		name    string
+		options []ApplicationCommandOpt
+		want    string
+	}{
+		{
+			name:    "invalid service",
+			options: []ApplicationCommandOpt{stringInteractionOption("service", "unknown")},
+			want:    "지원하지 않는 service입니다.",
+		},
+		{
+			name:    "service without v2 logs",
+			options: []ApplicationCommandOpt{stringInteractionOption("service", "online-judge")},
+			want:    "status: NO_V2_LOG\nservice: online-judge\nkey findings: V2 로그 연동 전까지 장애 판단 대상이 아닙니다.\nrecommended next commands:\n- `/ops dashboard since:30m`",
+		},
+		{
+			name: "invalid view",
+			options: []ApplicationCommandOpt{
+				stringInteractionOption("service", "auth"),
+				stringInteractionOption("view", "unknown"),
+			},
+			want: "지원하지 않는 dashboard service view입니다. 상태는 `/ops dashboard service:<service>`, 로그 분석은 `/ops logs`를 사용하세요.",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := h.opsServiceCommand(context.Background(), ApplicationCommandOpt{Options: tc.options})
+			if got != tc.want {
+				t.Fatalf("unexpected response:\ngot:  %s\nwant: %s", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestOpsServiceHealthViewPreservesStatusAndNextCommand(t *testing.T) {
+	h := newDashboardViewTestHandler()
+
+	got := h.opsServiceCommand(
+		context.Background(),
+		ApplicationCommandOpt{Options: []ApplicationCommandOpt{
+			stringInteractionOption("service", "auth"),
+			stringInteractionOption("view", "health"),
+		}},
+	)
+
+	if !strings.Contains(got, "auth") || !strings.Contains(got, "/ops logs service:auth mode:errors") {
+		t.Fatalf("health view contract changed: %s", got)
+	}
+}
+
 func TestOpsDashboardWatchUsesServiceScopeAndExplicitOptions(t *testing.T) {
 	ops := &dashboardOpsRecorder{watchResult: "service watch"}
 	h := &Handler{ops: ops}
