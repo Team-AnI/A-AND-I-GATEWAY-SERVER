@@ -178,7 +178,7 @@ class ApiLogFactory(
                 data = root.get("data")?.takeUnless { it.isNull }?.let { MaskingUtil.maskObject(jsonNodeToValue(it)) }
                     ?: if (statusCode < 400) emptyMap<String, Any?>() else null,
                 error = error,
-                timestamp = root.path("timestamp").asText(now())
+                timestamp = root.path("timestamp").asString(now())
             )
         }.getOrElse {
             ApiLogResponse(
@@ -196,9 +196,9 @@ class ApiLogFactory(
         val selectedFallback = GatewayErrorCode.values().firstOrNull { it.code == providedCode } ?: statusFallback
         return ApiLogError(
             code = providedCode.takeIf { it > 0 } ?: statusFallback.code,
-            message = errorNode.path("message").asText("").takeIf { it.isNotBlank() } ?: selectedFallback.message,
-            value = errorNode.path("value").asText("").takeIf { it.isNotBlank() } ?: selectedFallback.value,
-            alert = errorNode.path("alert").asText("").takeIf { it.isNotBlank() } ?: selectedFallback.alert
+            message = errorNode.path("message").asString("").takeIf { it.isNotBlank() } ?: selectedFallback.message,
+            value = errorNode.path("value").asString("").takeIf { it.isNotBlank() } ?: selectedFallback.value,
+            alert = errorNode.path("alert").asString("").takeIf { it.isNotBlank() } ?: selectedFallback.alert
         )
     }
 
@@ -327,11 +327,11 @@ class ApiLogFactory(
         return when {
             node.isObject -> node.properties().associate { entry -> entry.key to jsonNodeToValue(entry.value) }
             node.isArray -> node.map { jsonNodeToValue(it) }
-            node.isTextual -> node.asText()
+            node.isString -> node.asString()
             node.isNumber -> node.numberValue()
             node.isBoolean -> node.asBoolean()
             node.isNull -> null
-            else -> node.asText()
+            else -> node.asString()
         }
     }
 
