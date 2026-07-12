@@ -667,34 +667,9 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 	case "submissions":
 		return h.submissionsCommand(ctx, interactionForCommand("submissions", withDefaultOptions(interaction.Data.Options, map[string]string{"assignment": assignmentID})))
 	case "ack":
-		if h.ops == nil {
-			return "Service Ops controller is not ready."
-		}
-		reason := optionString(interaction, "reason")
-		if strings.TrimSpace(reason) == "" {
-			return "assignment ack에는 reason이 필요합니다."
-		}
-		result, err := h.ops.AcknowledgeAssignmentIssue(
-			courseSlug,
-			assignmentID,
-			optionString(interaction, "event"),
-			optionString(interaction, "until"),
-			reason,
-			"discord",
-		)
-		if err != nil {
-			return security.SanitizeText(err.Error())
-		}
-		return result
+		return h.assignmentAckAction(courseSlug, assignmentID, interaction)
 	case "unack":
-		if h.ops == nil {
-			return "Service Ops controller is not ready."
-		}
-		result, err := h.ops.UnacknowledgeAssignmentIssue(courseSlug, assignmentID, optionString(interaction, "event"))
-		if err != nil {
-			return security.SanitizeText(err.Error())
-		}
-		return result
+		return h.assignmentUnackAction(courseSlug, assignmentID, interaction)
 	case "":
 	default:
 		return "지원하지 않는 assignment action입니다. list, check, submissions, ack, unack 중 하나를 사용하세요."
@@ -704,10 +679,7 @@ func (h *Handler) assignmentCommand(ctx context.Context, interaction Interaction
 		view = "summary"
 	}
 	if view == "events" {
-		if h.ops == nil {
-			return "Service Ops controller is not ready."
-		}
-		return h.ops.AssignmentIssueHistory(courseSlug, assignmentID)
+		return h.assignmentEventsView(courseSlug, assignmentID)
 	}
 	notice := h.courseManualNotice(ctx, courseSlug)
 	assignment, err := h.reportAdmin.GetAssignment(ctx, courseSlug, assignmentID)
