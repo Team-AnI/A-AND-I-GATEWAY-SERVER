@@ -1,0 +1,43 @@
+name: TLS Certificate Renewal
+
+on:
+  schedule:
+    - cron: '17 1,13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-ec2-maintenance
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  renew-certificate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Renew certificate and reload Nginx
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 10m
+          script_path: deploy/scripts/renew-certificate.sh
+
+      - name: Verify public TLS certificate
+        run: |
+          set -Eeuo pipefail
+          timeout 15 openssl s_client \
+            -connect api.aandiclub.com:443 \
+            -servername api.aandiclub.com \
+            -verify_return_error </dev/null 2>/dev/null |
+            openssl x509 -checkend 1209600 -noout
+          curl --silent --show-error --output /dev/null --max-time 15 \
+            https://api.aandiclub.com/v2/blogs
