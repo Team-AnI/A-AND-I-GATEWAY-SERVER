@@ -6,6 +6,11 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
 
+concurrency:
+  group: production-ec2-maintenance
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
@@ -440,7 +445,14 @@ jobs:
                 exit 1
               fi
             fi
-            sudo docker run --rm \
-              -v /opt/aandi/gateway/certbot/www:/var/www/certbot \
-              -v /opt/aandi/gateway/certbot/conf:/etc/letsencrypt \
-              certbot/certbot renew --webroot -w /var/www/certbot --quiet --non-interactive || true
+
+      - name: Verify public TLS certificate
+        run: |
+          set -Eeuo pipefail
+          timeout 15 openssl s_client \
+            -connect api.aandiclub.com:443 \
+            -servername api.aandiclub.com \
+            -verify_return_error </dev/null 2>/dev/null |
+            openssl x509 -checkend 1209600 -noout
+          curl --silent --show-error --output /dev/null --max-time 15 \
+            https://api.aandiclub.com/v2/blogs
