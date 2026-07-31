@@ -445,6 +445,7 @@ jobs:
                 exit 1
               fi
             fi
+            bash /tmp/aandi-gateway-deploy/deploy/scripts/install-certificate-renewal.sh
 
       - name: Verify public TLS certificate
         run: |

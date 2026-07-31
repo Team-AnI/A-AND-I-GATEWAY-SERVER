@@ -2,7 +2,7 @@ name: TLS Certificate Renewal
 
 on:
   schedule:
-    - cron: '17 1,13 * * *'
+    - cron: '41 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -22,14 +22,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Renew certificate and reload Nginx
+      - name: Upload certificate maintenance files
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: deploy
+          target: /tmp/aandi-certificate-maintenance
+          overwrite: true
+
+      - name: Install timer and renew certificate
         uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 10m
-          script_path: deploy/scripts/renew-certificate.sh
+          script: |
+            set -Eeuo pipefail
+            bash /tmp/aandi-certificate-maintenance/deploy/scripts/install-certificate-renewal.sh
+            if ! sudo systemctl start aandi-certificate-renewal.service; then
+              sudo journalctl -u aandi-certificate-renewal.service -n 100 --no-pager
+              exit 1
+            fi
+            sudo journalctl -u aandi-certificate-renewal.service -n 100 --no-pager
 
       - name: Verify public TLS certificate
         run: |
@@ -39,5 +56,10 @@ jobs:
             -servername api.aandiclub.com \
             -verify_return_error </dev/null 2>/dev/null |
             openssl x509 -checkend 1209600 -noout
-          curl --silent --show-error --output /dev/null --max-time 15 \
-            https://api.aandiclub.com/v2/blogs
+
+      - name: Verify public blog API
+        run: |
+          curl --fail --silent --show-error --output /dev/null --max-time 15 \
+            --header 'deviceOS: WEB' \
+            --header "timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            'https://api.aandiclub.com/v2/blogs?page=0&size=1'
