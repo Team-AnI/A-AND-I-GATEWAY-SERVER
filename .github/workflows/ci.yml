@@ -71,6 +71,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate deployment scripts
+        run: bash -n deploy/scripts/*.sh
+
+      - name: Validate certificate renewal units
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" amazonlinux:2023 bash -c '
+            set -Eeuo pipefail
+            dnf install -y systemd >/dev/null
+            install -d /opt/aandi/gateway/scripts
+            install -m 0755 \
+              /repo/deploy/scripts/renew-certificate.sh \
+              /opt/aandi/gateway/scripts/renew-certificate.sh
+            printf "[Unit]\nDescription=Docker stub\n[Service]\nType=oneshot\nExecStart=/usr/bin/true\nRemainAfterExit=yes\n" \
+              >/etc/systemd/system/docker.service
+            systemd-analyze verify \
+              /repo/deploy/systemd/aandi-certificate-renewal.service \
+              /repo/deploy/systemd/aandi-certificate-renewal.timer
+            systemd-analyze calendar \
+              "*-*-* 01:17:00 UTC" \
+              "*-*-* 13:17:00 UTC" >/dev/null
+          '
+
       - name: Validate CI/CD metrics documents
         run: |
           python3 scripts/validate-gateway-cicd-metrics.py docs/metrics/gateway-cicd-remeasure.json

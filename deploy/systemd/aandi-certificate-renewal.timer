@@ -1,0 +1,12 @@
+[Unit]
+Description=Renew A&I TLS certificate twice daily
+
+[Timer]
+OnCalendar=*-*-* 01:17:00 UTC
+OnCalendar=*-*-* 13:17:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+Unit=aandi-certificate-renewal.service
+
+[Install]
+WantedBy=timers.target

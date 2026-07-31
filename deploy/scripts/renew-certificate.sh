@@ -9,6 +9,7 @@ CERTBOT_WEBROOT_DIR="${CERTBOT_BASE_DIR}/www"
 CERTIFICATE_PATH="${CERTBOT_CONF_DIR}/live/${DOMAIN}/fullchain.pem"
 PRIVATE_KEY_PATH="${CERTBOT_CONF_DIR}/live/${DOMAIN}/privkey.pem"
 NGINX_CONTAINER="aandi-gateway-nginx"
+CERTBOT_IMAGE="certbot/certbot@sha256:34ee91d2f43008eb78a007d22f23ed4b2eaa9a454cb27ca2c042b49527a695b4"
 
 sudo test -f "${CERTIFICATE_PATH}" || {
   echo "ERROR: certificate not found: ${CERTIFICATE_PATH}" >&2
@@ -25,10 +26,12 @@ if [ "${nginx_running}" != "true" ]; then
   exit 1
 fi
 
-sudo docker run --rm \
+sudo openssl version >/dev/null
+
+sudo docker run --rm --pull=always \
   -v "${CERTBOT_WEBROOT_DIR}:/var/www/certbot" \
   -v "${CERTBOT_CONF_DIR}:/etc/letsencrypt" \
-  certbot/certbot renew \
+  "${CERTBOT_IMAGE}" renew \
   --cert-name "${DOMAIN}" \
   --webroot \
   -w /var/www/certbot \

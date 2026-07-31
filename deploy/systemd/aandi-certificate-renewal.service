@@ -1,0 +1,10 @@
+[Unit]
+Description=A&I TLS certificate renewal
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=8min
+ExecStart=/opt/aandi/gateway/scripts/renew-certificate.sh
