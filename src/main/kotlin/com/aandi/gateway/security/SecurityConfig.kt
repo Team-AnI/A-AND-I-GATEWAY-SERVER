@@ -52,7 +52,7 @@ class SecurityConfig(
             this.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             this.allowedHeaders = listOf("*")
             this.exposedHeaders = listOf("X-Auth-Context-Cache")
-            this.allowCredentials = false
+            this.allowCredentials = true
             this.maxAge = 3600
         }
 

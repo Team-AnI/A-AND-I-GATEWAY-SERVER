@@ -62,7 +62,7 @@ class AuthRequestValidationFilter(
                 val body = bytes.toString(StandardCharsets.UTF_8)
                 val validation = when (pathType) {
                     PathType.LOGIN -> validateLoginBody(body)
-                    PathType.REFRESH, PathType.LOGOUT -> validateRefreshBody(body)
+                    PathType.REFRESH, PathType.LOGOUT -> validateRefreshBody(exchange, body)
                 }
 
                 if (validation != null) {
@@ -83,9 +83,11 @@ class AuthRequestValidationFilter(
         return null
     }
 
-    private fun validateRefreshBody(body: String): GatewayErrorCode? {
+    private fun validateRefreshBody(exchange: ServerWebExchange, body: String): GatewayErrorCode? {
         val refreshToken = extractJsonField(body, "refreshToken")
-        if (refreshToken.isBlank()) {
+            .ifBlank { exchange.request.cookies.getFirst("refresh_token")?.value }
+
+        if (refreshToken.isNullOrBlank()) {
             return GatewayErrorCode.REFRESH_TOKEN_REQUIRED
         }
 
