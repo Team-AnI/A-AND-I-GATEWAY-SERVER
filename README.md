@@ -8,7 +8,7 @@ Gateway는 요청을 전달하기 전에 공통 정책과 권한을 확인하고
 
 ## A&I 서비스 전체 구조
 
-![A&I 서비스 전체 구조](./docs/assets/diagrams/aandi-platform-architecture.png)
+![A&I 서비스 전체 구조](./docs/assets/portfolio/aandi-system-architecture.png)
 
 외부 요청은 Nginx와 Gateway를 거쳐 각 서비스로 전달됩니다.
 
